@@ -65,21 +65,12 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
 
-##---## In E3, We only use ONE EPICS_BASE in order to COMPILE A MODULE
-##---## 
-##---## In E3,  EPICS_LOCATION is the EPICS BASE  /testing/epics/base-3.15.5 
-EPICS_LOCATION =
-##---## In E3, we extract BASE_VERSION from EPICS_LOCATION
-E3_EPICS_VERSION_TEMP:=$(notdir $(EPICS_LOCATION))
-E3_EPICS_VERSION:=$(E3_EPICS_VERSION_TEMP:base-%=%)
-E3_SITEMODS_PATH =
-E3_SITEAPPS_PATH =
-E3_SITELIBS_PATH =
-BUILD_EPICS_VERSIONS = $(E3_EPICS_VERSION)
+##---## In E3/conda, We only use ONE EPICS_BASE in order to COMPILE A MODULE
+##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
+BUILD_EPICS_VERSIONS = $(EPICS_BASE_VERSION)
 ##---## 
 
 BUILDCLASSES = 
-EPICS_MODULES = 
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
@@ -299,7 +290,8 @@ else # EPICSVERSION
 # EPICSVERSION defined 
 # Second or third run (see T_A branch below)
 
-EPICS_BASE=${EPICS_LOCATION}
+# With conda EPICS_BASE is exported as a global environment variable
+#EPICS_BASE=${EPICS_LOCATION}
 #/base-${EPICSVERSION}
 
 ifneq ($(filter 3.13.%,$(EPICSVERSION)),)
@@ -550,18 +542,11 @@ EPICS_INCLUDES =
 # endef
 # $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_FOREIGN_INCLUDES,$m)))
 
-define ADD_SITEMODS_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
-INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_VERSION))
+define ADD_OTHER_MODULE_INCLUDES
+$(eval $(1)_VERSION := $(patsubst ${EPICS_MODULES}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+INSTALL_INCLUDES += $$(patsubst %,-I${EPICS_MODULES}/$(1)/%/include,$$($(1)_VERSION))
 endef
-$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
-
-define ADD_SITEAPPS_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEAPPS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEAPPS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
-INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEAPPS_PATH}/$(1)/%/include,$$($(1)_VERSION))
-endef
-$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*))),$(call ADD_SITEAPPS_INCLUDES,$m)))
-
+$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_OTHER_MODULE_INCLUDES,$m)))
 
 
 ifneq ($(wildcard ${MAKEHOME}/getPrerequisites.tcl),)
@@ -756,9 +741,8 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 #DBDFILES += $(if $(shell cat ${SUBFUNCFILE}),${SUBFUNCFILE})
 
 # snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
-#SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
-SNCALL=$(shell ls  -dv $(E3_SITELIBS_PATH)/sequencer_$(sequencer_VERSION)_bin/$(EPICS_HOST_ARCH) 2> /dev/null)
-SNC=$(lastword $(SNCALL))/snc
+# In a conda environment we have only one version so this could be simplify
+SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
 
 
 endif # 3.14
@@ -1073,7 +1057,7 @@ ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	$(RM) $@
 	@echo "# Generated file. Do not edit." > $@
 # Check dependencies on other module headers.
-	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
+	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
 ifneq ($(strip ${REQ}),)
 # Manully added dependencies: ${REQ}
 	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${EPICS_MODULES}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
@@ -1090,33 +1074,3 @@ $(BUILDRULE)
 endif # In O.* directory
 endif # T_A defined
 endif # EPICSVERSION defined
-
-
-
-
-##
-## Tuesday, January 30 14:03:35 CET 2018  : Default snc path (SNC) was changed in order to use E3_SITELIBS_PATH,
-##                                          at the same time, we also add E3_SITEMODS_PATH, E3_SITEAPPS_PATH also.
-##                                          They should be configured in E3/CONFIG_EXPORT and E3/CONFIG_E3_MAKEFILE.
-##                                          We also introduce E3_SEQUENCER_NAME also.
-##
-## Wednesday, January 31 15:18:33 CET 2018: Add Debug messages in SNC  
-##
-## Saturday, February 10 22:42:44 CET 2018: E3_SEQUENCER_VERSION was introduced. If not set, fall back to
-##                                          *.*.* versions number, and SNC will be selected via lastword
-##                                          in the original driver.makefile way.
-##                                          Default E3_SEQUENCER_NAME as sequencer, if it is not defined in
-##                                          CONFIG_MODULE in each module
-##
-## Tuesday, May  1 20:27:31 CEST 2018       : Generate a dependency file with module_name x.x.x instead of x.x
-##                                            add the exclusion for include for require.dep
-##
-## Sunday, May  6 22:10:24 CEST 2018        : add %.{hh,hpp,hxx} headers into vpath in order to install them properly
-## 
-## Tuesday, September 18 22:57:17 CEST 2018 : add *.iocsh in SCR
-##
-## Thursday, November  8 11:01:28 CET 2018  : Add    ADD_SITEMODS_INCLUDES and ADD_SITEAPPS_INCLUDES instead of ADD_FOREIGN_INCLUDES
-##                                            Remove the E3_SEQUENCER_*, use sequencer_VERSION instaed.
-##
-## Thursday, March  7 00:11:50 CET 2019     : Add E3_SITEMODS_PATH, E3_SITEAPPS_PATH in the dep file generation.
-##
