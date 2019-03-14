@@ -1,0 +1,539 @@
+# -*- mode: sh -*-
+#
+#  Copyright (c) 2004 - 2017    Paul Scherrer Institute 
+#  Copyright (c) 2017 - Present European Spallation Source ERIC
+#
+#  The program is free software: you can redistribute
+#  it and/or modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation, either version 2 of the
+#  License, or any newer version.
+#
+#  This program is distributed in the hope that it will be useful, but WITHOUT
+#  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+#  more details.
+#
+#  You should have received a copy of the GNU General Public License along with
+#  this program. If not, see https://www.gnu.org/licenses/gpl-2.0.txt
+#
+#
+#  PSI original iocsh author : Dirk Zimoch
+#  ESS specific iocsh author : Jeong Han Lee
+#                     email  : han.lee@esss.se
+#
+#
+
+ROOT_UID=0 
+E_NOTROOT=101
+EXIST=1
+NON_EXIST=0
+
+
+function pushd { builtin pushd "$@" > /dev/null; }
+function popd  { builtin popd  "$@" > /dev/null; }
+
+function checkIfRoot
+{
+    if [[ $(id -u) -ne "$ROOT_UID" ]] ; then 
+	echo "Please run it as root or with sudo" ; 
+	exit $E_NOTROOT ;
+    fi
+};
+
+
+function checkIfDir
+{
+    
+    local dir=$1
+    local result=""
+    if [ ! -d "$dir" ]; then
+	result=$NON_EXIST
+	# doesn't exist
+    else
+	result=$EXIST
+	# exist
+    fi
+    echo "${result}"
+};
+
+
+function checkIfFile
+{
+    local file=$1
+    local result=""
+    if [ ! -e "$file" ]; then
+	result=$NON_EXIST
+	# doesn't exist
+    else
+	result=$EXIST
+	# exist
+    fi
+    echo "${result}"	 
+};
+
+
+function checkIfVar
+{
+    #@ Usage Example :
+    # if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
+    #    die 1 " $var is not defined!. Please source ${E3_REQUIRE_BIN}/setE3Env.bash "
+    # fi
+    local var=$1
+    local result=""
+    if [ -z "$var" ]; then
+	result=$NON_EXIST
+	# doesn't exist
+    else
+	result=$EXIST
+	# exist
+    fi
+    echo "${result}"	 
+};
+
+
+
+function read_file_get_string
+{
+    local FILENAME=$1
+    local PREFIX=$2
+
+    local val=""
+    while read line; do
+	if [[ $line =~ "${PREFIX}" ]] ; then
+	    val=${line#$PREFIX}
+	fi
+    done < ${FILENAME}
+
+    echo "$val"
+}
+
+
+
+
+# Base Code is defined with 8 digits numbers
+# Two digits are enough to cover all others (I think)
+# 3.15.5    : 03150500
+# 3.14.12.7 : 03141207
+# 
+# First  Two : 00 (EPICS VERSION)
+# Second Two : 00 (EPICS_REVISION)
+# Third  Two : 00 (EPICS_MODIFICATION)
+# Fouth  Two : 00 (EPICS_PATCH_LEVEL)
+
+function basecode_generator #@ Generator BASECODE 
+{
+    #@ USAGE: BASECODE=$(basecode_generator)
+    
+    local epics_ver_maj="$(read_file_get_string   "${EPICS_BASE}/configure/CONFIG_BASE_VERSION" "EPICS_VERSION = ")";
+    local epics_ver_mid="$(read_file_get_string   "${EPICS_BASE}/configure/CONFIG_BASE_VERSION" "EPICS_REVISION = ")";
+    local epics_ver_min="$(read_file_get_string   "${EPICS_BASE}/configure/CONFIG_BASE_VERSION" "EPICS_MODIFICATION = ")";
+    local epics_ver_patch="$(read_file_get_string "${EPICS_BASE}/configure/CONFIG_BASE_VERSION" "EPICS_PATCH_LEVEL = ")";
+
+    local base_code="";
+    
+    if [[ ${#epics_ver_maj} -lt 2 ]] ; then
+	epics_ver_maj="00${epics_ver_maj}"
+	epics_ver_maj="${epics_ver_maj: -2}"
+    fi
+    
+    if [[ ${#epics_ver_mid} -lt 2 ]] ; then
+	epics_ver_mid="00${epics_ver_mid}"
+	epics_ver_mid="${epics_ver_mid: -2}"
+    fi
+    
+    if [[ ${#epics_ver_min} -lt 2 ]] ; then
+	epics_ver_min="00${epics_ver_min}"
+	epics_ver_min="${epics_ver_min: -2}"
+    fi
+    
+    if [[ ${#epics_ver_patch} -lt 2 ]] ; then
+	epics_ver_patch="00${epics_ver_patch}"
+	epics_ver_patch="${epics_ver_patch: -2}"
+    fi
+
+    base_code=${epics_ver_maj}${epics_ver_mid}${epics_ver_min}${epics_ver_patch}
+
+    echo "$base_code";
+
+}
+
+
+
+function version
+{
+    printf "%s : %s%s\n" "European Spallation Source ERIC" "$SC_SCRIPTNAME" ${SC_VERSION:+" ($SC_VERSION)"}  >&2
+   
+    exit
+};
+
+
+# This function doesn't work
+function printParamShow
+{
+    declare -a var_list=();
+    var_list+=(EPICS_CA_REPEATER_PORT);
+    var_list+=(EPICS_CA_SERVER_PORT);
+    var_list+=(EPICS_TIMEZONE);
+    var_list+=(EPICS_TS_NTP_INET);
+    var_list+=(EPICS_AR_PORT);
+
+    var_list+=(EPICS_VERSION_MAJOR);
+    var_list+=(EPICS_VERSION_MIDDLE);
+    var_list+=(EPICS_VERSION_MINOR);
+    var_list+=(EPICS_VERSION_PATCH);
+    var_list+=(EPICS_VERSION_FULL);
+    
+    for var in ${var_list[@]};  do
+	printf "# $var=\"${!var}\"\n"
+    done
+    printf "#\n";
+};
+
+function printIocEnv
+{
+    declare -a var_list=();
+    var_list+=(HOSTDISPLAY);
+    var_list+=(WINDOWID);
+    var_list+=(PWD);
+    var_list+=(USER);
+    var_list+=(LOGNAME);
+    var_list+=(EPICS_HOST_ARCH);
+    var_list+=(EPICS_BASE);
+    # REQUIRE
+        
+    var_list+=(E3_REQUIRE_NAME);
+    var_list+=(E3_REQUIRE_VERSION);
+    var_list+=(E3_REQUIRE_LOCATION);
+    var_list+=(E3_REQUIRE_BIN);
+    var_list+=(E3_REQUIRE_DB);
+    var_list+=(E3_REQUIRE_DBD);
+    var_list+=(E3_REQUIRE_INC);
+    var_list+=(E3_REQUIRE_LIB);
+
+    # E3 SITE PATH
+    var_list+=(E3_SITEAPPS_PATH);
+    var_list+=(E3_SITELIBS_PATH);
+    var_list+=(E3_SITEMODS_PATH);
+    
+    # EPICS and others
+    var_list+=(EPICS_DRIVER_PATH);
+    var_list+=(EPICS_CA_AUTO_ADDR_LIST);
+    var_list+=(EPICS_CA_ADDR_LIST);
+    var_list+=(PATH);
+    var_list+=(LD_LIBRARY_PATH);
+
+    printf "#\n";
+    printf "# Start at \"$(date +%Y-W%V-%b%d-%H%M-%S-%Z)\"\n"
+    printf "#\n";
+    printf "# Version information:\n";
+    printf "# %s : %s%s\n" "European Spallation Source ERIC" "$SC_SCRIPTNAME" ${SC_VERSION:+" ($SC_VERSION)"};
+    printf "#\n";
+     
+    printf "# --->--> snip -->--> \n";
+    printf "# Please Use Version and other environment variables\n";
+    printf "# in order to report or debug this shell\n";
+    printf "#\n";
+    for var in ${var_list[@]};  do
+	printf "# $var=\"${!var}\"\n"
+    done
+    printf "# --->--> snip -->--> \n";
+    printf "#\n";
+};
+
+
+# Ctrl+c : OK
+# exit   : OK
+# kill softioc process : OK
+# kill main precess : Enter twice in terminal,
+#                     close softIoc, but STATUP file is remained.
+#                     
+
+
+function softIoc_end
+{
+    local startup_file=$1
+    rm -f ${startup_file};
+    stty sane;
+    exit;
+};
+
+
+function die #@ Print error message and exit with error code
+{
+    #@ USAGE: die [errno [message]]
+    error=${1:-1}
+    ## exits with 1 if error number not given
+    shift
+    [ -n "$*" ] &&
+	printf "%s%s: %s\n" "$SC_SCRIPTNAME" ${SC_VERSION:+" ($SC_VERSION)"} "$*" >&2
+    exit "$error"
+};
+
+
+function iocsh_ps1
+{
+    local iocsh_ps1="";
+    local hash="$1";
+    local pid="$2";
+    local host=$(hostname|tr -d '\r');
+
+    iocsh_ps1+=$hash;       
+    iocsh_ps1+=".";
+    iocsh_ps1+=${host:0:7};
+    iocsh_ps1+=".";
+    iocsh_ps1+=$pid;
+    iocsh_ps1+=" > ";
+    
+    echo "${iocsh_ps1}"
+};
+
+# Please look at the limitation in require.c in  registerModule()
+# /* 
+#    Require DB has the following four PVs: 
+#    - $(REQUIRE_IOC):$(MODULE)_VER
+#    - $(REQUIRE_IOC):MOD_VER
+#    - $(REQUIRE_IOC):VERSIONS
+#    - $(REQUIRE_IOC):MODULES
+#    We reserved 30 chars for :$(MODULE)_VER, so MODULE has the maximum 24 chars.
+#    And we've reserved for 30 chars for $(REQUIRE_IOC).
+#    So, the whole PV and record name in moduleversion.template has 59 + 1. 
+#  */
+
+
+function require_ioc
+{
+    # e3-ioc-hash-hostname-pid fails when host has icslab-ser03 and IOCUSER-VIRTUALBOX
+    # so better to keep simple in case when hostname is long.
+    # And it has the limitation of PV length
+    #  #define PVNAME_STRINGSZ 61 in EPICS_BASE/include/dbDefs.h
+
+    local require_ioc=""
+    local hashin="$1";
+    local hash=$( echo $hashin | tr /a-z/ /A-Z/ );
+    local pid="$2";
+    local host=${HOSTNAME//./_};
+    # Record name should not have . character, because it is used inside reacord
+    local hostname=$( echo $host | tr /a-z/ /A-Z/ );
+
+    require_ioc="REQMOD-";         # char 7 ( 7)
+    require_ioc+=$hash;            # char 7 (14),  703250D
+    require_ioc+=":";              # char 1 (15)  
+    require_ioc+=${hostname:0:7};  # char 7 (22)
+    require_ioc+="-";              # char 1 (23)
+    require_ioc+=${pid}            # char 7 (30),  max pid in  64 bit  4194304 (7),
+  
+    echo "${require_ioc}"
+};
+
+
+function loadRequire
+{
+    local libPrefix=lib
+    local libPostfix=.so
+    local libName=${libPrefix}${E3_REQUIRE_NAME}${libPostfix}
+    
+    local require_lib=${E3_REQUIRE_LIB}/${EPICS_HOST_ARCH}/${libName}
+    local require_dbd=${E3_REQUIRE_DBD}/${E3_REQUIRE_NAME}.dbd
+     
+    local load_cmd=""
+    
+    #  Support for dynamic loading  3.14.11
+    # 
+    if [[ ${BASECODE} -ge 03141100  ]]; then
+	load_cmd="dlload"
+    else
+	# Not sure it works or not.
+	load_cmd="ld"
+    fi
+
+    printf "# \n";
+    printf "# Load ${E3_REQUIRE_NAME} module, which has the version ${E3_REQUIRE_VERSION}\n"
+    printf "# \n";
+    printf "${load_cmd} ${require_lib}\n";
+    printf "dbLoadDatabase ${require_dbd}\n"
+    printf "${E3_REQUIRE_NAME%-*}_registerRecordDeviceDriver\n\n"
+    printf "# \n";
+ 
+};
+
+
+
+function check_mandatory_env_settings 
+{
+    declare -a var_list=();
+    var_list+=(EPICS_HOST_ARCH);
+    var_list+=(EPICS_BASE);
+    var_list+=(E3_REQUIRE_NAME);
+    var_list+=(E3_REQUIRE_BIN);
+    var_list+=(E3_REQUIRE_LIB);
+    var_list+=(E3_REQUIRE_DB);
+    var_list+=(E3_REQUIRE_DBD);
+    var_list+=(E3_REQUIRE_VERSION);
+    for var in ${var_list[@]};  do
+	if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
+	    die 1 " $var is not defined!. Please source ${E3_REQUIRE_BIN}/setE3Env.bash "
+	fi
+    done
+};
+
+
+
+function loadFiles 
+{
+    while [ "$#" -gt 0 ]; do
+	
+	file=$1
+
+	case $file in
+	    ( -h | "-?" | -help | --help )
+	    help
+	    ;; 
+	    ( -v | -ver | --ver | -version | --version )
+	    version
+	    ;;
+	    ( @* )
+  	    loadFiles $(cat ${file#@})
+	    ;;
+	    ( *=* )
+	    echo -n $file | awk -F '=' '{printf "epicsEnvSet %s '\''%s'\''\n", $1, $2}'
+	    ;;
+	    ( -c )               
+	    shift
+	    case $1 in
+	    	( seq* )
+	    	if [ "$init" != NO ]; then
+	    	    echo "iocInit"
+	    	    init=NO
+	    	fi
+	    	;;
+	    	( iocInit )
+	    	init=NO
+	    	;;
+	    esac
+	    echo $1
+	    ;;
+	    ( -s )
+	    shift
+	    if [ "$init" != NO ]; then
+	    	echo "iocInit"
+	    	init=NO
+	    fi
+	    echo "seq $1"
+	    ;;
+	    ( -r )               
+	    shift
+	    echo "require $1"
+	    ;;
+	    ( -* )
+	    printf "Unknown option $1\n\n" >&2
+	    help
+	    exit 1
+	    ;;
+	    ( *.so )
+	    ## dlload introduced from EPICS Base Release  3.14.11 
+            if [[ ${BASECODE} -ge  03141100  ]]; then
+	    	echo "dlload \"$file\""
+	    else
+	    	echo "ld \"$file\""
+	    fi
+	    ;;
+	    ( * )
+	    subst=""
+	    while [ "$#" -gt 1 ]; do
+		case $2 in
+		    ( *=* )
+		    subst="$subst,$2"; shift
+		    ;;
+		    ( * )
+		    break
+		    ;;
+		esac
+	    done
+	    subst=${subst#,}
+	    case $file in
+		( *.db | *.template)
+                echo "dbLoadRecords '$file','$subst'"
+                ;;
+		( *.subs | *.subst )
+                echo "dbLoadTemplate '$file','$subst'"
+                ;;
+		( *.dbd )
+                # some dbd files must be loaded before main to take effect
+                echo "dbLoadDatabase '$file','$DBD','$subst'"
+                ;;
+		( * )
+		set_e3_cmd_top "$file";
+		# iocshLoad introduced from 3.15.0.2
+		if [[ ${BASECODE} -ge 03150002  ]]; then
+		    echo "iocshLoad '$file','$subst'"
+                else
+		    echo -n $subst | awk -F '=' -v 'RS=,' '{printf "epicsEnvSet %s '\''%s'\''\n", $1, $2}'
+		    echo "< '$file'"
+                fi
+		
+                if grep -q iocInit $file; then
+		    init=NO;
+		fi
+                ;;
+	    esac
+	    ;;
+	    
+	esac
+	shift
+    done
+
+
+};
+
+
+function set_e3_cmd_top
+{
+    local file=$1
+    local file_path=""
+    local file_top=""
+    local file_name=""
+    
+    if [ -f "$file" ]; then
+	file_path="$(realpath "$file")"
+	file_top="${file_path%/*}"
+	file_name=${file##*/}
+	printf "# Set E3_CMD_TOP for the absolute path where %s exists\n" "$file_name";
+	printf "epicsEnvSet E3_CMD_TOP \"$file_top\"\n";
+	printf "#\n";
+	
+    fi
+};
+
+
+function help
+{
+    {
+	printf "\n";
+	printf "USAGE: iocsh.bash [startup files]\n";
+	printf "\n";
+	printf "Start the ESS iocsh.bash and load startup scripts.\n\n";
+	printf "Options:\n\n";
+	printf "  -?, -h, --help   Show this page and exit.\n";
+	printf "  -v, --version    Show version and exit.\n";
+	printf "  -c 'cmd args'    Ioc shell command.\n";
+	printf "  -s 'prog m=v'    Sequencer program (and arguments), run with 'seq'.\n";
+	printf "                   This forces an 'iocInit' before running the program.\n";
+	printf "  -r module[,ver]  Modue (optionally with version) loaded via 'require'.\n";
+	printf "  @file            More arguments are read from file.\n\n";
+	printf "Supported filetypes:\n\n";
+	printf " *.db, *.dbt, *.template  loaded via 'dbLoadRecords'\n";
+	printf " *.subs, *.subst          loaded via 'dbLoadTemplate'\n";
+	printf " *.dbd                    loaded via 'dbLoadDatabase'\n"
+	printf " *.so                     loaded via 'dlload'\n";
+	printf "\n";
+	printf "All other files are executed as startup scripts by the EPICS shell.\n";
+	printf "After a file you can specify substitutions like m1=v1 m2=v1 for that file.\n\n";
+	printf "Examples:\n"
+	printf "  iocsh.bash st.cmd\n"
+	printf "  iocsh.bash my_database.template P=XY M=3\n"
+	printf "  iocsh.bash -r my_module,version -c 'initModule()'\n"
+	printf "  iocsh.bash -c 'var requireDebug 1' st.cmd\n\n"
+	
+    } >&2
+    exit
+}
