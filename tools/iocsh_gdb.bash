@@ -38,13 +38,12 @@ BASECODE="$(basecode_generator)"
 check_mandatory_env_settings
 
 #
-# IOCSH_HASH_VERSION is defined when doing 'make install'
-SC_VERSION+=-${IOCSH_HASH_VERSION}.PID-${BASHPID}
+SC_VERSION+=-PID-${BASHPID}
 
 #
-# We define IOCSH Git HASH + HOSTNAME + BASHPID
-IOCSH_PS1=$(iocsh_ps1     "${IOCSH_HASH_VERSION}" "${BASHPID}")
-REQUIRE_IOC=$(require_ioc "${IOCSH_HASH_VERSION}" "${BASHPID}")
+# We define HOSTNAME + BASHPID
+IOCSH_PS1=$(iocsh_ps1     "${BASHPID}")
+REQUIRE_IOC=$(require_ioc "${BASHPID}")
 #
 # Default Initial Startup file for REQUIRE and minimal environment
 

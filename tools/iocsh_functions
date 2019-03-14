@@ -267,13 +267,11 @@ function die #@ Print error message and exit with error code
 function iocsh_ps1
 {
     local iocsh_ps1="";
-    local hash="$1";
-    local pid="$2";
-    local host=$(hostname|tr -d '\r');
+    local pid="$1";
+    # Keep only short hostname (without domain)
+    local host=${HOSTNAME%%.*};
 
-    iocsh_ps1+=$hash;       
-    iocsh_ps1+=".";
-    iocsh_ps1+=${host:0:7};
+    iocsh_ps1+=${host:0:15};
     iocsh_ps1+=".";
     iocsh_ps1+=$pid;
     iocsh_ps1+=" > ";
@@ -302,19 +300,17 @@ function require_ioc
     #  #define PVNAME_STRINGSZ 61 in EPICS_BASE/include/dbDefs.h
 
     local require_ioc=""
-    local hashin="$1";
-    local hash=$( echo $hashin | tr /a-z/ /A-Z/ );
-    local pid="$2";
-    local host=${HOSTNAME//./_};
+    local pid="$1";
+    # Keep only short hostname (without domain)
+    local host=${HOSTNAME%%.*};
     # Record name should not have . character, because it is used inside reacord
     local hostname=$( echo $host | tr /a-z/ /A-Z/ );
 
-    require_ioc="REQMOD-";         # char 7 ( 7)
-    require_ioc+=$hash;            # char 7 (14),  703250D
-    require_ioc+=":";              # char 1 (15)  
-    require_ioc+=${hostname:0:7};  # char 7 (22)
-    require_ioc+="-";              # char 1 (23)
-    require_ioc+=${pid}            # char 7 (30),  max pid in  64 bit  4194304 (7),
+    require_ioc="REQMOD";          # char 6  ( 6)
+    require_ioc+=":";              # char 1  ( 7)  
+    require_ioc+=${hostname:0:15}; # char 15 (22)
+    require_ioc+="-";              # char 1  (23)
+    require_ioc+=${pid}            # char 7  (30),  max pid in  64 bit  4194304 (7),
   
     echo "${require_ioc}"
 };
