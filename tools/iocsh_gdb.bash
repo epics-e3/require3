@@ -22,12 +22,12 @@
 #                     email  : han.lee@esss.se
 #
 
-declare -gr SC_SCRIPT="$(realpath "$0")"
-declare -gr SC_SCRIPTNAME=${0##*/}
-declare -gr SC_TOP="${SC_SCRIPT%/*}"
-declare -g  SC_VERSION="v0.3.6-gdb"
-declare -g  STARTUP=""
-declare -g  BASECODE=""
+declare -r SC_SCRIPT="$(readlink -e "$0")"
+declare -r SC_SCRIPTNAME=${0##*/}
+declare -r SC_TOP="${SC_SCRIPT%/*}"
+declare SC_VERSION="v0.3.6-gdb"
+declare STARTUP=""
+declare BASECODE=""
 
 
 . ${SC_TOP}/iocsh_functions

@@ -36,12 +36,12 @@
 #
 #  0.3.6 : In case, we know where $0 is, sourcing setE3Env.bash by itself
 # 
-declare -gr SC_SCRIPT="$(realpath "$0")"
-declare -gr SC_SCRIPTNAME=${0##*/}
-declare -gr SC_TOP="${SC_SCRIPT%/*}"
-declare -g  SC_VERSION="v0.3.6"
-declare -g  STARTUP=""
-declare -g  BASECODE=""
+declare -r SC_SCRIPT="$(readlink -e "$0")"
+declare -r SC_SCRIPTNAME=${0##*/}
+declare -r SC_TOP="${SC_SCRIPT%/*}"
+declare SC_VERSION="v0.3.6"
+declare STARTUP=""
+declare BASECODE=""
 
 
 . ${SC_TOP}/iocsh_functions

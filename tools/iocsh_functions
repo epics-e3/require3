@@ -494,7 +494,7 @@ function set_e3_cmd_top
     local file_name=""
     
     if [ -f "$file" ]; then
-	file_path="$(realpath "$file")"
+	file_path="$(readlink -e "$file")"
 	file_top="${file_path%/*}"
 	file_name=${file##*/}
 	printf "# Set E3_CMD_TOP for the absolute path where %s exists\n" "$file_name";
