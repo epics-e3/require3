@@ -76,7 +76,7 @@ function checkIfVar
 {
     #@ Usage Example :
     # if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
-    #    die 1 " $var is not defined!. Please source ${E3_REQUIRE_BIN}/setE3Env.bash "
+    #    die 1 " $var is not defined!. Please run conda activate <env> "
     # fi
     local var=$1
     local result=""
@@ -371,7 +371,7 @@ function check_mandatory_env_settings
     var_list+=(E3_REQUIRE_VERSION);
     for var in ${var_list[@]};  do
 	if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
-	    die 1 " $var is not defined!. Please source ${E3_REQUIRE_BIN}/setE3Env.bash "
+	    die 1 " $var is not defined!. Please run conda activate <env> "
 	fi
     done
 };

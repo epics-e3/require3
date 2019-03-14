@@ -44,21 +44,7 @@ declare -g  STARTUP=""
 declare -g  BASECODE=""
 
 
-
-set -a
-. ${SC_TOP}/ess-env.conf
-set +a
-
 . ${SC_TOP}/iocsh_functions
-
-
-# The most unique environment variable for e3 is EPICS_DRIVER_PATH
-#
-if [[ $(checkIfVar ${EPICS_DRIVER_PATH}) -eq "$NON_EXIST" ]]; then
-    set -a
-    . ${SC_TOP}/setE3Env.bash "no_msg"
-    set +a
-fi
 
 
 BASECODE="$(basecode_generator)"
