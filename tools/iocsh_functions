@@ -210,17 +210,11 @@ function printIocEnv
     var_list+=(E3_REQUIRE_INC);
     var_list+=(E3_REQUIRE_LIB);
 
-    # E3 SITE PATH
-    var_list+=(E3_SITEAPPS_PATH);
-    var_list+=(E3_SITELIBS_PATH);
-    var_list+=(E3_SITEMODS_PATH);
-    
     # EPICS and others
     var_list+=(EPICS_DRIVER_PATH);
     var_list+=(EPICS_CA_AUTO_ADDR_LIST);
     var_list+=(EPICS_CA_ADDR_LIST);
     var_list+=(PATH);
-    var_list+=(LD_LIBRARY_PATH);
 
     printf "#\n";
     printf "# Start at \"$(date +%Y-W%V-%b%d-%H%M-%S-%Z)\"\n"
