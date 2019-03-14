@@ -25,7 +25,7 @@
 declare -r SC_SCRIPT="$(readlink -e "$0")"
 declare -r SC_SCRIPTNAME=${0##*/}
 declare -r SC_TOP="${SC_SCRIPT%/*}"
-declare SC_VERSION="v0.3.6-nice"
+declare SC_VERSION="${E3_REQUIRE_VERSION}-nice"
 declare STARTUP=""
 declare BASECODE=""
 
