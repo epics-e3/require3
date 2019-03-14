@@ -70,7 +70,7 @@ USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_L
 BUILD_EPICS_VERSIONS = $(EPICS_BASE_VERSION)
 ##---## 
 
-BUILDCLASSES = 
+BUILDCLASSES = Linux
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
@@ -206,7 +206,7 @@ help:
 	@echo "  EXCLUDE_VERSIONS () [versions not to build, e.g. 3.14]"
 	@echo "  EXCLUDE_ARCHS    () [target architectures not to build]"
 	@echo "  ARCH_FILTER      () [target architectures to build, e.g. SL6%]"
-	@echo "  BUILDCLASSES     (vxWorks) [other choices: Linux]"
+	@echo "  BUILDCLASSES     (Linux)"
 	@echo "  <module>_VERSION () [build against specific version of other module]"
 
 ##  "make version" shows the module version and why it is what it is.       
