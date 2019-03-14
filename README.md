@@ -6,7 +6,7 @@ The following files are touched:
 * require.c
 * driver.makefile
 
-And ESS doesn't use iocsh, we have the indepdent iocsh.bash, which is in https://github.com/icshwi/e3-require
+And ESS doesn't use iocsh, we have the indepdent iocsh.bash (under tools).
 
 
 
