@@ -864,15 +864,15 @@ ${INSTALLRULE} ${INSTALLS}
 
 ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 	@echo "Installing module dbd file $@"
-	$(INSTALL) -d -m444 $< $(@D)
+	$(INSTALL) -d -m644 $< $(@D)
 
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
-	$(INSTALL) -d -m555 $< $(@D)
+	$(INSTALL) -d -m755 $< $(@D)
 
 ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m444 $< $(@D)
+	$(INSTALL) -d -m644 $< $(@D)
 
 # Fix templates for older EPICS versions:
 # Remove 'alias' for EPICS <= 3.14.10
@@ -882,7 +882,7 @@ ifeq ($(DEP),.d)
 # 3.14.10+
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
-	$(INSTALL) -d -m444 $^ $(@D)
+	$(INSTALL) -d -m644 $^ $(@D)
 else ifeq (${EPICS_BASETYPE},3.13)
 # 3.13
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
@@ -899,15 +899,15 @@ endif
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
-	$(INSTALL) -d -m555 $^ $(@D)
+	$(INSTALL) -d -m755 $^ $(@D)
 
 ${INSTALL_CFGS}: ${CFGS}
 	@echo "Installing configuration files $^ to $(@D)"
-	$(INSTALL) -d -m444 $^ $(@D)
+	$(INSTALL) -d -m644 $^ $(@D)
 
 ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
-	$(INSTALL) -d -m555 $^ $(@D)
+	$(INSTALL) -d -m755 $^ $(@D)
 
 # Create SNL code from st/stt file.
 # (RULES.Vx only allows ../%.st, 3.14 has no .st rules at all.)
