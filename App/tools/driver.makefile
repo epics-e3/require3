@@ -68,6 +68,7 @@ USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_L
 ##---## In E3/conda, We only use ONE EPICS_BASE in order to COMPILE A MODULE
 ##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
 BUILD_EPICS_VERSIONS = $(EPICS_BASE_VERSION)
+MSI = ${EPICS_BASE_HOST_BIN}/msi
 ##---## 
 
 BUILDCLASSES = Linux
