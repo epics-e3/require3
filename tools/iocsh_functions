@@ -247,7 +247,9 @@ function softIoc_end
 {
     local startup_file=$1
     rm -f ${startup_file};
-    stty sane;
+    # only clean terminal when stdout is opened on a terminal
+    # avoid "stty: standard input: Inappropriate ioctl for device" otherwise
+    [[ -t 1 ]] && stty sane;
     exit;
 };
 
