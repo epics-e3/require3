@@ -9,7 +9,18 @@ The following files are touched:
 And ESS doesn't use iocsh, we have the indepdent iocsh.bash (under tools).
 
 
+# Compatibility with different versions of require
 
+* http://github.com/icshwi/require-ess
+  The differences here are that require-ess forces the IOC developer to specify a verions number, which does not
+  make sense in the context of using Conda as a deployment tool. As a result, this build is currently up-to-date with
+  https://github.com/icshwi/require-ess/releases/tag/v3.1.2
+
+* http://github.com/paulscherrerinstitute/require
+  All of the commits up until https://github.com/paulscherrerinstitute/require/tree/912cccdbd3ebff32210b0e6331886049f9748770
+  are included in this branch; the remaining commits until https://github.com/paulscherrerinstitute/require/tree/2439791953107fa1a88bdfcd8aa4554dc2ec3a6a
+  are to support further control over matching module versions, which is not necessary in Conda. As such, we consider this release to be
+  up to date with https://github.com/paulscherrerinstitute/require/tree/2439791953107fa1a88bdfcd8aa4554dc2ec3a6a
 
 # Original README
 
