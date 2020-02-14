@@ -1,7 +1,7 @@
 # -*- mode: sh -*-
 #
 #  Copyright (c) 2004 - 2017    Paul Scherrer Institute 
-#  Copyright (c) 2017 - Present European Spallation Source ERIC
+#  Copyright (c) 2017 - 2019    European Spallation Source ERIC
 #
 #  The program is free software: you can redistribute
 #  it and/or modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@ ROOT_UID=0
 E_NOTROOT=101
 EXIST=1
 NON_EXIST=0
-
+REALTIME=
 
 function pushd { builtin pushd "$@" > /dev/null; }
 function popd  { builtin popd  "$@" > /dev/null; }
@@ -274,7 +274,7 @@ function iocsh_ps1
     local host=${HOSTNAME%%.*};
 
     iocsh_ps1+=${host:0:15};
-    iocsh_ps1+=".";
+    iocsh_ps1+="-";
     iocsh_ps1+=$pid;
     iocsh_ps1+=" > ";
     
@@ -304,9 +304,8 @@ function require_ioc
     local require_ioc=""
     local pid="$1";
     # Keep only short hostname (without domain)
-    local host=${HOSTNAME%%.*};
+    local hostname=${HOSTNAME%%.*};
     # Record name should not have . character, because it is used inside reacord
-    local hostname=$( echo $host | tr /a-z/ /A-Z/ );
 
     require_ioc="REQMOD";          # char 6  ( 6)
     require_ioc+=":";              # char 1  ( 7)  
@@ -383,6 +382,9 @@ function loadFiles
 	    ( -v | -ver | --ver | -version | --version )
 	    version
 	    ;;
+	    ( -rt | -RT | -realtime | --realtime )
+	    REALTIME="RT"
+	    ;;
 	    ( @* )
   	    loadFiles $(cat ${file#@})
 	    ;;
@@ -412,9 +414,13 @@ function loadFiles
 	    fi
 	    echo "seq $1"
 	    ;;
-	    ( -r )               
+	    ( -r )
 	    shift
 	    echo "require $1"
+	    ;;
+	    ( -l )
+	    shift
+	    printf "epicsEnvSet EPICS_DRIVER_PATH %s:${EPICS_DRIVER_PATH}\n", $1
 	    ;;
 	    ( -* )
 	    printf "Unknown option $1\n\n" >&2
@@ -508,6 +514,7 @@ function help
 	printf "  -?, -h, --help   Show this page and exit.\n";
 	printf "  -v, --version    Show version and exit.\n";
 	printf "  -c 'cmd args'    Ioc shell command.\n";
+	printf "  -l 'cell path'   Run Ioc with a cell path.\n";
 	printf "  -s 'prog m=v'    Sequencer program (and arguments), run with 'seq'.\n";
 	printf "                   This forces an 'iocInit' before running the program.\n";
 	printf "  -r module[,ver]  Modue (optionally with version) loaded via 'require'.\n";

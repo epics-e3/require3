@@ -37,17 +37,18 @@ BASECODE="$(basecode_generator)"
 
 check_mandatory_env_settings
 
+# ${BASHPID} returns iocsh.bash PID
+iocsh_bash_id=${BASHPID}
 #
-SC_VERSION+=-PID-${BASHPID}
+SC_VERSION+=-PID-${iocsh_bash_id}
 
 #
-# We define HOSTNAME + BASHPID
-IOCSH_PS1=$(iocsh_ps1     "${BASHPID}")
-REQUIRE_IOC=$(require_ioc "${BASHPID}")
+# We define HOSTNAME + iocsh_bash_id
+IOCSH_PS1=$(iocsh_ps1     "${iocsh_bash_id}")
+REQUIRE_IOC=$(require_ioc "${iocsh_bash_id}")
 #
 # Default Initial Startup file for REQUIRE and minimal environment
-
-IOC_STARTUP=/tmp/${SC_SCRIPTNAME}-${SC_VERSION}-startup
+IOC_STARTUP=$(mktemp -q --suffix=_iocsh_${SC_VERSION}) || die 1 "${SC_SCRIPTNAME} CANNOT create the startup file, please check the disk space";
 
 # To get the absolute path where iocsh.bash is executed
 IOCSH_TOP=${PWD}
@@ -57,7 +58,6 @@ IOCSH_TOP=${PWD}
 # In our jargon. It is the same as ${EPICS_MODULES}
 
 trap "softIoc_end ${IOC_STARTUP}" EXIT HUP INT TERM
-
 
 {
     printIocEnv;
