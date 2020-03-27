@@ -32,17 +32,25 @@
 #  Thursday, October  4 17:00:53 CEST 2018, jhlee
 #
 #  0.3.5 : Set the proper limitation of REQUIRE PV name
-#  Tuesday, October  9 14:36:56 CEST 2018, jhlee
-#
 #  0.3.6 : In case, we know where $0 is, sourcing setE3Env.bash by itself
-# 
+#  0.3.7 : Introduce the local mode with -l
+#  0.3.8 : Use mktemp, and protect iocsh.bash when there is no diskspace
+#  0.3.9 : LD_BIND_NOW=1 for resolving symbols at startup.
+#  0.4.0 : - Fixed registryJLinkAdd failed pva error from base 7.0.3
+#          - Enable an exit subroutine for sotfioc
+#            Wednesday, September 11 17:27:59 CEST 2019
+#  0.4.1 : - Use the one BASHPID for iocsh.bash
+#  0.4.2 : - Use the secure path within tmp, but it may create "disk full" in the long
+#            term if each IOC cannot be closed properly
+#  0.4.3 : - Tune REQUIRE-* PV in order to replace - with . easily
+#
 declare -r SC_SCRIPT="$(readlink -e "$0")"
 declare -r SC_SCRIPTNAME=${0##*/}
 declare -r SC_TOP="${SC_SCRIPT%/*}"
 declare SC_VERSION="${E3_REQUIRE_VERSION}"
 declare STARTUP=""
 declare BASECODE=""
-
+declare -r TMP_PATH="/tmp/systemd-private-e3-iocsh"
 
 . ${SC_TOP}/iocsh_functions
 
@@ -51,18 +59,24 @@ BASECODE="$(basecode_generator)"
 
 check_mandatory_env_settings
 
+# ${BASHPID} returns iocsh.bash PID
+iocsh_bash_id=${BASHPID}
 #
-SC_VERSION+=-PID-${BASHPID}
+SC_VERSION+=-PID-${iocsh_bash_id}
 
 #
-# We define HOSTNAME + BASHPID
-IOCSH_PS1=$(iocsh_ps1     "${BASHPID}")
-REQUIRE_IOC=$(require_ioc "${BASHPID}")
+# We define HOSTNAME + iocsh_bash_id
+IOCSH_PS1=$(iocsh_ps1     "${iocsh_bash_id}")
+REQUIRE_IOC=$(require_ioc "${iocsh_bash_id}")
 #
 # Default Initial Startup file for REQUIRE and minimal environment
+# Create TMP_PATH path in order to keep tmp files secure until
+# an IOC will be closed.
 
-IOC_STARTUP=/tmp/${SC_SCRIPTNAME}-${SC_VERSION}-startup
+mkdir -p ${TMP_PATH}
 
+IOC_STARTUP=$(mktemp -p ${TMP_PATH} -q --suffix=_iocsh_${SC_VERSION}) || die 1 "${SC_SCRIPTNAME} CANNOT create the startup file, please check the disk space";
+#
 # To get the absolute path where iocsh.bash is executed
 IOCSH_TOP=${PWD}
 
@@ -72,16 +86,18 @@ IOCSH_TOP=${PWD}
 
 trap "softIoc_end ${IOC_STARTUP}" EXIT HUP INT TERM
 
-
 {
     printIocEnv;
     printf "# Set REQUIRE_IOC for its internal PVs\n";
     printf "epicsEnvSet REQUIRE_IOC \"${REQUIRE_IOC}\"\n";
     printf "#\n";
+    printf "# Enable an exit subroutine for sotfioc\n";
+    printf "dbLoadRecords \"${EPICS_BASE}/db/softIocExit.db\" \"IOC=${REQUIRE_IOC}\"\n";
+    printf "#\n";
     printf "# Set E3_IOCSH_TOP for the absolute path where %s is executed.\n" "${SC_SCRIPTNAME}"
     printf "epicsEnvSet E3_IOCSH_TOP \"${IOCSH_TOP}\"\n";
     printf "#\n";
-    
+
     loadRequire;
 
     loadFiles "$@";
@@ -89,7 +105,10 @@ trap "softIoc_end ${IOC_STARTUP}" EXIT HUP INT TERM
     printf "# Set the IOC Prompt String One \n";
     printf "epicsEnvSet IOCSH_PS1 \"$IOCSH_PS1\"\n";
     printf "#\n";
-    
+
+    if [ "$REALTIME" == "RT" ]; then
+	    printf "# Real Time \"$REALTIME\"\n";
+    fi
 
     if [ "$init" != NO ]; then
 	printf "# \n";
@@ -100,18 +119,26 @@ trap "softIoc_end ${IOC_STARTUP}" EXIT HUP INT TERM
 
 ulimit -c unlimited
 
-# -x "PREFIX"
-# PREFIX:exit & PREFIX:BaseVersion PVs are added to softIoc
-# We can end this IOC via caput PREFIX:exit 1
-
-
-
-if [[ ${BASECODE} -ge  07000101 ]]; then
-    _PVA_="PVA"
+if [ "$REALTIME" == "RT" ]; then
+    export LD_BIND_NOW=1;
+    __CHRT__="chrt --fifo 1 ";
+    printf "## \n";
+    printf "## Better support for Real-Time IOC Application.\n"
+    printf "## Now we set 'export LD_BIND_NOW=%s'\n" "$LD_BIND_NOW";
+    printf "## If one may meet the 'Operation not permitted' message, \n";
+    printf "## please run %s without the real-time option\n" "$SC_SCRIPTNAME";
+    printf "##\n";
 else
-    _PVA_=""
+    __CHRT__="";
 fi
 
+if [[ ${BASECODE} -ge  07000101 ]]; then
+    __PVA__="PVA"
+else
+    __PVA__=""
+fi
 
-softIoc${_PVA_} -D ${EPICS_BASE}/dbd/softIoc${_PVA_}.dbd "${IOC_STARTUP}" 2>&1
+#
+#
+${__CHRT__}${EPICS_BASE}/bin/${EPICS_HOST_ARCH}/softIoc${__PVA__} -D ${EPICS_BASE}/dbd/softIoc${__PVA__}.dbd "${IOC_STARTUP}" 2>&1
 
