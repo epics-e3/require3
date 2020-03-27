@@ -1440,6 +1440,7 @@ require_priv(const char* module,
 
 		switch ((status = compareVersions(currentFilename, version)))
 		  {
+		  case TESTVERS: /* test version found */
 		  case EXACT: /* exact match found */
 		  case MATCH: /* all given numbers match. */
 		    {
