@@ -994,7 +994,7 @@ static int compareVersions(const char* found, const char* request)
     if (found_parts == 0 || (found_extra[0] != 0 && strcmp(found_extra, "+") != 0))
     {
         if (requireDebug)
-            printf("require: compareVersions: TESTVERS numeric requested, test version found");
+            printf("require: compareVersions: TESTVERS numeric requested, test version found\n");
         if (req_extra[0] == '+')
             return TESTVERS;
         else
