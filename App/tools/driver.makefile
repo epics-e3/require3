@@ -33,9 +33,7 @@
 #
 # Module names are derived from the directory name (unless overwritten
 # with the MODULE variable in your Makefile).
-# A LIBVERSION number is generated from the latest CVS or GIT tag of the sources.
-# If any file is not up-to-date in CVS/GIT, not tagged, or tagged differently from the
-# other files, the version is a test version and labelled with the user name.
+# LIBVERSION is set to "dev" if not overwritten.
 # The library is installed to ${EPICS_MODULES}/${MODULE}/${LIBVERSION}/lib/${T_A}/.
 # A module can be loaded with  require "<module>" [,"<version>"] [,"<variable>=<substitution>, ..."]
 #
@@ -148,12 +146,16 @@ $(foreach v,$(sort $(basename ${BUILD_EPICS_VERSIONS})),$(eval EPICS_VERSIONS_$v
 # LIBVERSION = $(or $(filter-out test,$(shell ${VERSIONCHECKCMD} 2>/dev/null)),${USER},test)
 # VERSIONDEBUGFLAG = $(if ${VERSIONDEBUG}, -d)
 
+# Set LIBVERSION to dev if not set
+LIBVERSION := $(or $(LIBVERSION),dev)
+
 # Default module name is name of current directory.
 # But in case of "src" or "snl", use parent directory instead.
 # Avoid using environment variables for MODULE or PROJECT
 MODULE=
 PROJECT=
 PRJDIR:=$(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
+PRJDIR := $(shell echo $(PRJDIR) | tr '[:upper:]' '[:lower:]')
 PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
 export PRJ
 
