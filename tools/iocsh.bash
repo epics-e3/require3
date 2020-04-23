@@ -50,7 +50,7 @@ declare -r SC_TOP="${SC_SCRIPT%/*}"
 declare SC_VERSION="${E3_REQUIRE_VERSION}"
 declare STARTUP=""
 declare BASECODE=""
-declare -r TMP_PATH="/tmp/systemd-private-e3-iocsh"
+declare -r TMP_PATH="/tmp/systemd-private-e3-iocsh-$(whoami)"
 
 . ${SC_TOP}/iocsh_functions
 
