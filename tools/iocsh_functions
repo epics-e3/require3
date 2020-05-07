@@ -277,7 +277,7 @@ function iocsh_ps1
     iocsh_ps1+="-";
     iocsh_ps1+=$pid;
     iocsh_ps1+=" > ";
-    
+
     echo "${iocsh_ps1}"
 };
 
@@ -302,17 +302,23 @@ function require_ioc
     #  #define PVNAME_STRINGSZ 61 in EPICS_BASE/include/dbDefs.h
 
     local require_ioc=""
-    local pid="$1";
-    # Keep only short hostname (without domain)
-    local hostname=${HOSTNAME%%.*};
-    # Record name should not have . character, because it is used inside reacord
 
-    require_ioc="REQMOD";          # char 6  ( 6)
-    require_ioc+=":";              # char 1  ( 7)  
-    require_ioc+=${hostname:0:15}; # char 15 (22)
-    require_ioc+="-";              # char 1  (23)
-    require_ioc+=${pid}            # char 7  (30),  max pid in  64 bit  4194304 (7),
-  
+    # Test if IOCNAME is defined
+    if [ -z "${IOCNAME}" ]; then
+        local pid="$1";
+        # Keep only short hostname (without domain)
+        local hostname=${HOSTNAME%%.*};
+        # Record name should not have . character, because it is used inside reacord
+
+        require_ioc="REQMOD";          # char 6  ( 6)
+        require_ioc+=":";              # char 1  ( 7)  
+        require_ioc+=${hostname:0:15}; # char 15 (22)
+        require_ioc+="-";              # char 1  (23)
+        require_ioc+=${pid};           # char 7  (30),  max pid in  64 bit  4194304 (7),
+    else
+        require_ioc=${IOCNAME:0:30};
+    fi
+
     echo "${require_ioc}"
 };
 
