@@ -73,6 +73,12 @@ BUILDCLASSES = Linux
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
+# $PREFIX can be used to refer to dependencies installed by conda
+# (like -I$(PREFIX)/include/libxml2)
+# Set PREFIX to
+# - PREFIX if set (when using conda-build)
+# - CONDA_PREFIX otherwise (when compiling locally in a conda env)
+PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
 
 DOCUEXT = txt html htm doc pdf ps tex dvi gif jpg png
 DOCUEXT += TXT HTML HTM DOC PDF PS TEX DVI GIF JPG PNG
