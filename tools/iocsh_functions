@@ -308,7 +308,7 @@ function require_ioc
         local pid="$1";
         # Keep only short hostname (without domain)
         local hostname=${HOSTNAME%%.*};
-        # Record name should not have . character, because it is used inside reacord
+        # Record name should not have . character, because it is used inside record
 
         require_ioc="REQMOD";          # char 6  ( 6)
         require_ioc+=":";              # char 1  ( 7)  
