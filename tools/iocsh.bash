@@ -121,15 +121,12 @@ ulimit -c unlimited
 
 if [ "$REALTIME" == "RT" ]; then
     export LD_BIND_NOW=1;
-    __CHRT__="chrt --fifo 1 ";
     printf "## \n";
     printf "## Better support for Real-Time IOC Application.\n"
     printf "## Now we set 'export LD_BIND_NOW=%s'\n" "$LD_BIND_NOW";
     printf "## If one may meet the 'Operation not permitted' message, \n";
     printf "## please run %s without the real-time option\n" "$SC_SCRIPTNAME";
     printf "##\n";
-else
-    __CHRT__="";
 fi
 
 if [[ ${BASECODE} -ge  07000101 ]]; then
@@ -140,5 +137,5 @@ fi
 
 #
 #
-${__CHRT__}${EPICS_BASE}/bin/${EPICS_HOST_ARCH}/softIoc${__PVA__} -D ${EPICS_BASE}/dbd/softIoc${__PVA__}.dbd "${IOC_STARTUP}" 2>&1
+${__LOADER__}${EPICS_BASE}/bin/${EPICS_HOST_ARCH}/softIoc${__PVA__} -D ${EPICS_BASE}/dbd/softIoc${__PVA__}.dbd "${IOC_STARTUP}" 2>&1
 
