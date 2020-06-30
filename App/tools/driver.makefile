@@ -33,7 +33,9 @@
 #
 # Module names are derived from the directory name (unless overwritten
 # with the MODULE variable in your Makefile).
-# LIBVERSION is set to "dev" if not overwritten.
+# A LIBVERSION number is generated from the latest CVS or GIT tag of the sources.
+# If any file is not up-to-date in CVS/GIT, not tagged, or tagged differently from the
+# other files, the version is a test version and labelled with the user name.
 # The library is installed to ${EPICS_MODULES}/${MODULE}/${LIBVERSION}/lib/${T_A}/.
 # A module can be loaded with  require "<module>" [,"<version>"] [,"<variable>=<substitution>, ..."]
 #
@@ -63,22 +65,20 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
 
-##---## In E3/conda, We only use ONE EPICS_BASE in order to COMPILE A MODULE
-##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
-BUILD_EPICS_VERSIONS = $(EPICS_BASE_VERSION)
-MSI = ${EPICS_BASE_HOST_BIN}/msi
+##---## In E3, We only use ONE EPICS_BASE in order to COMPILE A MODULE
+##---## 
+##---## In E3,  EPICS_LOCATION is the EPICS BASE  /testing/epics/base-MAJ.MIN.REV[.PATCH]
+EPICS_LOCATION =
+##---## In E3, we extract BASE_VERSION from EPICS_LOCATION
+E3_EPICS_VERSION:=$(patsubst base-%,%,$(notdir $(EPICS_LOCATION)))
+BUILD_EPICS_VERSIONS = $(E3_EPICS_VERSION)
 ##---## 
 
 BUILDCLASSES = Linux
+EPICS_MODULES = 
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
-# $PREFIX can be used to refer to dependencies installed by conda
-# (like -I$(PREFIX)/include/libxml2)
-# Set PREFIX to
-# - PREFIX if set (when using conda-build)
-# - CONDA_PREFIX otherwise (when compiling locally in a conda env)
-PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
 
 DOCUEXT = txt html htm doc pdf ps tex dvi gif jpg png
 DOCUEXT += TXT HTML HTM DOC PDF PS TEX DVI GIF JPG PNG
@@ -152,20 +152,13 @@ $(foreach v,$(sort $(basename ${BUILD_EPICS_VERSIONS})),$(eval EPICS_VERSIONS_$v
 # LIBVERSION = $(or $(filter-out test,$(shell ${VERSIONCHECKCMD} 2>/dev/null)),${USER},test)
 # VERSIONDEBUGFLAG = $(if ${VERSIONDEBUG}, -d)
 
-# Set LIBVERSION to dev if not set
-LIBVERSION := $(or $(LIBVERSION),dev)
-
 # Default module name is name of current directory.
 # But in case of "src" or "snl", use parent directory instead.
 # Avoid using environment variables for MODULE or PROJECT
 MODULE=
 PROJECT=
 PRJDIR:=$(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
-PRJDIR := $(shell echo $(PRJDIR) | tr '[:upper:]' '[:lower:]')
 PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
-
-# Check to see that PRJ is valid
-$(if $(shell [[ "$(strip $(PRJ))" =~ ^[A-Za-z_][A-Za-z0-9_]*$$ ]] && echo good),,$(error Invalid module name: $(PRJ)))
 export PRJ
 
 OS_CLASS_LIST = $(BUILDCLASSES)
@@ -301,8 +294,7 @@ else # EPICSVERSION
 # EPICSVERSION defined 
 # Second or third run (see T_A branch below)
 
-# With conda EPICS_BASE is exported as a global environment variable
-#EPICS_BASE=${EPICS_LOCATION}
+EPICS_BASE=${EPICS_LOCATION}
 #/base-${EPICSVERSION}
 
 ifneq ($(filter 3.13.%,$(EPICSVERSION)),)
@@ -752,8 +744,9 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 #DBDFILES += $(if $(shell cat ${SUBFUNCFILE}),${SUBFUNCFILE})
 
 # snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
-# In a conda environment we have only one version so this could be simplify
-SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
+#SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
+SNCALL=$(shell ls  -dv $(EPICS_MODULES)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
+SNC=$(lastword $(SNCALL))/snc
 
 
 endif # 3.14
@@ -875,15 +868,15 @@ ${INSTALLRULE} ${INSTALLS}
 
 ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 	@echo "Installing module dbd file $@"
-	$(INSTALL) -d -m644 $< $(@D)
+	$(INSTALL) -d -m444 $< $(@D)
 
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
-	$(INSTALL) -d -m755 $< $(@D)
+	$(INSTALL) -d -m555 $< $(@D)
 
 ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m644 $< $(@D)
+	$(INSTALL) -d -m444 $< $(@D)
 
 # Fix templates for older EPICS versions:
 # Remove 'alias' for EPICS <= 3.14.10
@@ -893,7 +886,7 @@ ifeq ($(DEP),.d)
 # 3.14.10+
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
-	$(INSTALL) -d -m644 $^ $(@D)
+	$(INSTALL) -d -m444 $^ $(@D)
 else ifeq (${EPICS_BASETYPE},3.13)
 # 3.13
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
@@ -910,15 +903,15 @@ endif
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
-	$(INSTALL) -d -m755 $^ $(@D)
+	$(INSTALL) -d -m555 $^ $(@D)
 
 ${INSTALL_CFGS}: ${CFGS}
 	@echo "Installing configuration files $^ to $(@D)"
-	$(INSTALL) -d -m644 $^ $(@D)
+	$(INSTALL) -d -m444 $^ $(@D)
 
 ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
-	$(INSTALL) -d -m755 $^ $(@D)
+	$(INSTALL) -d -m555 $^ $(@D)
 
 # Create SNL code from st/stt file.
 # (RULES.Vx only allows ../%.st, 3.14 has no .st rules at all.)
@@ -1085,3 +1078,36 @@ $(BUILDRULE)
 endif # In O.* directory
 endif # T_A defined
 endif # EPICSVERSION defined
+
+
+
+
+##
+## Tuesday, January 30 14:03:35 CET 2018  : Default snc path (SNC) was changed in order to use E3_SITELIBS_PATH,
+##                                          at the same time, we also add E3_SITEMODS_PATH, E3_SITEAPPS_PATH also.
+##                                          They should be configured in E3/CONFIG_EXPORT and E3/CONFIG_E3_MAKEFILE.
+##                                          We also introduce E3_SEQUENCER_NAME also.
+##
+## Wednesday, January 31 15:18:33 CET 2018: Add Debug messages in SNC  
+##
+## Saturday, February 10 22:42:44 CET 2018: E3_SEQUENCER_VERSION was introduced. If not set, fall back to
+##                                          *.*.* versions number, and SNC will be selected via lastword
+##                                          in the original driver.makefile way.
+##                                          Default E3_SEQUENCER_NAME as sequencer, if it is not defined in
+##                                          CONFIG_MODULE in each module
+##
+## Tuesday, May  1 20:27:31 CEST 2018       : Generate a dependency file with module_name x.x.x instead of x.x
+##                                            add the exclusion for include for require.dep
+##
+## Sunday, May  6 22:10:24 CEST 2018        : add %.{hh,hpp,hxx} headers into vpath in order to install them properly
+## 
+## Tuesday, September 18 22:57:17 CEST 2018 : add *.iocsh in SCR
+##
+## Thursday, November  8 11:01:28 CET 2018  : Add    ADD_SITEMODS_INCLUDES and ADD_SITEAPPS_INCLUDES instead of ADD_FOREIGN_INCLUDES
+##                                            Remove the E3_SEQUENCER_*, use sequencer_VERSION instaed.
+##
+## Thursday, March  7 00:11:50 CET 2019     : Add E3_SITEMODS_PATH, E3_SITEAPPS_PATH in the dep file generation.
+##
+## Monday, September  9 15:25:53 CEST 2019  : Revert E3_SITEMODS_PATH from E3_SITELIBS_PATH in the snc path
+##
+## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
