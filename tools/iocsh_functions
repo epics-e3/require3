@@ -28,6 +28,7 @@ E_NOTROOT=101
 EXIST=1
 NON_EXIST=0
 REALTIME=
+__LOADER__=
 
 function pushd { builtin pushd "$@" > /dev/null; }
 function popd  { builtin popd  "$@" > /dev/null; }
@@ -390,6 +391,7 @@ function loadFiles
 	    ;;
 	    ( -rt | -RT | -realtime | --realtime )
 	    REALTIME="RT"
+        __LOADER__="chrt --fifo 1 "
 	    ;;
 	    ( @* )
   	    loadFiles $(cat ${file#@})
@@ -428,6 +430,14 @@ function loadFiles
 	    shift
 	    printf "epicsEnvSet EPICS_DRIVER_PATH %s:${EPICS_DRIVER_PATH}\n", $1
 	    ;;
+        ( -dg )
+        shift
+        __LOADER__="gdb --eval-command run --args "
+        ;;
+        ( -dv )
+        shift
+        __LOADER__="valgrind --leak-check=full "
+        ;;
 	    ( -* )
 	    printf "Unknown option $1\n\n" >&2
 	    help
