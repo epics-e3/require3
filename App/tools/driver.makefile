@@ -71,6 +71,8 @@ USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_L
 EPICS_LOCATION =
 ##---## In E3, we extract BASE_VERSION from EPICS_LOCATION
 E3_EPICS_VERSION:=$(patsubst base-%,%,$(notdir $(EPICS_LOCATION)))
+E3_SITEMODS_PATH =
+E3_SITEAPPS_PATH =
 BUILD_EPICS_VERSIONS = $(E3_EPICS_VERSION)
 ##---## 
 
@@ -545,11 +547,18 @@ EPICS_INCLUDES =
 # endef
 # $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_FOREIGN_INCLUDES,$m)))
 
-define ADD_OTHER_MODULE_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${EPICS_MODULES}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
-INSTALL_INCLUDES += $$(patsubst %,-I${EPICS_MODULES}/$(1)/%/include,$$($(1)_VERSION))
+define ADD_SITEMODS_INCLUDES
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_VERSION))
 endef
-$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_OTHER_MODULE_INCLUDES,$m)))
+$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
+
+define ADD_SITEAPPS_INCLUDES
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEAPPS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEAPPS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEAPPS_PATH}/$(1)/%/include,$$($(1)_VERSION))
+endef
+$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*))),$(call ADD_SITEAPPS_INCLUDES,$m)))
+
 
 
 ifneq ($(wildcard ${MAKEHOME}/getPrerequisites.tcl),)
@@ -745,7 +754,7 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 
 # snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
 #SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
-SNCALL=$(shell ls  -dv $(EPICS_MODULES)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
+SNCALL=$(shell ls  -dv $(E3_SITEMODS_PATH)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
 SNC=$(lastword $(SNCALL))/snc
 
 
@@ -1061,7 +1070,7 @@ ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	$(RM) $@
 	@echo "# Generated file. Do not edit." > $@
 # Check dependencies on other module headers.
-	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
+	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
 ifneq ($(strip ${REQ}),)
 # Manully added dependencies: ${REQ}
 	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${EPICS_MODULES}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
@@ -1109,5 +1118,3 @@ endif # EPICSVERSION defined
 ## Thursday, March  7 00:11:50 CET 2019     : Add E3_SITEMODS_PATH, E3_SITEAPPS_PATH in the dep file generation.
 ##
 ## Monday, September  9 15:25:53 CEST 2019  : Revert E3_SITEMODS_PATH from E3_SITELIBS_PATH in the snc path
-##
-## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
