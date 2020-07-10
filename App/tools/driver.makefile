@@ -1121,9 +1121,7 @@ endif # EPICSVERSION defined
 ## Thursday, March  7 00:11:50 CET 2019     : Add E3_SITEMODS_PATH, E3_SITEAPPS_PATH in the dep file generation.
 ##
 ## Monday, September  9 15:25:53 CEST 2019  : Revert E3_SITEMODS_PATH from E3_SITELIBS_PATH in the snc path
-<<<<<<< HEAD
-=======
 ##
 ## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
 ##
-## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/
+## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/nfs startup scripts.
