@@ -227,7 +227,6 @@ debug::
 #	@echo "INSTALLED_EPICS_VERSIONS = ${INSTALLED_EPICS_VERSIONS}"
 	@echo "BUILD_EPICS_VERSIONS = ${BUILD_EPICS_VERSIONS}"
 #	@echo "MISSING_EPICS_VERSIONS = ${MISSING_EPICS_VERSIONS}"
-#	@echo "EPICS_VERSIONS_3.13 = ${EPICS_VERSIONS_3.13}"
 #	@echo "EPICS_VERSIONS_3.14 = ${EPICS_VERSIONS_3.14}"
 	@echo "EPICS_VERSIONS_3.15 = ${EPICS_VERSIONS_3.15}"
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
@@ -302,14 +301,6 @@ else # EPICSVERSION
 EPICS_BASE=${EPICS_LOCATION}
 #/base-${EPICSVERSION}
 
-ifneq ($(filter 3.13.%,$(EPICSVERSION)),)
-
-EPICS_BASETYPE=3.13
-CONFIG=${EPICS_BASE}/config
-export BUILD_TYPE=Vx
-
-else # 3.14+
-
 EPICS_BASETYPE=3.14
 CONFIG=${EPICS_BASE}/configure
 
@@ -323,7 +314,6 @@ USR_LDFLAGS_$(EPICS_HOST_ARCH) += -m32
 endif
 endif
 
-endif # 3.14+
 
 ${CONFIG}/CONFIG:
 	@echo "ERROR: EPICS release ${EPICSVERSION} not installed on this host."
@@ -405,9 +395,7 @@ export DOCU
 # Go to O.${T_A} subdirectory because RULES.Vx only work there:
 
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
-ifneq (${EPICS_BASETYPE},3.13)
 CROSS_COMPILER_TARGET_ARCHS := ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
-endif # !3.13
 CROSS_COMPILER_TARGET_ARCHS := $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),$(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${CROSS_COMPILER_TARGET_ARCHS}),${CROSS_COMPILER_TARGET_ARCHS})))
 
 # Create build dirs (and links) if necessary.
@@ -500,7 +488,7 @@ install build debug:: O.${EPICSVERSION}_Common O.${EPICSVERSION}_${T_A}
 
 endif
 
-# Add sources for specific epics types (3.13 or 3.14) or architectures.
+# Add sources for specific epics types or architectures.
 ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
 VAR_EXTENSIONS = ${EPICS_BASETYPE} ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICS_BASETYPE}_%} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
@@ -527,11 +515,9 @@ $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x})
 CFLAGS += ${EXTRA_CFLAGS}
 
 COMMON_DIR_3.14 = ../O.${EPICSVERSION}_Common
-COMMON_DIR_3.13 = .
 COMMON_DIR = ${COMMON_DIR_${EPICS_BASETYPE}}
 
 # Remove include directory for this module from search path.
-# 3.13 and 3.14 use different variables
 INSTALL_INCLUDES =
 EPICS_INCLUDES =
 
@@ -576,16 +562,9 @@ $(eval $(1)_VERSION := $(or $(patsubst ${EPICS_MODULES}/$(1)/%/,%,$(firstword $(
 endef
 $(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
 
-# EPICS 3.13 uses :: in some rules where 3.14 uses :
-ifeq (${EPICS_BASETYPE},3.13)
-INSTALLRULE=install::
-BUILDRULE=build::
-BASERULES=${EPICS_BASE}/config/RULES.Vx
-else # 3.14
 INSTALLRULE=install:
 BUILDRULE=build:
 BASERULES=${EPICS_BASE}/configure/RULES
-endif # 3.14
 
 INSTALL_REV     = ${MODULE_LOCATION}
 INSTALL_BIN     = ${INSTALL_REV}/bin/$(T_A)
@@ -620,31 +599,6 @@ INSTALL_SCR     = ${INSTALL_REV}
 #	chmod 444 $@
 #	$(SETLINKS) ${INSTALL_TEMPL} .db $(basename $(notdir $^))
 
-# Different settings required to build library in EPICS 3.13 and 3.14.
-ifeq (${EPICS_BASETYPE},3.13) # only 3.13 from here
-
-# Convert sources to object code, skip .a and .o here.
-LIBOBJS += $(patsubst %,%.o,$(notdir $(basename $(filter-out %.o %.a,${SRCS}))))
-# Add all .a and .o with absolute path.
-LIBOBJS += $(filter /%.o /%.a,${SRCS})
-# Add all .a and .o with relative path, but go one directory up.
-LIBOBJS += $(patsubst %,../%,$(filter-out /%,$(filter %.o %.a,${SRCS})))
-LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
-LIBOBJS += $(foreach l,${USR_LIBOBJS}, $(addprefix ../,$(filter-out /%,$l)) $(filter /%,$l))
-
-LIBNAME = $(if $(strip ${LIBOBJS}),${PRJ}Lib,) # Must be the un-munched name.
-MODULELIB = ${LIBNAME:%=%.munch}
-PROD = ${MODULELIB}
-
-# Add munched library for C++ code (does not work for Tornado 1).
-#ifneq ($(filter %.cc %.cpp %.C,${SRCS}),)
-#ifeq ($(filter T1-%,${T_A}),)
-#PROD = ${MODULELIB}.munch
-#endif # T1- T_A
-#endif # .cc or .cpp found
-
-else # Only 3.14 from here.
-
 LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(filter-out /%,$l))$(filter /%,$l)))
 
 ifeq (${OS_CLASS},vxWorks)
@@ -657,8 +611,8 @@ endif
 
 # vxWorks
 PROD_vxWorks=${MODULELIB}
-LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %(LIB_SUFFIX),$(sort ${SRCS})))))
-LIBOBJS += $(filter /%.$(OBJ) /%(LIB_SUFFIX),${SRCS})
+LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
+LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
 LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
 LIBS = -L ${EPICS_BASE_LIB} ${BASELIBS:%=-l%}
 LINK.cpp += ${LIBS}
@@ -678,7 +632,6 @@ endif
 # See ${REGISTRYFILE} and ${EXPORTFILE} rules below.
 LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE} ${EXPORTFILE})))
 
-endif # Both, 3.13 and 3.14 from here.
 
 # For backward compatibility:
 # Provide a global symbol for every version with the same
@@ -726,15 +679,6 @@ SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out 
 # Different macro name for 3.14.8.
 GENERIC_SRC_INCLUDES = $(SRC_INCLUDES)
 
-ifeq (${EPICS_BASETYPE},3.13)
-# Only 3.13 from here.
-
-# Different macro name for 3.13
-USR_INCLUDES += $(SRC_INCLUDES) $(INSTALL_INCLUDES) 
-
-else
-# Only 3.14 from here.
-
 # Create dbd file for snl code.
 DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
 DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
@@ -760,8 +704,6 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 SNCALL=$(shell ls  -dv $(E3_SITEMODS_PATH)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
 SNC=$(lastword $(SNCALL))/snc
 
-
-endif # 3.14
 
 ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
@@ -890,28 +832,9 @@ ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
 	$(INSTALL) -d -m444 $< $(@D)
 
-# Fix templates for older EPICS versions:
-# Remove 'alias' for EPICS <= 3.14.10
-# and 'info' and macro defaults for EPICS 3.13.
-# Make use of differences in defined variables.
-ifeq ($(DEP),.d)
-# 3.14.10+
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
 	$(INSTALL) -d -m444 $^ $(@D)
-else ifeq (${EPICS_BASETYPE},3.13)
-# 3.13
-${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
-	@echo "Installing module template files $^ to $(@D)"
-	mkdir -p -m 775 $(@D)
-	for i in $^; do sed -r 's/\$$\{([^={]*)=[^}]*\}/$${\1}/g;s/\$$\(([^=(]*)=[^)]*\)/$$(\1)/g;s/(^|\))[ \t]*(alias|info)[ \t]*\(/#&/g' $$i > $(@D)/$$(basename $$i); done
-else
-# 3.14.9-
-${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
-	@echo "Installing module template files $^ to $(@D)"
-	mkdir -p -m 775 $(@D)
-	for i in $^; do sed -r 's/(^|\))[ \t]*alias[ \t]*/#&/g' $$i > $(@D)/$$(basename $$i); done
-endif
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
@@ -1022,7 +945,6 @@ ${REGISTRYFILE}: ${MODULEDBD}
 # 3.14.12 complains if this rule is not overwritten
 ./%Include.dbd:
 
-# For 3.13 code used with 3.14+:
 # Add missing epicsExportAddress() calls for registry.
 
 define makexportfile
