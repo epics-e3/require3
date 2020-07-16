@@ -106,6 +106,7 @@ REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
 EXPORTFILE = ${PRJ}_exportAddress.c
 SUBFUNCFILE = ${PRJ}_subRecordFunctions.dbd
 DEPFILE = ${PRJ}.dep
+METAFILE = ${PRJ}_meta.yaml
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -505,6 +506,11 @@ export BINS
 
 export CFG
 
+${PRJ}_GIT_HASH := $(shell git rev-parse --short HEAD)
+export ${PRJ}_GIT_HASH
+${PRJ}_GIT_STATUS := $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/\(.*\)/  - \1/')
+export ${PRJ}_GIT_STATUS
+
 else # in O.*
 ## RUN 4
 # In O.* directory.
@@ -775,7 +781,7 @@ vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(so
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
 
-PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE}
+PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${METAFILE}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
 	@echo $(realpath ${EPICS_MODULES}) > INSTBASE
@@ -792,6 +798,7 @@ ${MODULEDBD}: ${DBDFILES}
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
+INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
 INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir ${HDRS}))
 INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
@@ -803,6 +810,7 @@ debug::
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
 	@echo "INSTALL_LIBS = $(INSTALL_LIBS)"
 	@echo "INSTALL_DEPS = $(INSTALL_DEPS)"
+	@echo "INSTALL_META = $(INSTALL_META)"
 	@echo "INSTALL_DBD = $(INSTALL_DBD)"
 	@echo "INSTALL_DBDS = $(INSTALL_DBDS)"
 	@echo "INSTALL_INCLUDE = $(INSTALL_INCLUDE)"
@@ -816,7 +824,7 @@ debug::
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
 
-INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS}
+INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
 
 ${INSTALLRULE} ${INSTALLS}
 
@@ -831,6 +839,10 @@ ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
 	$(INSTALL) -d -m444 $< $(@D)
+
+${INSTALL_META}: $(notdir ${INSTALL_META})
+	@echo "Installing metadata file $@"
+	$(INSTALL -d -m444 $< $(@D))
 
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
@@ -988,6 +1000,12 @@ LSUFFIX=$(LSUFFIX_$(SHARED_LIBRARIES))
 ${EXPORTFILE}: $(filter-out $(basename ${EXPORTFILE})$(OBJ),${LIBOBJS})
 	$(RM) $@
 	$(NM) $^ ${BASELIBS:%=${EPICS_BASE}/lib/${T_A}/${LIB_PREFIX}%$(LSUFFIX)} ${CORELIB} | awk '$(makexportfile)' > $@
+
+
+${METAFILE}:
+	@echo "module_git_hash: $(${PRJ}_GIT_HASH)" > $@
+	@echo "module_diffs:" >> $@
+	@echo "$(${PRJ}_GIT_STATUS)" >> $@
 
 # Create dependency file for recursive requires.
 ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
