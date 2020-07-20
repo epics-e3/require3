@@ -174,6 +174,10 @@ export ARCH_FILTER
 export EXCLUDE_ARCHS
 export MAKE_FIRST
 
+export ${PRJ}_E3_GIT_URL
+export ${PRJ}_E3_GIT_DESC
+export ${PRJ}_E3_GIT_STATUS
+
 # Some shell commands:
 RMDIR = rm -rf
 LN = ln -s
@@ -506,9 +510,13 @@ export BINS
 
 export CFG
 
-${PRJ}_GIT_HASH := $(shell git rev-parse --short HEAD)
-export ${PRJ}_GIT_HASH
-${PRJ}_GIT_STATUS := $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/\(.*\)/  - \1/')
+# These variables are written into a .yaml file in the installed module directory to keep track of 
+# metadata for which module was compiled.
+
+${PRJ}_GIT_DESC := $(shell git describe --tags 2> /dev/null | git rev-parse HEAD)
+export ${PRJ}_GIT_DESC
+# The sed is a bit hacky here, but it's needed to add a prefix to each line which make doesn't seem to do well.
+${PRJ}_GIT_STATUS := $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/^/  - /')
 export ${PRJ}_GIT_STATUS
 
 else # in O.*
@@ -1003,7 +1011,11 @@ ${EXPORTFILE}: $(filter-out $(basename ${EXPORTFILE})$(OBJ),${LIBOBJS})
 
 
 ${METAFILE}:
-	@echo "module_git_hash: $(${PRJ}_GIT_HASH)" > $@
+	@echo "wrapper_url: $(${PRJ}_E3_GIT_URL)" > $@
+	@echo "wrapper_git_desc: $(${PRJ}_E3_GIT_DESC)" >> $@
+	@echo "wrapper_diffs:" >> $@
+	@echo "$(${PRJ}_E3_GIT_STATUS)" >> $@
+	@echo "module_git_desc: $(${PRJ}_GIT_DESC)" >> $@
 	@echo "module_diffs:" >> $@
 	@echo "$(${PRJ}_GIT_STATUS)" >> $@
 
