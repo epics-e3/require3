@@ -306,7 +306,6 @@ else # EPICSVERSION
 EPICS_BASE=${EPICS_LOCATION}
 #/base-${EPICSVERSION}
 
-EPICS_BASETYPE=3.14
 CONFIG=${EPICS_BASE}/configure
 
 # There is no 64 bit support before 3.14.12 
@@ -355,12 +354,10 @@ ifndef T_A
 
 AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.st *.stt *.gt))
 SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
-#SRCS += ${SOURCES_${EPICS_BASETYPE}} # added later by VAR_EXTENSIONS
 #SRCS += ${SOURCES_${EPICSVERSION}}
 export SRCS
 
 DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Record.dbd) $(strip $(filter-out %Include.dbd dbCommon.dbd %Record.dbd,$(wildcard *.dbd)) ${BPTS}))
-DBD_SRCS += ${DBDS_${EPICS_BASETYPE}}
 DBD_SRCS += ${DBDS_${EPICSVERSION}}
 export DBD_SRCS
 
@@ -378,17 +375,14 @@ BPTS = $(patsubst %.data,%.dbd,$(wildcard bpt*.data))
 export BPTS
 
 HDRS = ${HEADERS} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
-HDRS += ${HEADERS_${EPICS_BASETYPE}}
 HDRS += ${HEADERS_${EPICSVERSION}}
 export HDRS
 
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
-TEMPLS += ${TEMPLATES_${EPICS_BASETYPE}}
 TEMPLS += ${TEMPLATES_${EPICSVERSION}}
 export TEMPLS
 
 SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
-SCR += ${SCRIPTS_${EPICS_BASETYPE}}
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
@@ -413,12 +407,8 @@ endef
 $(foreach a,${CROSS_COMPILER_TARGET_ARCHS},$(foreach l,$(LINK_$a),$(eval $(call MAKELINKDIRS,$l,$a))))
 
 SRCS_Linux = ${SOURCES_Linux}
-SRCS_Linux += ${SOURCES_${EPICS_BASETYPE}_Linux}
-SRCS_Linux += ${SOURCES_Linux_${EPICS_BASETYPE}}
 export SRCS_Linux
 SRCS_vxWorks = ${SOURCES_vxWorks}
-SRCS_vxWorks += ${SOURCES_${EPICS_BASETYPE}_vxWorks}
-SRCS_vxWorks += ${SOURCES_vxWorks_${EPICS_BASETYPE}}
 export SRCS_vxWorks
 
 install build debug:: $(MAKE_FIRST)
@@ -430,7 +420,6 @@ uninstall::
 debug::
 	@echo "EPICS_BASE = ${EPICS_BASE}"
 	@echo "EPICSVERSION = ${EPICSVERSION}" 
-	@echo "EPICS_BASETYPE = ${EPICS_BASETYPE}" 
 	@echo "CROSS_COMPILER_TARGET_ARCHS = ${CROSS_COMPILER_TARGET_ARCHS}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
@@ -495,7 +484,7 @@ endif
 
 # Add sources for specific epics types or architectures.
 ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
-VAR_EXTENSIONS = ${EPICS_BASETYPE} ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICS_BASETYPE}_%} ${ARCH_PARTS:%=${EPICSVERSION}_%}
+VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
 REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
@@ -528,8 +517,7 @@ EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
 
-COMMON_DIR_3.14 = ../O.${EPICSVERSION}_Common
-COMMON_DIR = ${COMMON_DIR_${EPICS_BASETYPE}}
+COMMON_DIR = ../O.${EPICSVERSION}_Common
 
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
@@ -635,13 +623,6 @@ PRODUCT_OBJS = ${LIBRARY_OBJS}
 # Linux
 LOADABLE_LIBRARY=$(if ${LIBRARY_OBJS},${PRJ},)
 
-# Hack needed needed for 3.14.8 host arch when no Makefile exists (but only for example GNUmakefile).
-ifeq (${EPICSVERSION}-${T_A},3.14.8-${EPICS_HOST_ARCH})
-ifeq ($(wildcard ../Makefile),)
-LOADABLE_BUILD_LIBRARY = ${LOADABLE_LIBRARY}
-endif
-endif
-
 # Handle registry stuff automagically if we have a dbd file.
 # See ${REGISTRYFILE} and ${EXPORTFILE} rules below.
 LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE} ${EXPORTFILE})))
@@ -738,12 +719,10 @@ debug::
 	@echo "BPTS = ${BPTS}"
 	@echo "HDRS = ${HDRS}"
 	@echo "SOURCES = ${SOURCES}" 
-	@echo "SOURCES_${EPICS_BASETYPE} = ${SOURCES_${EPICS_BASETYPE}}" 
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}" 
 	@echo "SRCS = ${SRCS}" 
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
-	@echo "DBDS_${EPICS_BASETYPE} = ${DBDS_${EPICS_BASETYPE}}"
 	@echo "DBDS_${OS_CLASS} = ${DBDS_${OS_CLASS}}"
 	@echo "DBD_SRCS = ${DBD_SRCS}"
 	@echo "DBDFILES = ${DBDFILES}"
@@ -1077,3 +1056,5 @@ endif # EPICSVERSION defined
 ## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
 ##
 ## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/nfs startup scripts.
+##
+## $(DATE)                                  : Removed the V3-specific code. Added metadata file.
