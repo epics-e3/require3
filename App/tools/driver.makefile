@@ -829,7 +829,7 @@ ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 
 ${INSTALL_META}: $(notdir ${INSTALL_META})
 	@echo "Installing metadata file $@"
-	$(INSTALL -d -m444 $< $(@D))
+	$(INSTALL) -d -m444 $< $(@D)
 
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
