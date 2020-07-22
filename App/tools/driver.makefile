@@ -174,8 +174,13 @@ export ARCH_FILTER
 export EXCLUDE_ARCHS
 export MAKE_FIRST
 
+# Since we force modules to be in lowercase, we need to use the correct variables here
+# e.g. MCoreUtils_E3_GIT_URL vs mcoreutils_E3_GIT_URL
+${PRJ}_E3_GIT_URL := $(${PROJECT}_E3_GIT_URL)
 export ${PRJ}_E3_GIT_URL
+${PRJ}_E3_GIT_DESC := $(${PROJECT}_E3_GIT_DESC)
 export ${PRJ}_E3_GIT_DESC
+${PRJ}_E3_GIT_STATUS := $(${PROJECT}_E3_GIT_STATUS)
 export ${PRJ}_E3_GIT_STATUS
 
 # Some shell commands:
@@ -502,10 +507,10 @@ export CFG
 # These variables are written into a .yaml file in the installed module directory to keep track of 
 # metadata for which module was compiled.
 
-${PRJ}_GIT_DESC := $(shell git describe --tags 2> /dev/null | git rev-parse HEAD)
+${PRJ}_GIT_DESC := $(shell git describe --tags 2> /dev/null || git rev-parse HEAD)
 export ${PRJ}_GIT_DESC
-# The sed is a bit hacky here, but it's needed to add a prefix to each line which make doesn't seem to do well.
-${PRJ}_GIT_STATUS := $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/^/  - /')
+# The formatting here is just to make sure this is properly parseable .yaml data
+${PRJ}_GIT_STATUS := [ $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/^/\\\"/' | sed 's/$$/\\\", /')]
 export ${PRJ}_GIT_STATUS
 
 else # in O.*
@@ -990,13 +995,11 @@ ${EXPORTFILE}: $(filter-out $(basename ${EXPORTFILE})$(OBJ),${LIBOBJS})
 
 
 ${METAFILE}:
-	@echo "wrapper_url: $(${PRJ}_E3_GIT_URL)" > $@
-	@echo "wrapper_git_desc: $(${PRJ}_E3_GIT_DESC)" >> $@
-	@echo "wrapper_diffs:" >> $@
-	@echo "$(${PRJ}_E3_GIT_STATUS)" >> $@
-	@echo "module_git_desc: $(${PRJ}_GIT_DESC)" >> $@
-	@echo "module_diffs:" >> $@
-	@echo "$(${PRJ}_GIT_STATUS)" >> $@
+	@echo "wrapper_url: '$(${PRJ}_E3_GIT_URL)'" > $@
+	@echo "wrapper_git_desc: '$(${PRJ}_E3_GIT_DESC)'" >> $@
+	@echo "wrapper_diffs: $(${PRJ}_E3_GIT_STATUS)" >> $@
+	@echo "module_git_desc: '$(${PRJ}_GIT_DESC)'" >> $@
+	@echo "module_diffs: $(${PRJ}_GIT_STATUS)" >> $@
 
 # Create dependency file for recursive requires.
 ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
