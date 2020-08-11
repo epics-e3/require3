@@ -383,6 +383,9 @@ HDRS = ${HEADERS} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
 HDRS += ${HEADERS_${EPICSVERSION}}
 export HDRS
 
+HDR_SUBDIRS = $(KEEP_HEADER_SUBDIRS)
+export HDR_SUBDIRS
+
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
 TEMPLS += ${TEMPLATES_${EPICSVERSION}}
 export TEMPLS
@@ -396,7 +399,6 @@ DOCUDIR = .
 export DOCU
 
 # Loop over all target architectures for third run.
-# Go to O.${T_A} subdirectory because RULES.Vx only work there:
 
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
 CROSS_COMPILER_TARGET_ARCHS := ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
@@ -413,8 +415,6 @@ $(foreach a,${CROSS_COMPILER_TARGET_ARCHS},$(foreach l,$(LINK_$a),$(eval $(call 
 
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
-SRCS_vxWorks = ${SOURCES_vxWorks}
-export SRCS_vxWorks
 
 install build debug:: $(MAKE_FIRST)
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
@@ -517,7 +517,7 @@ else # in O.*
 ## RUN 4
 # In O.* directory.
 
-# Add macros like USR_CFLAGS_vxWorks.
+# Add macros like USR_CFLAGS_Linux.
 EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
@@ -608,16 +608,8 @@ INSTALL_SCR     = ${INSTALL_REV}
 
 LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(filter-out /%,$l))$(filter /%,$l)))
 
-ifeq (${OS_CLASS},vxWorks)
-# Only install the munched library.
-INSTALL_PROD=
-MODULELIB = $(if ${LIBRARY_OBJS},${PRJ}Lib.munch,)
-else
 MODULELIB = $(if ${LIBRARY_OBJS},${LIB_PREFIX}${PRJ}${SHRLIB_SUFFIX},)
-endif
 
-# vxWorks
-PROD_vxWorks=${MODULELIB}
 LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
 LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
 LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
@@ -646,9 +638,6 @@ PATCH=$(word 3,${MAJOR_MINOR_PATCH})
 ifneq (${MINOR},)
 ALLMINORS := $(shell for ((i=0;i<=${MINOR};i++));do echo $$i;done)
 PREREQUISITES = $(shell ${MAKEHOME}/getPrerequisites.tcl ${INSTALL_INCLUDE} | grep -vw ${PRJ})
-ifeq (${OS_CLASS}, vxWorks)
-PROVIDES = ${ALLMINORS:%=--defsym __${PRJ}Lib_${MAJOR}.%=0}
-endif # vxWorks
 ifeq (${OS_CLASS}, Linux)
 PROVIDES = ${ALLMINORS:%=-Wl,--defsym,${PRJ}Lib_${MAJOR}.%=0}
 endif # Linux
@@ -815,6 +804,16 @@ debug::
 	@echo "INSTALL_CFGS = $(INSTALL_CFGS)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
+	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
+
+define install_subdirs
+$1_HDRS = $$(filter $1/%,$$(HDRS))
+INSTALL_HDRS += $$(addprefix $$(INSTALL_INCLUDE)/,$$($1_HDRS:$1/%=%))
+vpath %h ../$1
+debug::
+	@echo "$1_HDRS = $$($1_HDRS)"
+endef
+$(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
 
@@ -853,7 +852,6 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	$(INSTALL) -d -m555 $^ $(@D)
 
 # Create SNL code from st/stt file.
-# (RULES.Vx only allows ../%.st, 3.14 has no .st rules at all.)
 # Important to have %.o: %.st and %.o: %.stt rule before %.o: %.c rule!
 # Preprocess in any case because docu and implemented EPICS rules mismatch here.
 
@@ -863,7 +861,7 @@ CPPSNCFLAGS1 += -I $(dir $(SNC))../../include
 SNCFLAGS += -r
 
 
-# 1) ESS uses 3.15.5 as the minimal EPICS BASE, so we don't need to check 3.13,
+# 1) ESS uses 7.0.3.1 as the minimal EPICS BASE, so we don't need to check 3.13,
 # 2) We also need -c option in $(COMPILE.c) in order to compile generated source file properly
 # 3) SNC (2.1.21) should use -o, because without them, snc returns $(*F).i.c instead of $(*F).c
 #    With the EPICS standard building rule, -o and mv are used.
@@ -980,11 +978,7 @@ END {for (name in func_missing) if (!func_found[name]) { \
 endef
 
 CORELIB = ${CORELIB_${OS_CLASS}}
-CORELIB_vxWorks = $(firstword $(wildcard ${EPICS_BASE}/bin/${T_A}/softIoc.munch ${EPICS_BASE}/bin/${T_A}/iocCoreLibrary.munch))
 
-ifeq (${OS_CLASS},vxWorks)
-SHARED_LIBRARIES=NO
-endif
 LSUFFIX_YES=$(SHRLIB_SUFFIX)
 LSUFFIX_NO=$(LIB_SUFFIX)
 LSUFFIX=$(LSUFFIX_$(SHARED_LIBRARIES))
