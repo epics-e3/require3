@@ -71,6 +71,8 @@ USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_L
 EPICS_LOCATION =
 ##---## In E3, we extract BASE_VERSION from EPICS_LOCATION
 E3_EPICS_VERSION:=$(patsubst base-%,%,$(notdir $(EPICS_LOCATION)))
+E3_SITEMODS_PATH =
+E3_SITEAPPS_PATH =
 BUILD_EPICS_VERSIONS = $(E3_EPICS_VERSION)
 ##---## 
 
@@ -104,6 +106,7 @@ REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
 EXPORTFILE = ${PRJ}_exportAddress.c
 SUBFUNCFILE = ${PRJ}_subRecordFunctions.dbd
 DEPFILE = ${PRJ}.dep
+METAFILE = ${PRJ}_meta.yaml
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -159,6 +162,9 @@ MODULE=
 PROJECT=
 PRJDIR:=$(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
 PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
+
+# To keep consistent between conda/nfs, we will force all modules to be lowercase.
+PRJ := $(shell echo $(PRJ) | tr '[:upper:]' '[:lower:]')
 export PRJ
 
 OS_CLASS_LIST = $(BUILDCLASSES)
@@ -167,6 +173,15 @@ export OS_CLASS_LIST
 export ARCH_FILTER
 export EXCLUDE_ARCHS
 export MAKE_FIRST
+
+# Since we force modules to be in lowercase, we need to use the correct variables here
+# e.g. MCoreUtils_E3_GIT_URL vs mcoreutils_E3_GIT_URL
+${PRJ}_E3_GIT_URL := $(${PROJECT}_E3_GIT_URL)
+export ${PRJ}_E3_GIT_URL
+${PRJ}_E3_GIT_DESC := $(${PROJECT}_E3_GIT_DESC)
+export ${PRJ}_E3_GIT_DESC
+${PRJ}_E3_GIT_STATUS := $(${PROJECT}_E3_GIT_STATUS)
+export ${PRJ}_E3_GIT_STATUS
 
 # Some shell commands:
 RMDIR = rm -rf
@@ -222,7 +237,6 @@ debug::
 #	@echo "INSTALLED_EPICS_VERSIONS = ${INSTALLED_EPICS_VERSIONS}"
 	@echo "BUILD_EPICS_VERSIONS = ${BUILD_EPICS_VERSIONS}"
 #	@echo "MISSING_EPICS_VERSIONS = ${MISSING_EPICS_VERSIONS}"
-#	@echo "EPICS_VERSIONS_3.13 = ${EPICS_VERSIONS_3.13}"
 #	@echo "EPICS_VERSIONS_3.14 = ${EPICS_VERSIONS_3.14}"
 	@echo "EPICS_VERSIONS_3.15 = ${EPICS_VERSIONS_3.15}"
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
@@ -297,15 +311,6 @@ else # EPICSVERSION
 EPICS_BASE=${EPICS_LOCATION}
 #/base-${EPICSVERSION}
 
-ifneq ($(filter 3.13.%,$(EPICSVERSION)),)
-
-EPICS_BASETYPE=3.13
-CONFIG=${EPICS_BASE}/config
-export BUILD_TYPE=Vx
-
-else # 3.14+
-
-EPICS_BASETYPE=3.14
 CONFIG=${EPICS_BASE}/configure
 
 # There is no 64 bit support before 3.14.12 
@@ -318,7 +323,6 @@ USR_LDFLAGS_$(EPICS_HOST_ARCH) += -m32
 endif
 endif
 
-endif # 3.14+
 
 ${CONFIG}/CONFIG:
 	@echo "ERROR: EPICS release ${EPICSVERSION} not installed on this host."
@@ -355,12 +359,10 @@ ifndef T_A
 
 AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.st *.stt *.gt))
 SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
-#SRCS += ${SOURCES_${EPICS_BASETYPE}} # added later by VAR_EXTENSIONS
 #SRCS += ${SOURCES_${EPICSVERSION}}
 export SRCS
 
 DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Record.dbd) $(strip $(filter-out %Include.dbd dbCommon.dbd %Record.dbd,$(wildcard *.dbd)) ${BPTS}))
-DBD_SRCS += ${DBDS_${EPICS_BASETYPE}}
 DBD_SRCS += ${DBDS_${EPICSVERSION}}
 export DBD_SRCS
 
@@ -378,17 +380,17 @@ BPTS = $(patsubst %.data,%.dbd,$(wildcard bpt*.data))
 export BPTS
 
 HDRS = ${HEADERS} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
-HDRS += ${HEADERS_${EPICS_BASETYPE}}
 HDRS += ${HEADERS_${EPICSVERSION}}
 export HDRS
 
+HDR_SUBDIRS = $(KEEP_HEADER_SUBDIRS)
+export HDR_SUBDIRS
+
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
-TEMPLS += ${TEMPLATES_${EPICS_BASETYPE}}
 TEMPLS += ${TEMPLATES_${EPICSVERSION}}
 export TEMPLS
 
 SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
-SCR += ${SCRIPTS_${EPICS_BASETYPE}}
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
@@ -397,12 +399,9 @@ DOCUDIR = .
 export DOCU
 
 # Loop over all target architectures for third run.
-# Go to O.${T_A} subdirectory because RULES.Vx only work there:
 
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
-ifneq (${EPICS_BASETYPE},3.13)
 CROSS_COMPILER_TARGET_ARCHS := ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
-endif # !3.13
 CROSS_COMPILER_TARGET_ARCHS := $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),$(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${CROSS_COMPILER_TARGET_ARCHS}),${CROSS_COMPILER_TARGET_ARCHS})))
 
 # Create build dirs (and links) if necessary.
@@ -415,13 +414,7 @@ endef
 $(foreach a,${CROSS_COMPILER_TARGET_ARCHS},$(foreach l,$(LINK_$a),$(eval $(call MAKELINKDIRS,$l,$a))))
 
 SRCS_Linux = ${SOURCES_Linux}
-SRCS_Linux += ${SOURCES_${EPICS_BASETYPE}_Linux}
-SRCS_Linux += ${SOURCES_Linux_${EPICS_BASETYPE}}
 export SRCS_Linux
-SRCS_vxWorks = ${SOURCES_vxWorks}
-SRCS_vxWorks += ${SOURCES_${EPICS_BASETYPE}_vxWorks}
-SRCS_vxWorks += ${SOURCES_vxWorks_${EPICS_BASETYPE}}
-export SRCS_vxWorks
 
 install build debug:: $(MAKE_FIRST)
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
@@ -432,7 +425,6 @@ uninstall::
 debug::
 	@echo "EPICS_BASE = ${EPICS_BASE}"
 	@echo "EPICSVERSION = ${EPICSVERSION}" 
-	@echo "EPICS_BASETYPE = ${EPICS_BASETYPE}" 
 	@echo "CROSS_COMPILER_TARGET_ARCHS = ${CROSS_COMPILER_TARGET_ARCHS}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
@@ -495,9 +487,9 @@ install build debug:: O.${EPICSVERSION}_Common O.${EPICSVERSION}_${T_A}
 
 endif
 
-# Add sources for specific epics types (3.13 or 3.14) or architectures.
+# Add sources for specific epics types or architectures.
 ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
-VAR_EXTENSIONS = ${EPICS_BASETYPE} ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICS_BASETYPE}_%} ${ARCH_PARTS:%=${EPICSVERSION}_%}
+VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
 REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
@@ -512,21 +504,27 @@ export BINS
 
 export CFG
 
+# These variables are written into a .yaml file in the installed module directory to keep track of 
+# metadata for which module was compiled.
+
+${PRJ}_GIT_DESC := $(shell git describe --tags 2> /dev/null || git rev-parse HEAD)
+export ${PRJ}_GIT_DESC
+# The formatting here is just to make sure this is properly parseable .yaml data
+${PRJ}_GIT_STATUS := [ $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/^/\\\"/' | sed 's/$$/\\\", /')]
+export ${PRJ}_GIT_STATUS
+
 else # in O.*
 ## RUN 4
 # In O.* directory.
 
-# Add macros like USR_CFLAGS_vxWorks.
+# Add macros like USR_CFLAGS_Linux.
 EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
 
-COMMON_DIR_3.14 = ../O.${EPICSVERSION}_Common
-COMMON_DIR_3.13 = .
-COMMON_DIR = ${COMMON_DIR_${EPICS_BASETYPE}}
+COMMON_DIR = ../O.${EPICSVERSION}_Common
 
 # Remove include directory for this module from search path.
-# 3.13 and 3.14 use different variables
 INSTALL_INCLUDES =
 EPICS_INCLUDES =
 
@@ -545,11 +543,18 @@ EPICS_INCLUDES =
 # endef
 # $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_FOREIGN_INCLUDES,$m)))
 
-define ADD_OTHER_MODULE_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${EPICS_MODULES}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
-INSTALL_INCLUDES += $$(patsubst %,-I${EPICS_MODULES}/$(1)/%/include,$$($(1)_VERSION))
+define ADD_SITEMODS_INCLUDES
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_VERSION))
 endef
-$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_OTHER_MODULE_INCLUDES,$m)))
+$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
+
+define ADD_SITEAPPS_INCLUDES
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEAPPS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEAPPS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEAPPS_PATH}/$(1)/%/include,$$($(1)_VERSION))
+endef
+$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*))),$(call ADD_SITEAPPS_INCLUDES,$m)))
+
 
 
 ifneq ($(wildcard ${MAKEHOME}/getPrerequisites.tcl),)
@@ -564,16 +569,9 @@ $(eval $(1)_VERSION := $(or $(patsubst ${EPICS_MODULES}/$(1)/%/,%,$(firstword $(
 endef
 $(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
 
-# EPICS 3.13 uses :: in some rules where 3.14 uses :
-ifeq (${EPICS_BASETYPE},3.13)
-INSTALLRULE=install::
-BUILDRULE=build::
-BASERULES=${EPICS_BASE}/config/RULES.Vx
-else # 3.14
 INSTALLRULE=install:
 BUILDRULE=build:
 BASERULES=${EPICS_BASE}/configure/RULES
-endif # 3.14
 
 INSTALL_REV     = ${MODULE_LOCATION}
 INSTALL_BIN     = ${INSTALL_REV}/bin/$(T_A)
@@ -608,45 +606,12 @@ INSTALL_SCR     = ${INSTALL_REV}
 #	chmod 444 $@
 #	$(SETLINKS) ${INSTALL_TEMPL} .db $(basename $(notdir $^))
 
-# Different settings required to build library in EPICS 3.13 and 3.14.
-ifeq (${EPICS_BASETYPE},3.13) # only 3.13 from here
-
-# Convert sources to object code, skip .a and .o here.
-LIBOBJS += $(patsubst %,%.o,$(notdir $(basename $(filter-out %.o %.a,${SRCS}))))
-# Add all .a and .o with absolute path.
-LIBOBJS += $(filter /%.o /%.a,${SRCS})
-# Add all .a and .o with relative path, but go one directory up.
-LIBOBJS += $(patsubst %,../%,$(filter-out /%,$(filter %.o %.a,${SRCS})))
-LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
-LIBOBJS += $(foreach l,${USR_LIBOBJS}, $(addprefix ../,$(filter-out /%,$l)) $(filter /%,$l))
-
-LIBNAME = $(if $(strip ${LIBOBJS}),${PRJ}Lib,) # Must be the un-munched name.
-MODULELIB = ${LIBNAME:%=%.munch}
-PROD = ${MODULELIB}
-
-# Add munched library for C++ code (does not work for Tornado 1).
-#ifneq ($(filter %.cc %.cpp %.C,${SRCS}),)
-#ifeq ($(filter T1-%,${T_A}),)
-#PROD = ${MODULELIB}.munch
-#endif # T1- T_A
-#endif # .cc or .cpp found
-
-else # Only 3.14 from here.
-
 LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(filter-out /%,$l))$(filter /%,$l)))
 
-ifeq (${OS_CLASS},vxWorks)
-# Only install the munched library.
-INSTALL_PROD=
-MODULELIB = $(if ${LIBRARY_OBJS},${PRJ}Lib.munch,)
-else
 MODULELIB = $(if ${LIBRARY_OBJS},${LIB_PREFIX}${PRJ}${SHRLIB_SUFFIX},)
-endif
 
-# vxWorks
-PROD_vxWorks=${MODULELIB}
-LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %(LIB_SUFFIX),$(sort ${SRCS})))))
-LIBOBJS += $(filter /%.$(OBJ) /%(LIB_SUFFIX),${SRCS})
+LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
+LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
 LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
 LIBS = -L ${EPICS_BASE_LIB} ${BASELIBS:%=-l%}
 LINK.cpp += ${LIBS}
@@ -655,18 +620,10 @@ PRODUCT_OBJS = ${LIBRARY_OBJS}
 # Linux
 LOADABLE_LIBRARY=$(if ${LIBRARY_OBJS},${PRJ},)
 
-# Hack needed needed for 3.14.8 host arch when no Makefile exists (but only for example GNUmakefile).
-ifeq (${EPICSVERSION}-${T_A},3.14.8-${EPICS_HOST_ARCH})
-ifeq ($(wildcard ../Makefile),)
-LOADABLE_BUILD_LIBRARY = ${LOADABLE_LIBRARY}
-endif
-endif
-
 # Handle registry stuff automagically if we have a dbd file.
 # See ${REGISTRYFILE} and ${EXPORTFILE} rules below.
 LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE} ${EXPORTFILE})))
 
-endif # Both, 3.13 and 3.14 from here.
 
 # For backward compatibility:
 # Provide a global symbol for every version with the same
@@ -681,9 +638,6 @@ PATCH=$(word 3,${MAJOR_MINOR_PATCH})
 ifneq (${MINOR},)
 ALLMINORS := $(shell for ((i=0;i<=${MINOR};i++));do echo $$i;done)
 PREREQUISITES = $(shell ${MAKEHOME}/getPrerequisites.tcl ${INSTALL_INCLUDE} | grep -vw ${PRJ})
-ifeq (${OS_CLASS}, vxWorks)
-PROVIDES = ${ALLMINORS:%=--defsym __${PRJ}Lib_${MAJOR}.%=0}
-endif # vxWorks
 ifeq (${OS_CLASS}, Linux)
 PROVIDES = ${ALLMINORS:%=-Wl,--defsym,${PRJ}Lib_${MAJOR}.%=0}
 endif # Linux
@@ -714,15 +668,6 @@ SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out 
 # Different macro name for 3.14.8.
 GENERIC_SRC_INCLUDES = $(SRC_INCLUDES)
 
-ifeq (${EPICS_BASETYPE},3.13)
-# Only 3.13 from here.
-
-# Different macro name for 3.13
-USR_INCLUDES += $(SRC_INCLUDES) $(INSTALL_INCLUDES) 
-
-else
-# Only 3.14 from here.
-
 # Create dbd file for snl code.
 DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
 DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
@@ -745,11 +690,9 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 
 # snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
 #SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
-SNCALL=$(shell ls  -dv $(EPICS_MODULES)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
+SNCALL=$(shell ls  -dv $(E3_SITEMODS_PATH)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
 SNC=$(lastword $(SNCALL))/snc
 
-
-endif # 3.14
 
 ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
@@ -770,12 +713,10 @@ debug::
 	@echo "BPTS = ${BPTS}"
 	@echo "HDRS = ${HDRS}"
 	@echo "SOURCES = ${SOURCES}" 
-	@echo "SOURCES_${EPICS_BASETYPE} = ${SOURCES_${EPICS_BASETYPE}}" 
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}" 
 	@echo "SRCS = ${SRCS}" 
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
-	@echo "DBDS_${EPICS_BASETYPE} = ${DBDS_${EPICS_BASETYPE}}"
 	@echo "DBDS_${OS_CLASS} = ${DBDS_${OS_CLASS}}"
 	@echo "DBD_SRCS = ${DBD_SRCS}"
 	@echo "DBDFILES = ${DBDFILES}"
@@ -821,7 +762,7 @@ vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(so
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
 
-PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE}
+PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${METAFILE}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
 	@echo $(realpath ${EPICS_MODULES}) > INSTBASE
@@ -838,6 +779,7 @@ ${MODULEDBD}: ${DBDFILES}
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
+INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
 INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir ${HDRS}))
 INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
@@ -849,6 +791,7 @@ debug::
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
 	@echo "INSTALL_LIBS = $(INSTALL_LIBS)"
 	@echo "INSTALL_DEPS = $(INSTALL_DEPS)"
+	@echo "INSTALL_META = $(INSTALL_META)"
 	@echo "INSTALL_DBD = $(INSTALL_DBD)"
 	@echo "INSTALL_DBDS = $(INSTALL_DBDS)"
 	@echo "INSTALL_INCLUDE = $(INSTALL_INCLUDE)"
@@ -861,8 +804,18 @@ debug::
 	@echo "INSTALL_CFGS = $(INSTALL_CFGS)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
+	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
 
-INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS}
+define install_subdirs
+$1_HDRS = $$(filter $1/%,$$(HDRS))
+INSTALL_HDRS += $$(addprefix $$(INSTALL_INCLUDE)/,$$($1_HDRS:$1/%=%))
+vpath %h ../$1
+debug::
+	@echo "$1_HDRS = $$($1_HDRS)"
+endef
+$(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
+
+INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
 
 ${INSTALLRULE} ${INSTALLS}
 
@@ -878,28 +831,13 @@ ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
 	$(INSTALL) -d -m444 $< $(@D)
 
-# Fix templates for older EPICS versions:
-# Remove 'alias' for EPICS <= 3.14.10
-# and 'info' and macro defaults for EPICS 3.13.
-# Make use of differences in defined variables.
-ifeq ($(DEP),.d)
-# 3.14.10+
+${INSTALL_META}: $(notdir ${INSTALL_META})
+	@echo "Installing metadata file $@"
+	$(INSTALL) -d -m444 $< $(@D)
+
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
 	$(INSTALL) -d -m444 $^ $(@D)
-else ifeq (${EPICS_BASETYPE},3.13)
-# 3.13
-${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
-	@echo "Installing module template files $^ to $(@D)"
-	mkdir -p -m 775 $(@D)
-	for i in $^; do sed -r 's/\$$\{([^={]*)=[^}]*\}/$${\1}/g;s/\$$\(([^=(]*)=[^)]*\)/$$(\1)/g;s/(^|\))[ \t]*(alias|info)[ \t]*\(/#&/g' $$i > $(@D)/$$(basename $$i); done
-else
-# 3.14.9-
-${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
-	@echo "Installing module template files $^ to $(@D)"
-	mkdir -p -m 775 $(@D)
-	for i in $^; do sed -r 's/(^|\))[ \t]*alias[ \t]*/#&/g' $$i > $(@D)/$$(basename $$i); done
-endif
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
@@ -914,7 +852,6 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	$(INSTALL) -d -m555 $^ $(@D)
 
 # Create SNL code from st/stt file.
-# (RULES.Vx only allows ../%.st, 3.14 has no .st rules at all.)
 # Important to have %.o: %.st and %.o: %.stt rule before %.o: %.c rule!
 # Preprocess in any case because docu and implemented EPICS rules mismatch here.
 
@@ -924,7 +861,7 @@ CPPSNCFLAGS1 += -I $(dir $(SNC))../../include
 SNCFLAGS += -r
 
 
-# 1) ESS uses 3.15.5 as the minimal EPICS BASE, so we don't need to check 3.13,
+# 1) ESS uses 7.0.3.1 as the minimal EPICS BASE, so we don't need to check 3.13,
 # 2) We also need -c option in $(COMPILE.c) in order to compile generated source file properly
 # 3) SNC (2.1.21) should use -o, because without them, snc returns $(*F).i.c instead of $(*F).c
 #    With the EPICS standard building rule, -o and mv are used.
@@ -1010,7 +947,6 @@ ${REGISTRYFILE}: ${MODULEDBD}
 # 3.14.12 complains if this rule is not overwritten
 ./%Include.dbd:
 
-# For 3.13 code used with 3.14+:
 # Add missing epicsExportAddress() calls for registry.
 
 define makexportfile
@@ -1042,11 +978,7 @@ END {for (name in func_missing) if (!func_found[name]) { \
 endef
 
 CORELIB = ${CORELIB_${OS_CLASS}}
-CORELIB_vxWorks = $(firstword $(wildcard ${EPICS_BASE}/bin/${T_A}/softIoc.munch ${EPICS_BASE}/bin/${T_A}/iocCoreLibrary.munch))
 
-ifeq (${OS_CLASS},vxWorks)
-SHARED_LIBRARIES=NO
-endif
 LSUFFIX_YES=$(SHRLIB_SUFFIX)
 LSUFFIX_NO=$(LIB_SUFFIX)
 LSUFFIX=$(LSUFFIX_$(SHARED_LIBRARIES))
@@ -1055,13 +987,21 @@ ${EXPORTFILE}: $(filter-out $(basename ${EXPORTFILE})$(OBJ),${LIBOBJS})
 	$(RM) $@
 	$(NM) $^ ${BASELIBS:%=${EPICS_BASE}/lib/${T_A}/${LIB_PREFIX}%$(LSUFFIX)} ${CORELIB} | awk '$(makexportfile)' > $@
 
+
+${METAFILE}:
+	@echo "wrapper_url: '$(${PRJ}_E3_GIT_URL)'" > $@
+	@echo "wrapper_git_desc: '$(${PRJ}_E3_GIT_DESC)'" >> $@
+	@echo "wrapper_diffs: $(${PRJ}_E3_GIT_STATUS)" >> $@
+	@echo "module_git_desc: '$(${PRJ}_GIT_DESC)'" >> $@
+	@echo "module_diffs: $(${PRJ}_GIT_STATUS)" >> $@
+
 # Create dependency file for recursive requires.
 ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	@echo "Collecting dependencies"
 	$(RM) $@
 	@echo "# Generated file. Do not edit." > $@
 # Check dependencies on other module headers.
-	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
+	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
 ifneq ($(strip ${REQ}),)
 # Manully added dependencies: ${REQ}
 	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${EPICS_MODULES}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
@@ -1111,3 +1051,7 @@ endif # EPICSVERSION defined
 ## Monday, September  9 15:25:53 CEST 2019  : Revert E3_SITEMODS_PATH from E3_SITELIBS_PATH in the snc path
 ##
 ## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
+##
+## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/nfs startup scripts.
+##
+## $(DATE)                                  : Removed the V3-specific code. Added metadata file.

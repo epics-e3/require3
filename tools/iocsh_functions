@@ -397,7 +397,7 @@ function loadFiles
   	    loadFiles $(cat ${file#@})
 	    ;;
 	    ( *=* )
-	    echo -n $file | awk -F '=' '{printf "epicsEnvSet %s '\''%s'\''\n", $1, $2}'
+	    echo -n $file | awk -F '=' '{printf "epicsEnvSet %s '\''%s'\''\n" $1 $2}'
 	    ;;
 	    ( -c )               
 	    shift
@@ -428,7 +428,8 @@ function loadFiles
 	    ;;
 	    ( -l )
 	    shift
-	    printf "epicsEnvSet EPICS_DRIVER_PATH %s:${EPICS_DRIVER_PATH}\n", $1
+	    printf "epicsEnvSet EPICS_DRIVER_PATH %s:${EPICS_DRIVER_PATH}\n" $1
+        EPICS_DRIVER_PATH="$1:$EPICS_DRIVER_PATH"
 	    ;;
         ( -dg )
         shift
@@ -481,7 +482,7 @@ function loadFiles
 		if [[ ${BASECODE} -ge 03150002  ]]; then
 		    echo "iocshLoad '$file','$subst'"
                 else
-		    echo -n $subst | awk -F '=' -v 'RS=,' '{printf "epicsEnvSet %s '\''%s'\''\n", $1, $2}'
+		    echo -n $subst | awk -F '=' -v 'RS=,' '{printf "epicsEnvSet %s '\''%s'\''\n" $1 $2}'
 		    echo "< '$file'"
                 fi
 		
