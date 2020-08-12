@@ -42,94 +42,7 @@ epicsShareFunc int epicsShareAPI iocshCmd(const char *cmd);
 
 int requireDebug;
 
-#if defined(vxWorks)
-#ifndef OS_CLASS
-#define OS_CLASS "vxWorks"
-#endif
-
-#include <symLib.h>
-#include <sysSymTbl.h>
-#include <loadLib.h>
-#include <shellLib.h>
-#include <ioLib.h>
-#include <fioLib.h>
-#include <envLib.h>
-#include <epicsAssert.h>
-#include "strdup.h"
-#include "asprintf.h"
-
-#define HMODULE MODULE_ID
-#define PREFIX
-#define INFIX "Lib"
-#define EXT ".munch"
-
-#define getAddress(module, name) __extension__({SYM_TYPE t; char* a = NULL; symFindByName(sysSymTbl, (name), &a, &t); a; })
-
-#ifndef _WRS_VXWORKS_MAJOR
-/* vxWorks 5 has no snprintf() */
-struct outStr_s
-{
-    char *str;
-    int free;
-};
-
-static STATUS outRoutine(char *buffer, int nchars, int outarg)
-{
-    struct outStr_s *poutStr = (struct outStr_s *)outarg;
-    int free = poutStr->free;
-
-    if (free < 1)
-    { /*let fioFormatV continue to count length*/
-        return OK;
-    }
-    else if (free > 1)
-    {
-        if (nchars >= free)
-            nchars = free - 1;
-        strncpy(poutStr->str, buffer, nchars);
-        poutStr->str += nchars;
-        poutStr->free -= nchars;
-    }
-    /*make sure final string is null terminated*/
-    *poutStr->str = 0;
-    return OK;
-}
-
-static int snprintf(char *str, size_t size, const char *format, ...)
-{
-    struct outStr_s outStr;
-    int nchars;
-    va_list ap;
-
-    outStr.str = str;
-    outStr.free = size;
-    va_start(ap, format);
-    nchars = fioFormatV(format, ap, outRoutine, (int)&outStr);
-    va_end(ap);
-    return nchars;
-}
-#endif
-
-/* vxWorks has no realpath() -- at least make directory absolute */
-static char *realpath(const char *path, char *buf)
-{
-    size_t len = 0;
-    if (!buf)
-        buf = malloc(PATH_MAX + 1);
-    if (!buf)
-        return NULL;
-    if (path[0] != OSI_PATH_SEPARATOR[0])
-    {
-        getcwd(buf, PATH_MAX);
-        len = strlen(buf);
-        if (len && buf[len - 1] != OSI_PATH_SEPARATOR[0])
-            buf[len++] = OSI_PATH_SEPARATOR[0];
-    }
-    strcpy(buf + len, path);
-    return buf;
-}
-
-#elif defined(__unix)
+#if defined(__unix)
 
 #ifndef OS_CLASS
 #ifdef __linux
@@ -263,7 +176,7 @@ static char *realpath(const char *path, char *buffer)
 #define LIBDIR "lib" OSI_PATH_SEPARATOR
 #define TEMPLATEDIR "db"
 
-/* 
+/*
 #define TOSTR(s) TOSTR2(s)
 #define TOSTR2(s) #s
 const char epicsRelease[] = TOSTR(EPICS_VERSION)"."TOSTR(EPICS_REVISION)"."TOSTR(EPICS_MODIFICATION);
@@ -331,31 +244,6 @@ static HMODULE loadlib(const char *libname)
                 libname, lpMsgBuf);
         LocalFree(lpMsgBuf);
     }
-#elif defined(vxWorks)
-    {
-        int fd, loaderror;
-        fd = open(libname, O_RDONLY, 0);
-        loaderror = errno;
-        if (fd >= 0)
-        {
-            errno = 0;
-            libhandle = loadModule(fd, LOAD_GLOBAL_SYMBOLS);
-#ifndef _WRS_VXWORKS_MAJOR
-            /* vxWorks 5 */
-            if (errno == S_symLib_SYMBOL_NOT_FOUND)
-            {
-                libhandle = NULL;
-            }
-#endif
-            loaderror = errno;
-            close(fd);
-        }
-        if (libhandle == NULL)
-        {
-            fprintf(stderr, "Loading %s library failed: %s\n",
-                    libname, strerror(loaderror));
-        }
-    }
 #else
     fprintf(stderr, "cannot load libraries on this OS.\n");
 #endif
@@ -401,20 +289,12 @@ int putenvprintf(const char *format, ...)
     }
     else
     {
-#ifdef vxWorks
-        if (putenv(var) != 0) /* vxWorks putenv() makes a copy */
-        {
-            perror("require putenvprintf: putenv failed");
-            status = errno;
-        }
-#else
         *val++ = 0;
         if (setenv(var, val, 1) != 0)
         {
             perror("require putenvprintf: setenv failed");
             status = errno;
         }
-#endif
     }
     free(var);
     return status;
@@ -694,15 +574,15 @@ void registerModule(const char *module, const char *version, const char *locatio
         return;
     if (asprintf(&abslocation, "%s" OSI_PATH_SEPARATOR "db" OSI_PATH_SEPARATOR "moduleversion.template", mylocation) < 0)
         return;
-    /* 
-       Require DB has the following four PVs: 
+    /*
+       Require DB has the following four PVs:
        - $(REQUIRE_IOC):$(MODULE)_VER
        - $(REQUIRE_IOC):MOD_VER
        - $(REQUIRE_IOC):VERSIONS
        - $(REQUIRE_IOC):MODULES
        We reserved 30 chars for :$(MODULE)_VER, so MODULE has the maximum 24 chars.
        And we've reserved for 30 chars for $(REQUIRE_IOC).
-       So, the whole PV and record name in moduleversion.template has 59 + 1. 
+       So, the whole PV and record name in moduleversion.template has 59 + 1.
      */
     if (asprintf(&argstring, "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, MODULE_COUNT=%lu, BUFFER_SIZE=%lu",
                  getenv("REQUIRE_IOC"), module, version, moduleCount,
@@ -714,42 +594,7 @@ void registerModule(const char *module, const char *version, const char *locatio
     free(abslocation);
 }
 
-#if defined(vxWorks)
-static BOOL findLibRelease(
-    char *name,    /* symbol name       */
-    int val,       /* value of symbol   */
-    SYM_TYPE type, /* symbol type       */
-    int arg,       /* user-supplied arg */
-    UINT16 group   /* group number      */
-)
-{
-    /* find symbols with a name like "_<module>LibRelease" */
-    char *module;
-    size_t lm;
-
-    if (name[0] != '_')
-        return TRUE;
-    lm = strlen(name);
-    if (lm <= 10) /* strlen("LibRelease") */
-        return TRUE;
-    lm -= 10;
-    if (strcmp(name + lm, "LibRelease") != 0)
-        return TRUE;
-    module = strdup(name + 1); /* remove '_' */
-    module[lm - 1] = 0;        /* remove "libRelase" */
-    if (getLibVersion(module) == NULL)
-        registerModule(module, (char *)val, NULL);
-    free(module);
-    return TRUE;
-}
-
-void registerExternalModules()
-{
-    /* iterate over all symbols */
-    symEach(sysSymTbl, (FUNCPTR)findLibRelease, 0);
-}
-
-#elif defined(__linux)
+#if defined(__linux)
 /* This is the Linux link.h, not the EPICS link.h ! */
 #include <link.h>
 
@@ -1195,23 +1040,14 @@ int require(const char *module, const char *version, const char *args)
 
     /* require failed in startup script before iocInit */
     fprintf(stderr, "Aborting startup script\n");
-#ifdef vxWorks
-    shellScriptAbort();
-#else
     epicsExit(1);
-#endif
     return status;
 }
 
 static off_t fileSize(const char *filename)
 {
     struct stat filestat;
-    if (stat(
-#ifdef vxWorks
-            (char *)/* vxWorks has buggy stat prototype */
-#endif
-            filename,
-            &filestat) != 0)
+    if (stat(filename, &filestat) != 0)
     {
         if (requireDebug)
             printf("require: %s does not exist\n", filename);
@@ -1308,14 +1144,14 @@ static int handleDependencies(const char *module, char *depfilename)
 
             /* add + to numerial versions if not yet there */
             /*
-	      ESS would like to use the MATCH version only, not HIGHER. 
-	      In order to touch the PSI code mininaly, disable add + from VERSION from Dep file.
-	      At the same time, ESS use the X.X.X instead of X.X.
-	      Wednesday, May  2 00:12:18 CEST 2018, jhlee
-	    */
+          ESS would like to use the MATCH version only, not HIGHER.
+          In order to touch the PSI code mininaly, disable add + from VERSION from Dep file.
+          At the same time, ESS use the X.X.X instead of X.X.
+          Wednesday, May  2 00:12:18 CEST 2018, jhlee
+        */
             /*
-            if (*(end-1) != '+' && strspn(rversion, "0123456789.") == (size_t)(end-rversion)) *end++ = '+';
-	    */
+        if (*(end-1) != '+' && strspn(rversion, "0123456789.") == (size_t)(end-rversion)) *end++ = '+';
+    */
             /* terminate version */
             *end = 0;
         }
@@ -1577,11 +1413,7 @@ require_priv(const char *module,
 
                     /* look for library file */
                     if (TRY_FILE(dirlen, PREFIX "%s" INFIX "%s%n" EXT, module, versionstr, &extoffs)
-                    /* filename = "<dirname>/[dirlen][releasediroffs][libdiroffs]PREFIX<module>INFIX(-<version>)?[extoffs]EXT" */
-#ifdef vxWorks
-                        /* try without extension */
-                        || (filename[dirlen + extoffs] = 0, fileExists(filename))
-#endif
+                        /* filename = "<dirname>/[dirlen][releasediroffs][libdiroffs]PREFIX<module>INFIX(-<version>)?[extoffs]EXT" */
                     )
                     {
                         if (requireDebug)
@@ -1638,12 +1470,7 @@ require_priv(const char *module,
         if (requireDebug)
             printf("require: looking for library file\n");
 
-        if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX "%s%n" EXT, module, versionstr, &extoffs)
-#ifdef vxWorks
-              /* try without extension */
-              || (filename[libdiroffs + extoffs] = 0, fileExists(filename))
-#endif
-                  ))
+        if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX "%s%n" EXT, module, versionstr, &extoffs)))
         /* filename = "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs](EXT)?" */
         /* or  (old)  "<dirname>/[dirlen][releasediroffs][libdiroffs]PREFIX<module>INFIX(-<version>)?[extoffs](EXT)?" */
         {
@@ -1695,17 +1522,7 @@ require_priv(const char *module,
                     return errno;
 
                 printf("Calling function %s\n", symbolname);
-#ifdef vxWorks
-                {
-                    FUNCPTR f = (FUNCPTR)getAddress(NULL, symbolname);
-                    if (f)
-                        f(pdbbase);
-                    else
-                        fprintf(stderr, "require: can't find %s function\n", symbolname);
-                }
-#else  /* !vxWorks */
                 iocshCmd(symbolname);
-#endif /* !vxWorks */
                 free(symbolname);
             }
             else
