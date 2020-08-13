@@ -803,11 +803,15 @@ int libversionShow(const char *outfile)
 
 static int compareVersions(const char *found, const char *request)
 {
-    int found_major, found_minor = 0, found_patch = 0, found_parts = 0;
-    int req_major, req_minor, req_patch, req_parts;
+    int found_major, found_minor = 0, found_patch = 0, found_parts = 0, found_build = 0;
+    int req_major, req_minor, req_patch, req_parts, req_build;
     const char *found_extra;
     const char *req_extra;
     int n;
+
+    // ([0-9]+.[0-9]+.[0-9]+(-[0-9]+)?)?(.*)
+    //  major  minor  patch   build     extra (i.e. test version)
+    const char *version_string = "%d%n.%d%n.%d%n-%d%n";
 
     if (requireDebug)
         printf("require: compareVersions(found=%s, request=%s)\n", found, request);
@@ -828,7 +832,7 @@ static int compareVersions(const char *found, const char *request)
         }
     }
     n = 0;
-    found_parts = sscanf(found, "%d%n.%d%n.%d%n", &found_major, &n, &found_minor, &n, &found_patch, &n);
+    found_parts = sscanf(found, version_string, &found_major, &n, &found_minor, &n, &found_patch, &n, &found_build, &n);
     found_extra = found + n;
     if (request == NULL || request[0] == 0) /* no particular version request: match anything */
     {
@@ -858,7 +862,7 @@ static int compareVersions(const char *found, const char *request)
        backward-compatible number in minor and patch
     */
     n = 0;
-    req_parts = sscanf(request, "%d%n.%d%n.%d%n", &req_major, &n, &req_minor, &n, &req_patch, &n);
+    req_parts = sscanf(request, version_string, &req_major, &n, &req_minor, &n, &req_patch, &n, &req_build, &n);
     req_extra = request + n;
     if (req_parts == 0 || (req_extra[0] != 0 && strcmp(req_extra, "+") != 0))
     {
@@ -926,20 +930,41 @@ static int compareVersions(const char *found, const char *request)
             printf("require: compareVersions: MISMATCH patch level too low\n");
         return MISMATCH;
     }
-    if (found_patch == req_patch)
+    if (found_patch > req_patch)
+    {
+        if (req_extra[0] == '+')
+        {
+            if (requireDebug)
+                printf("require: compareVersions: MATCH patch level higher than requested with +\n");
+            return MATCH;
+        }
+        else
+        {
+            if (requireDebug)
+                printf("require: compareVersions: HIGHER patch level\n");
+            return HIGHER;
+        }
+    }
+    if (req_parts == 3) // TODO: This is problematic because the build number may not be specified.
     {
         if (requireDebug)
             printf("require: compareVersions: MATCH patch level matches exactly requested\n");
         return MATCH;
     }
-    if (req_extra[0] == '+')
+    if (found_build < req_build)
     {
         if (requireDebug)
-            printf("require: compareVersions: MATCH patch level higher than requested with +\n");
+            printf("require: compareVersions: MISMATCH build number too low\n");
+        return MISMATCH;
+    }
+    if (found_build == req_build)
+    {
+        if (requireDebug)
+            printf("require: compareVersions: MATCH build number matches exactly requested\n");
         return MATCH;
     }
     if (requireDebug)
-        printf("require: compareVersions: HIGHER patch level\n");
+        printf("require: compareVersions: HIGHER build number\n");
     return HIGHER;
 }
 
