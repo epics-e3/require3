@@ -781,7 +781,11 @@ INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
 INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
-INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir ${HDRS}))
+ifneq ($(strip $(HDR_SUBDIRS)),)
+  INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir $(filter-out $(addsuffix /%,$(HDR_SUBDIRS)),${HDRS})))
+else
+  INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir ${HDRS}))
+endif
 INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
 INSTALL_SCRS = $(addprefix ${INSTALL_SCR}/,$(notdir ${SCR}))
 INSTALL_BINS = $(addprefix ${INSTALL_BIN}/,$(notdir ${BINS}))
