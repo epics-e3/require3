@@ -374,7 +374,26 @@ function check_mandatory_env_settings
     done
 };
 
+function loadEnv
+{
+    local envfile=$IOCSH_TOP/env.sh
+    while [ $# -gt 0 ]; do
 
+    arg=$1
+    case $arg in
+        ( -e )
+        shift
+        envfile=$1
+        ;;
+    esac
+    shift
+    done
+
+    if [ -f "$envfile" ]; then
+        echo "Loading environment variables from $envfile"
+        source "$envfile"
+    fi
+}
 
 function loadFiles 
 {
@@ -438,6 +457,9 @@ function loadFiles
         ( -dv )
         shift
         __LOADER__="valgrind --leak-check=full "
+        ;;
+        ( -e )
+        shift
         ;;
 	    ( -* )
 	    printf "Unknown option $1\n\n" >&2

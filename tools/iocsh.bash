@@ -58,12 +58,8 @@ declare -r TMP_PATH="/tmp/systemd-private-e3-iocsh-$(whoami)"
 # To get the absolute path where iocsh.bash is executed
 IOCSH_TOP=${PWD}
 
-# Load any environment variables
-if [ -f "$IOCSH_TOP/env.sh" ]; then
-    echo "Loading environment variables from $IOCSH_TOP/env.sh"
-    source "$IOCSH_TOP/env.sh"
-fi
-
+# Load any environment variables, default is $IOCSH_TOP/env.sh
+loadEnv "$@"
 
 BASECODE="$(basecode_generator)"
 
