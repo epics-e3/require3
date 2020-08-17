@@ -392,6 +392,8 @@ function loadEnv
     if [ -f "$envfile" ]; then
         echo "Loading environment variables from $envfile"
         source "$envfile"
+    else
+        echo "Warning: environment file $envfile does not exist." >&2
     fi
 }
 
