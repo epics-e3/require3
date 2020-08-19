@@ -801,13 +801,31 @@ int libversionShow(const char *outfile)
 #define TESTVERS 2
 #define HIGHER 3
 
+static int compareDigit(int found, int requested, char *name)
+{
+    if (found < requested)
+    {
+        if (requireDebug)
+            printf("require: compareVersions: MISMATCH too low %s number\n", name);
+        return MISMATCH;
+    }
+    if (found > requested)
+    {
+        if (requireDebug)
+            printf("require: compareVersions: HIGHER %s number\n", name);
+        return HIGHER;
+    }
+
+    return MATCH;
+}
+
 static int compareVersions(const char *found, const char *request)
 {
     int found_major, found_minor = 0, found_patch = 0, found_parts = 0, found_build = 0;
     int req_major, req_minor, req_patch, req_parts, req_build;
     const char *found_extra;
     const char *req_extra;
-    int n;
+    int n, match;
 
     // ([0-9]+.[0-9]+.[0-9]+(-[0-9]+)?)?(.*)
     //  major  minor  patch   build     extra (i.e. test version)
@@ -864,108 +882,30 @@ static int compareVersions(const char *found, const char *request)
     n = 0;
     req_parts = sscanf(request, version_string, &req_major, &n, &req_minor, &n, &req_patch, &n, &req_build, &n);
     req_extra = request + n;
-    if (req_parts == 0 || (req_extra[0] != 0 && strcmp(req_extra, "+") != 0))
+    switch (req_parts)
     {
+    case 0:
+    case 1:
+    case 2:
         if (requireDebug)
             printf("require: compareVersions: MISMATCH test version requested, different version found\n");
         return MISMATCH;
-    }
-    if (found_parts == 0 || (found_extra[0] != 0 && strcmp(found_extra, "+") != 0))
-    {
-        if (requireDebug)
-            printf("require: compareVersions: TESTVERS numeric requested, test version found\n");
-        if (req_extra[0] == '+')
-            return TESTVERS;
-        else
-            return MISMATCH;
-    }
-    if (found_major < req_major)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MISMATCH too low major number\n");
+    case 3:
+        req_build = 0;
+    case 4:
+        match = compareDigit(found_major, req_major, "major");
+        if (match != MATCH)
+            return match;
+        match = compareDigit(found_minor, req_minor, "minor");
+        if (match != MATCH)
+            return match;
+        match = compareDigit(found_patch, req_patch, "patch");
+        if (match != MATCH)
+            return match;
+        return compareDigit(found_build, req_build, "build");
+    default:
         return MISMATCH;
     }
-    if (found_major > req_major)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: HIGHER major number\n");
-        return HIGHER;
-    }
-    if (req_parts == 1)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MATCH only major number requested\n");
-        return MATCH;
-    }
-    if (found_minor < req_minor)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MISMATCH minor number too low\n");
-        return MISMATCH;
-    }
-    if (found_minor > req_minor) /* minor larger than required */
-    {
-        if (req_extra[0] == '+')
-        {
-            if (requireDebug)
-                printf("require: compareVersions: MATCH minor number higher than requested with +\n");
-            return MATCH;
-        }
-        else
-        {
-            if (requireDebug)
-                printf("require: compareVersions: HIGHER minor number\n");
-            return HIGHER;
-        }
-    }
-    if (req_parts == 2)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MATCH only major.minor number requested\n");
-        return MATCH;
-    }
-    if (found_patch < req_patch)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MISMATCH patch level too low\n");
-        return MISMATCH;
-    }
-    if (found_patch > req_patch)
-    {
-        if (req_extra[0] == '+')
-        {
-            if (requireDebug)
-                printf("require: compareVersions: MATCH patch level higher than requested with +\n");
-            return MATCH;
-        }
-        else
-        {
-            if (requireDebug)
-                printf("require: compareVersions: HIGHER patch level\n");
-            return HIGHER;
-        }
-    }
-    if (req_parts == 3) // TODO: This is problematic because the build number may not be specified.
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MATCH patch level matches exactly requested\n");
-        return MATCH;
-    }
-    if (found_build < req_build)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MISMATCH build number too low\n");
-        return MISMATCH;
-    }
-    if (found_build == req_build)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MATCH build number matches exactly requested\n");
-        return MATCH;
-    }
-    if (requireDebug)
-        printf("require: compareVersions: HIGHER build number\n");
-    return HIGHER;
 }
 
 /* require (module)
