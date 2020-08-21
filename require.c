@@ -801,18 +801,21 @@ int libversionShow(const char *outfile)
 #define TESTVERS 2
 #define HIGHER 3
 
+#define debug(...)    \
+    if (requireDebug) \
+    printf(__VA_ARGS__)
+
 static int compareDigit(int found, int requested, char *name)
 {
+    debug("require: compareDigit: found %d, requested %d for digit %s\n", found, requested, name);
     if (found < requested)
     {
-        if (requireDebug)
-            printf("require: compareVersions: MISMATCH too low %s number\n", name);
+        debug("require: compareVersions: MISMATCH too low %s number\n", name);
         return MISMATCH;
     }
     if (found > requested)
     {
-        if (requireDebug)
-            printf("require: compareVersions: HIGHER %s number\n", name);
+        debug("require: compareVersions: HIGHER %s number\n", name);
         return HIGHER;
     }
 
@@ -821,91 +824,71 @@ static int compareDigit(int found, int requested, char *name)
 
 static int compareVersions(const char *found, const char *request)
 {
-    int found_major, found_minor = 0, found_patch = 0, found_parts = 0, found_build = 0;
-    int req_major, req_minor, req_patch, req_parts, req_build;
+    int found_major = 0, found_minor = 0, found_patch = 0, found_parts = 0, found_build = 0;
+    int req_major = 0, req_minor = 0, req_patch = 0, req_parts = 0, req_build = 0;
     const char *found_extra;
     const char *req_extra;
     int n, match;
 
-    // ([0-9]+.[0-9]+.[0-9]+(-[0-9]+)?)?(.*)
-    //  major  minor  patch   build     extra (i.e. test version)
     const char *version_string = "%d%n.%d%n.%d%n-%d%n";
 
-    if (requireDebug)
-        printf("require: compareVersions(found=%s, request=%s)\n", found, request);
+    debug("require: compareVersions(found=%s, request=%s)\n", found, request);
 
-    if (found == NULL || found[0] == 0) /* no version found: any requested? */
+    if (request == NULL || request[0] == 0)
     {
-        if (request == NULL || request[0] == 0)
-        {
-            if (requireDebug)
-                printf("require: compareVersions: EXACT both empty\n");
-            return EXACT;
-        }
-        else
-        {
-            if (requireDebug)
-                printf("require: compareVersions: MISMATCH version requested, empty version found\n");
-            return MISMATCH;
-        }
+        debug("require: compareVersions: MATCH empty version requested\n");
+        return MATCH;
     }
+    if (found == NULL || found[0] == 0)
+    {
+        debug("require: compareVersions: MISMATCH empty version found\n");
+        return MISMATCH;
+    }
+
     n = 0;
     found_parts = sscanf(found, version_string, &found_major, &n, &found_minor, &n, &found_patch, &n, &found_build, &n);
     found_extra = found + n;
-    if (request == NULL || request[0] == 0) /* no particular version request: match anything */
-    {
-        if (found_parts == 0 || found_extra[0] != 0)
-        {
-            if (requireDebug)
-                printf("require: compareVersions: TESTVERS nothing requested, test version found\n");
-            return TESTVERS;
-        }
-        else
-        {
-            if (requireDebug)
-                printf("require: compareVersions: MATCH no version requested, numeric version found\n");
-            return MATCH;
-        }
-    }
 
-    if (strcmp(found, request) == 0)
-    {
-        if (requireDebug)
-            printf("require: compareVersions: MATCH exactly\n");
-        return EXACT;
-    }
-
-    /* Numerical version compare. Format is major.minor.patch
-       Numerical requests must have exact match in major and
-       backward-compatible number in minor and patch
-    */
     n = 0;
     req_parts = sscanf(request, version_string, &req_major, &n, &req_minor, &n, &req_patch, &n, &req_build, &n);
     req_extra = request + n;
-    switch (req_parts)
+
+    // test version, look for exact.
+    if (req_parts == 0 || req_parts == 1 || req_parts == 2)
     {
-    case 0:
-    case 1:
-    case 2:
-        if (requireDebug)
-            printf("require: compareVersions: MISMATCH test version requested, different version found\n");
-        return MISMATCH;
-    case 3:
-        req_build = 0;
-    case 4:
-        match = compareDigit(found_major, req_major, "major");
-        if (match != MATCH)
-            return match;
-        match = compareDigit(found_minor, req_minor, "minor");
-        if (match != MATCH)
-            return match;
-        match = compareDigit(found_patch, req_patch, "patch");
-        if (match != MATCH)
-            return match;
-        return compareDigit(found_build, req_build, "build");
-    default:
-        return MISMATCH;
+        if (strcmp(found, request) == 0)
+        {
+            debug("require: compareVersions: Test version, matches exactly\n");
+            return EXACT;
+        }
+
+        if (found_parts == 0 || found_parts == 1 || found_parts == 2)
+        {
+            debug("require: compareVersions: Test versions, no match\n");
+            return MISMATCH;
+        }
+
+        debug("require: compareVersions: found numeric version, higher than test\n");
+        return HIGHER;
     }
+
+    // At least three digits specifed
+    match = compareDigit(found_major, req_major, "major");
+    if (match != MATCH)
+        return match;
+    match = compareDigit(found_minor, req_minor, "minor");
+    if (match != MATCH)
+        return match;
+    match = compareDigit(found_patch, req_patch, "patch");
+    if (match != MATCH)
+        return match;
+
+    if (req_parts == 3)
+    {
+        debug("require: compareVersions: No build number requested, any build number will do.\n");
+        return MATCH;
+    }
+    return compareDigit(found_build, req_build, "build");
 }
 
 /* require (module)
