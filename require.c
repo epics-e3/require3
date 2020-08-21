@@ -822,15 +822,16 @@ static int compareDigit(int found, int requested, char *name)
     return MATCH;
 }
 
-static int compareVersions(const char *found, const char *request)
+/*
+ * Returns if the version <found> is higher than <request>.
+ */
+static int compareVersions(const char *found, const char *request, int already_matched)
 {
     int found_major = 0, found_minor = 0, found_patch = 0, found_parts = 0, found_build = 0;
     int req_major = 0, req_minor = 0, req_patch = 0, req_parts = 0, req_build = 0;
-    const char *found_extra;
-    const char *req_extra;
-    int n, match;
+    int match;
 
-    const char *version_string = "%d%n.%d%n.%d%n-%d%n";
+    const char *version_string = "%d.%d.%d-%d";
 
     debug("require: compareVersions(found=%s, request=%s)\n", found, request);
 
@@ -845,31 +846,33 @@ static int compareVersions(const char *found, const char *request)
         return MISMATCH;
     }
 
-    n = 0;
-    found_parts = sscanf(found, version_string, &found_major, &n, &found_minor, &n, &found_patch, &n, &found_build, &n);
-    found_extra = found + n;
+    found_parts = sscanf(found, version_string, &found_major, &found_minor, &found_patch, &found_build);
 
-    n = 0;
-    req_parts = sscanf(request, version_string, &req_major, &n, &req_minor, &n, &req_patch, &n, &req_build, &n);
-    req_extra = request + n;
+    req_parts = sscanf(request, version_string, &req_major, &req_minor, &req_patch, &req_build);
 
     // test version, look for exact.
     if (req_parts == 0 || req_parts == 1 || req_parts == 2)
     {
         if (strcmp(found, request) == 0)
         {
-            debug("require: compareVersions: Test version, matches exactly\n");
+            debug("require: compareVersions: Test version requested and found, matches exactly\n");
             return EXACT;
         }
 
         if (found_parts == 0 || found_parts == 1 || found_parts == 2)
         {
-            debug("require: compareVersions: Test versions, no match\n");
+            debug("require: compareVersions: Test versions requested and found, no match\n");
             return MISMATCH;
         }
 
         debug("require: compareVersions: found numeric version, higher than test\n");
         return HIGHER;
+    }
+
+    if (found_parts == 0 || found_parts == 1 || found_parts == 2)
+    {
+        debug("require: compareVersions: Numeric version requested, test version found\n");
+        return MISMATCH;
     }
 
     // At least three digits specifed
@@ -885,8 +888,16 @@ static int compareVersions(const char *found, const char *request)
 
     if (req_parts == 3)
     {
-        debug("require: compareVersions: No build number requested, any build number will do.\n");
-        return MATCH;
+        if (already_matched)
+        {
+            debug("require: compareVersions: No build number requested. Returning HIGHER\n");
+            return HIGHER;
+        }
+        else
+        {
+            debug("require: compareVersions: No build number requested. Returning MATCH\n");
+            return MATCH;
+        }
     }
     return compareDigit(found_build, req_build, "build");
 }
@@ -1189,7 +1200,7 @@ require_priv(const char *module,
     if (loaded)
     {
         /* Library already loaded. Check Version. */
-        switch (compareVersions(loaded, version))
+        switch (compareVersions(loaded, version, FALSE))
         {
         case TESTVERS:
             if (version)
@@ -1267,7 +1278,7 @@ require_priv(const char *module,
                         printf("require: checking version %s against required %s\n",
                                currentFilename, version);
 
-                    switch ((status = compareVersions(currentFilename, version)))
+                    switch ((status = compareVersions(currentFilename, version, FALSE)))
                     {
                     case TESTVERS: /* test version found */
                     case EXACT:    /* exact match found */
@@ -1308,7 +1319,7 @@ require_priv(const char *module,
                         if (found && requireDebug)
                             printf("require: %s %s support for %s %s found, compare against previously found %s\n",
                                    module, currentFilename, epicsRelease, targetArch, found);
-                        if (!found || compareVersions(currentFilename, found) == HIGHER)
+                        if (!found || compareVersions(currentFilename, found, TRUE) == HIGHER)
                         {
                             if (requireDebug)
                                 printf("require: %s %s looks promising\n", module, currentFilename);
@@ -1444,7 +1455,7 @@ require_priv(const char *module,
             /* check what we got */
             if (requireDebug)
                 printf("require: compare requested version %s with loaded version %s\n", version, found);
-            if (compareVersions(found, version) == MISMATCH)
+            if (compareVersions(found, version, FALSE) == MISMATCH)
             {
                 fprintf(stderr, "Requested %s version %s not available, found only %s.\n",
                         module, version, found);
