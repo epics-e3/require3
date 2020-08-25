@@ -493,6 +493,7 @@ VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
 REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
+REQ := $(shell echo $(REQ) | tr '[:upper:]' '[:lower:]')
 export REQ
 
 SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
