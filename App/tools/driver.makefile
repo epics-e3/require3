@@ -100,6 +100,11 @@ RMDIR = rm -rf
 RM = rm -f
 CP = cp
 
+# This is to allow for build numbers in recognized versions. First regex is for grep, second for sed.
+VERSIONGLOB = +([0-9]).+([0-9]).+([0-9])?(-+([0-9]))
+VERSIONREGEX1 = [0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?
+VERSIONREGEX2 = [0-9]+\.[0-9]+\.[0-9]+\(-[0-9]+\)\?
+
 # Some generated file names:
 VERSIONFILE = ${PRJ}_version_${LIBVERSION}.c
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
@@ -471,7 +476,7 @@ else
 O.%:
 	$(MKDIR) $@
 
-ifeq ($(shell echo "${LIBVERSION}" | grep -v -E "^[0-9]+\.[0-9]+\.[0-9]+\$$"),)
+ifeq ($(shell echo "${LIBVERSION}" | grep -v -E "^$(VERSIONREGEX1)\$$"),)
 install:: build
 	@test ! -d ${MODULE_LOCATION}/lib/${T_A} || \
         (echo -e "Error: ${MODULE_LOCATION}/lib/${T_A} already exists.\nNote: If you really want to overwrite then uninstall first."; false)
@@ -492,8 +497,8 @@ ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
 VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
-REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
-REQ := $(shell echo $(REQ) | tr '[:upper:]' '[:lower:]')
+REQ_tmp = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
+REQ = $(shell echo $(REQ_tmp) | tr '[:upper:]' '[:lower:]')
 export REQ
 
 SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
@@ -539,19 +544,19 @@ EPICS_INCLUDES =
 # The tricky part is to sort versions numerically. Make can't but ls -v can.
 # Only accept numerical versions (needs extended glob).
 # define ADD_FOREIGN_INCLUDES
-# $(eval $(1)_VERSION := $(patsubst ${EPICS_MODULES}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+# $(eval $(1)_VERSION := $(patsubst ${EPICS_MODULES}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
 # INSTALL_INCLUDES += $$(patsubst %,-I${EPICS_MODULES}/$(1)/%/include,$$($(1)_VERSION))
 # endef
 # $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_FOREIGN_INCLUDES,$m)))
 
 define ADD_SITEMODS_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
 INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_VERSION))
 endef
 $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
 
 define ADD_SITEAPPS_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEAPPS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEAPPS_PATH}/$(1)/+([0-9]).+([0-9]).+([0-9])/include 2>/dev/null))))
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEAPPS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEAPPS_PATH}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
 INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEAPPS_PATH}/$(1)/%/include,$$($(1)_VERSION))
 endef
 $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*))),$(call ADD_SITEAPPS_INCLUDES,$m)))
@@ -566,7 +571,7 @@ endif
 
 # Manually required modules.
 define ADD_MANUAL_DEPENDENCIES
-$(eval $(1)_VERSION := $(or $(patsubst ${EPICS_MODULES}/$(1)/%/,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/+([0-9]).+([0-9]).+([0-9])/ 2>/dev/null))),$(basename $(lastword $(subst -, ,$(basename $(realpath ${INSTBASE}/iocBoot/${T_A}/$(1).dep)))))))
+$(eval $(1)_VERSION := $(or $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB) 2>/dev/null))),$(basename $(lastword $(subst -, ,$(basename $(realpath ${INSTBASE}/iocBoot/${T_A}/$(1).dep)))))))
 endef
 $(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
 
@@ -690,7 +695,7 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 #DBDFILES += $(if $(shell cat ${SUBFUNCFILE}),${SUBFUNCFILE})
 
 # snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
-#SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
+#SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),$(VERSIONGLOB))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
 SNCALL=$(shell ls  -dv $(E3_SITEMODS_PATH)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
 SNC=$(lastword $(SNCALL))/snc
 
@@ -716,6 +721,7 @@ debug::
 	@echo "SOURCES = ${SOURCES}" 
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}" 
 	@echo "SRCS = ${SRCS}" 
+	@echo "REQ = ${REQ}"
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
 	@echo "DBDS_${OS_CLASS} = ${DBDS_${OS_CLASS}}"
@@ -1006,10 +1012,10 @@ ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	$(RM) $@
 	@echo "# Generated file. Do not edit." > $@
 # Check dependencies on other module headers.
-	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
+	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
 ifneq ($(strip ${REQ}),)
 # Manully added dependencies: ${REQ}
-	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${EPICS_MODULES}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
+	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${E3_SITEMODS_PATH}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
 endif
 ifdef OLD_INCLUDE
 # Check dependencies on old style driver headers.
