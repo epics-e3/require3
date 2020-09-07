@@ -474,7 +474,7 @@ install build:
 else
 
 O.%:
-	$(MKDIR) $@
+	+$(MKDIR) $@
 
 ifeq ($(shell echo "${LIBVERSION}" | grep -v -E "^$(VERSIONREGEX1)\$$"),)
 install:: build
