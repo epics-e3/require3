@@ -1063,6 +1063,4 @@ endif # EPICSVERSION defined
 ##
 ## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
 ##
-## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/nfs startup scripts.
-##
-## $(DATE)                                  : Removed the V3-specific code. Added metadata file.
+## Friday, July 3 2020              
