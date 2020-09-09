@@ -302,21 +302,10 @@ function loadRequire() {
     local require_lib=${E3_REQUIRE_LIB}/${EPICS_HOST_ARCH}/${libName}
     local require_dbd=${E3_REQUIRE_DBD}/${E3_REQUIRE_NAME}.dbd
 
-    local load_cmd=""
-
-    #  Support for dynamic loading  3.14.11
-    #
-    if [[ ${BASECODE} -ge 03141100 ]]; then
-        load_cmd="dlload"
-    else
-        # Not sure it works or not.
-        load_cmd="ld"
-    fi
-
     printf "# \n"
     printf "# Load ${E3_REQUIRE_NAME} module, which has the version ${E3_REQUIRE_VERSION}\n"
     printf "# \n"
-    printf "${load_cmd} ${require_lib}\n"
+    printf "dlload ${require_lib}\n"
     printf "dbLoadDatabase ${require_dbd}\n"
     printf "${E3_REQUIRE_NAME%-*}_registerRecordDeviceDriver\n\n"
     printf "# \n"
@@ -433,12 +422,7 @@ function loadFiles() {
             exit 1
             ;;
         *.so)
-            ## dlload introduced from EPICS Base Release  3.14.11
-            if [[ ${BASECODE} -ge 03141100 ]]; then
-                echo "dlload \"$file\""
-            else
-                echo "ld \"$file\""
-            fi
+            echo "dlload \"$file\""
             ;;
         *)
             subst=""
@@ -467,13 +451,7 @@ function loadFiles() {
                 ;;
             *)
                 set_e3_cmd_top "$file"
-                # iocshLoad introduced from 3.15.0.2
-                if [[ ${BASECODE} -ge 03150002 ]]; then
-                    echo "iocshLoad '$file','$subst'"
-                else
-                    echo -n $subst | awk -F '=' -v 'RS=,' '{printf "epicsEnvSet %s '\''%s'\''\n" $1 $2}'
-                    echo "< '$file'"
-                fi
+                echo "iocshLoad '$file','$subst'"
 
                 if grep -q iocInit $file; then
                     init=NO
