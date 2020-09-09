@@ -167,9 +167,6 @@ MODULE=
 PROJECT=
 PRJDIR:=$(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
 PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
-
-# To keep consistent between conda/nfs, we will force all modules to be lowercase.
-PRJ := $(shell echo $(PRJ) | tr '[:upper:]' '[:lower:]')
 export PRJ
 
 OS_CLASS_LIST = $(BUILDCLASSES)
@@ -497,8 +494,7 @@ ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
 VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
-REQ_tmp = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
-REQ = $(shell echo $(REQ_tmp) | tr '[:upper:]' '[:lower:]')
+REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
 export REQ
 
 SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
@@ -1063,4 +1059,6 @@ endif # EPICSVERSION defined
 ##
 ## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
 ##
-## Friday, July 3 2020              
+## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/nfs startup scripts.
+##
+## $(DATE)                                  : Removed the V3-specific code. Added metadata file.
