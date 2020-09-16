@@ -572,8 +572,6 @@ $(eval $(1)_VERSION := $(or $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword 
 endef
 $(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
 
-INSTALLRULE=install:
-BUILDRULE=build:
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
@@ -728,10 +726,10 @@ debug::
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "MODULE_LOCATION = ${MODULE_LOCATION}"
 
-${BUILDRULE} MODULEINFOS
-${BUILDRULE} ${MODULEDBD}
-${BUILDRULE} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
-${BUILDRULE} ${DEPFILE}
+build: MODULEINFOS
+build: ${MODULEDBD}
+build: $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
+build: ${DEPFILE}
 
 # Include default EPICS Makefiles (version dependent).
 # Avoid library installation when doing 'make build'.
@@ -825,7 +823,7 @@ $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
 
-${INSTALLRULE} ${INSTALLS}
+install: ${INSTALLS}
 
 ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 	@echo "Installing module dbd file $@"
@@ -1020,7 +1018,7 @@ ifdef OLD_INCLUDE
 endif
 
 # Remove MakefileInclude after we are done because it interfers with our way to build.
-$(BUILDRULE)
+build:
 	$(RM) MakefileInclude
 
 endif # In O.* directory
