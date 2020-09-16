@@ -201,7 +201,9 @@ clean::
 
 uninstall:
 	$(RMDIR) ${MODULE_LOCATION}
+ifneq ($(strip $(E3_MODULES_VENDOR_LIBS_LOCATION)),)
 	$(RMDIR) $(E3_MODULES_VENDOR_LIBS_LOCATION)
+endif
 
 #uninstall.%:
 #	$(RMDIR) $(wildcard ${MODULE_LOCATION}/R*${@:uninstall.%=%}*)
