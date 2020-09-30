@@ -125,6 +125,8 @@ ENV=
 # Don't install anything (different from default EPICS make rules).
 default: build
 
+prebuild:
+
 IGNOREFILES = .cvsignore .gitignore
 %: ${IGNOREFILES}
 ${IGNOREFILES}:
