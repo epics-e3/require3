@@ -61,6 +61,14 @@ IOCSH_TOP=${PWD}
 # Load any environment variables, default is $IOCSH_TOP/env.sh
 loadEnv "$@"
 
+# The most unique environment variable for e3 is EPICS_DRIVER_PATH
+#
+if [[ $(checkIfVar ${EPICS_DRIVER_PATH}) -eq "$NON_EXIST" ]]; then
+    set -a
+    . ${SC_TOP}/setE3Env.bash "no_msg"
+    set +a
+fi
+
 BASECODE="$(basecode_generator)"
 
 check_mandatory_env_settings
