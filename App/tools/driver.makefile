@@ -117,6 +117,7 @@ METAFILE = ${PRJ}_meta.yaml
 TEMPLATES=
 SOURCES=
 DBDS=
+DBD_INSTALLS=
 HEADERS=
 BASH_ENV=
 ENV=
@@ -385,6 +386,11 @@ export MENUS
 
 BPTS = $(patsubst %.data,%.dbd,$(wildcard bpt*.data))
 export BPTS
+
+DBDINSTALLS = $(DBD_INSTALLS)
+DBDINSTALLS += $(MENUS)
+DBDINSTALLS += $(BPTS)
+export DBDINSTALLS
 
 HDRS = ${HEADERS} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
 HDRS += ${HEADERS_${EPICSVERSION}}
@@ -716,6 +722,7 @@ debug::
 	@echo "RECORDS = ${RECORDS}"
 	@echo "MENUS = ${MENUS}"
 	@echo "BPTS = ${BPTS}"
+	@echo "DBDINSTALLS = ${DBDINSTALLS}"
 	@echo "HDRS = ${HDRS}"
 	@echo "SOURCES = ${SOURCES}" 
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}" 
@@ -752,7 +759,7 @@ RELEASE_INCLUDES += -I${EPICS_BASE}/include/os/${OS_CLASS}
 EPICS_INCLUDES += -I$(EPICS_BASE_INCLUDE) -I$(EPICS_BASE_INCLUDE)/os/$(OS_CLASS)
 
 # Find all sources and set vpath accordingly.
-$(foreach file, ${SRCS} ${TEMPLS} ${SCR}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
+$(foreach file, ${SRCS} ${TEMPLS} ${DBDINSTALLS} ${SCR}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
 
 # Do not treat %.dbd the same way because it creates a circular dependency
 # if a source dbd has the same name as the project dbd. Have to clear %.dbd and not use ../ path.
@@ -787,6 +794,7 @@ INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
 INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
+INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
 ifneq ($(strip $(HDR_SUBDIRS)),)
   INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir $(filter-out $(addsuffix /%,$(HDR_SUBDIRS)),${HDRS})))
 else
@@ -830,8 +838,8 @@ INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${IN
 install: ${INSTALLS}
 
 ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
-	@echo "Installing module dbd file $@"
-	$(INSTALL) -d -m444 $< $(@D)
+	@echo "Installing module dbd file(s) $^ to $(@D)"
+	$(INSTALL) -d -m444 $^ $(@D)
 
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
