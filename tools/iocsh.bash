@@ -55,6 +55,20 @@ declare -r TMP_PATH="/tmp/systemd-private-e3-iocsh-$(whoami)"
 . ${SC_TOP}/iocsh_functions
 
 
+# To get the absolute path where iocsh.bash is executed
+IOCSH_TOP=${PWD}
+
+# Load any environment variables, default is $IOCSH_TOP/env.sh
+loadEnv "$@"
+
+# The most unique environment variable for e3 is EPICS_DRIVER_PATH
+#
+if [[ $(checkIfVar ${EPICS_DRIVER_PATH}) -eq "$NON_EXIST" ]]; then
+    set -a
+    . ${SC_TOP}/setE3Env.bash "no_msg"
+    set +a
+fi
+
 BASECODE="$(basecode_generator)"
 
 check_mandatory_env_settings
@@ -76,9 +90,6 @@ REQUIRE_IOC=$(require_ioc "${iocsh_bash_id}")
 mkdir -p ${TMP_PATH}
 
 IOC_STARTUP=$(mktemp -p ${TMP_PATH} -q --suffix=_iocsh_${SC_VERSION}) || die 1 "${SC_SCRIPTNAME} CANNOT create the startup file, please check the disk space";
-#
-# To get the absolute path where iocsh.bash is executed
-IOCSH_TOP=${PWD}
 
 # EPICS_DRIVER_PATH defined in iocsh and startup.script_common
 # Remember, driver is equal to module, so EPICS_DRIVER_PATH is the module directory
