@@ -442,13 +442,16 @@ debug::
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 
+ifneq ($(realpath $(EPICS_MODULES)),$(realpath $(E3_CELL_PATH)))
 install build::
-# Delete old build if INSTBASE has changed and module depends on other modules.
+# Delete old build if INSTBASE has changed and module depends on other modules, but only if we are not
+# using cellinstall.
 	@+for ARCH in ${CROSS_COMPILER_TARGET_ARCHS}; do \
 	    echo '$(realpath ${EPICS_MODULES})' | cmp -s O.${EPICSVERSION}_$$ARCH/INSTBASE || \
 	    ( grep -qs "^[^#]" O.${EPICSVERSION}_$$ARCH/*.dep && \
 	     (echo "rebuilding $$ARCH"; $(RMDIR) O.${EPICSVERSION}_$$ARCH) ) || true; \
 	done
+endif
 
 # Loop over all architectures.
 install build debug::
