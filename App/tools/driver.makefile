@@ -128,10 +128,10 @@ default: build
 
 prebuild:
 
-IGNOREFILES = .cvsignore .gitignore
+IGNOREFILES = .gitignore
 %: ${IGNOREFILES}
 ${IGNOREFILES}:
-	@echo -e "O.*\n.cvsignore\n.gitignore" > $@
+	@echo -e "O.*\n.gitignore" > $@
 
 # Function that removes duplicates without re-ordering (unlike sort):
 define uniq
