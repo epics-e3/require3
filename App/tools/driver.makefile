@@ -750,7 +750,12 @@ build: ${DEPFILE}
 INSTALL_LOADABLE_SHRLIBS=
 # Avoid installing *.munch to bin directory.
 INSTALL_MUNCHS=
-include ${BASERULES}
+
+# We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
+# mode. Including this causes all of the source files to be compiled!
+ifeq (,$(findstring debug,${MAKECMDGOALS}))
+include ${BASERULES} 
+endif
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
