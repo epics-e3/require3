@@ -34,8 +34,8 @@ drop_from_path ()
     #
     # Assert that we got enough arguments
     if test $# -ne 2 ; then
-	echo "drop_from_path: needs 2 arguments"
-	return 1
+        echo "drop_from_path: needs 2 arguments"
+        return 1
     fi
 
     local p="$1"
@@ -52,8 +52,8 @@ drop_from_path ()
 set_variable ()
 {
     if test $# -ne 2 ; then
-	echo "set_variable: needs 2 arguments"
-	return 1
+        echo "set_variable: needs 2 arguments"
+        return 1
     fi
 
     local old_path="$1"
@@ -63,14 +63,14 @@ set_variable ()
     local system_old_path=""
 
     if [ -z "$old_path" ]; then
-	new_path=${add_path}
+        new_path=${add_path}
     else
-	system_old_path=$(drop_from_path "${old_path}" "${add_path}")
-	if [ -z "$system_old_path" ]; then
-	    new_path=${add_path}
-	else
-	    new_path=${add_path}:${system_old_path}
-	fi
+        system_old_path=$(drop_from_path "${old_path}" "${add_path}")
+        if [ -z "$system_old_path" ]; then
+            new_path=${add_path}
+        else
+            new_path=${add_path}:${system_old_path}
+        fi
    
     fi
 
@@ -85,18 +85,18 @@ print_env ()
     local disabled="$1";shift;
 
     if [ "$disabled" = "no_msg" ]; then
-	printf "\n";
+        printf "\n";
     else
-	printf "\nSet the ESS EPICS Environment as follows:\n";
-	printf "THIS Source NAME    : %s\n" "${SRC_NAME}"
-	printf "THIS Source PATH    : %s\n" "${SRC_PATH}"
-	printf "EPICS_BASE          : %s\n" "${EPICS_BASE}"
-	printf "EPICS_HOST_ARCH     : %s\n" "${EPICS_HOST_ARCH}"
-	printf "E3_REQUIRE_LOCATION : %s\n" "${E3_REQUIRE_LOCATION}"
-	printf "PATH                : %s\n" "${PATH}"
-	printf "LD_LIBRARY_PATH     : %s\n" "${LD_LIBRARY_PATH}"
-	printf "\n";
-	printf "Enjoy E3!\n";
+        printf "\nSet the ESS EPICS Environment as follows:\n";
+        printf "THIS Source NAME    : %s\n" "${SRC_NAME}"
+        printf "THIS Source PATH    : %s\n" "${SRC_PATH}"
+        printf "EPICS_BASE          : %s\n" "${EPICS_BASE}"
+        printf "EPICS_HOST_ARCH     : %s\n" "${EPICS_HOST_ARCH}"
+        printf "E3_REQUIRE_LOCATION : %s\n" "${E3_REQUIRE_LOCATION}"
+        printf "PATH                : %s\n" "${PATH}"
+        printf "LD_LIBRARY_PATH     : %s\n" "${LD_LIBRARY_PATH}"
+        printf "\n";
+        printf "Enjoy E3!\n";
     fi
 }
 
@@ -123,72 +123,72 @@ if [ -n "$EPICS_BASE" ]; then
     
     # If EPICS_ENTENSIONS, it is epics_builder
     if [ -n "$EPICS_EXTENSIONS" ]; then
-	ext_path=${PATH}
-	drop_ext_path="${EPICS_EXTENSIONS}/bin/${EPICS_HOST_ARCH}"
-	
-	PATH=$(drop_from_path "${ext_path}" "${drop_ext_path}")
-	export PATH
-	
-	unset EPICS_EXTENSIONS
-	unset EPICS_PATH
-	unset EPICS_MODULES
-	unset EPICS_EXTENSIONS
-	unset EPICS_AREADETECTOR
-	unset EPICS_APPS
+        ext_path=${PATH}
+        drop_ext_path="${EPICS_EXTENSIONS}/bin/${EPICS_HOST_ARCH}"
+        
+        PATH=$(drop_from_path "${ext_path}" "${drop_ext_path}")
+        export PATH
+        
+        unset EPICS_EXTENSIONS
+        unset EPICS_PATH
+        unset EPICS_MODULES
+        unset EPICS_EXTENSIONS
+        unset EPICS_AREADETECTOR
+        unset EPICS_APPS
     fi
 
     # If E3_REQUIRE_NAME, it is E3
     if [ -n "$E3_REQUIRE_NAME" ]; then
 
-	e3_path=${PATH}
-	
-	PATH=$(drop_from_path "${e3_path}" "${E3_REQUIRE_BIN}")
-	export PATH
+        e3_path=${PATH}
+        
+        PATH=$(drop_from_path "${e3_path}" "${E3_REQUIRE_BIN}")
+        export PATH
 
 
-	# If CONDA_EXE, it is trouble to find the correct tclsh
-	if [ -n "$CONDA_EXE" ]; then
-	    
-	    # Decouple PATH from ESS Conda Env1 due to tclsh
-	    ess_conda_path1=${PATH}
-	    drop_ess_conda_path1="/opt/conda/envs/python37/bin"
-	    PATH=$(drop_from_path "${ess_conda_path1}" "${drop_ess_conda_path1}")
-	    export PATH
-	    
-	    # Decouple PATH from ESS Conda Env2 due to tclsh
-	    ess_conda_path2=${PATH}
-	    drop_ess_conda_path2="/opt/conda/condabin"
-	    PATH=$(drop_from_path "${ess_conda_path2}" "${drop_ess_conda_path2}")
-	    export PATH
+        # If CONDA_EXE, it is trouble to find the correct tclsh
+        if [ -n "$CONDA_EXE" ]; then
+            
+            # Decouple PATH from ESS Conda Env1 due to tclsh
+            ess_conda_path1=${PATH}
+            drop_ess_conda_path1="/opt/conda/envs/python37/bin"
+            PATH=$(drop_from_path "${ess_conda_path1}" "${drop_ess_conda_path1}")
+            export PATH
+            
+            # Decouple PATH from ESS Conda Env2 due to tclsh
+            ess_conda_path2=${PATH}
+            drop_ess_conda_path2="/opt/conda/condabin"
+            PATH=$(drop_from_path "${ess_conda_path2}" "${drop_ess_conda_path2}")
+            export PATH
 
-	fi
+        fi
 
-	
-	e3_ld_path=${LD_LIBRARY_PATH}
-	drop_e3_ld_path1="${E3_REQUIRE_LIB}/${EPICS_HOST_ARCH}"
-	drop_e3_ld_path2="${E3_SITELIBS_PATH}/${EPICS_HOST_ARCH}"
-	e3_ld_path_0=$(drop_from_path "${e3_ld_path}" "${drop_e3_ld_path1}")
-	
-	LD_LIBRARY_PATH=$(drop_from_path "${e3_ld_path_0}" "${drop_e3_ld_path2}")
-	export LD_LIBRARY_PATH
-	
-	unset E3_REQUIRE_NAME
-	unset E3_REQUIRE_VERSION
-	unset E3_REQUIRE_LOCATION
-	
-	unset E3_REQUIRE_BIN
-	unset E3_REQUIRE_LIB
-	unset E3_REQUIRE_INC
-	unset E3_REQUIRE_DB
-	
-	unset E3_SITEMODS_PATH
-	unset E3_SITELIBS_PATH
-	unset E3_SITEAPPS_PATH
+        
+        e3_ld_path=${LD_LIBRARY_PATH}
+        drop_e3_ld_path1="${E3_REQUIRE_LIB}/${EPICS_HOST_ARCH}"
+        drop_e3_ld_path2="${E3_SITELIBS_PATH}/${EPICS_HOST_ARCH}"
+        e3_ld_path_0=$(drop_from_path "${e3_ld_path}" "${drop_e3_ld_path1}")
+        
+        LD_LIBRARY_PATH=$(drop_from_path "${e3_ld_path_0}" "${drop_e3_ld_path2}")
+        export LD_LIBRARY_PATH
+        
+        unset E3_REQUIRE_NAME
+        unset E3_REQUIRE_VERSION
+        unset E3_REQUIRE_LOCATION
+        
+        unset E3_REQUIRE_BIN
+        unset E3_REQUIRE_LIB
+        unset E3_REQUIRE_INC
+        unset E3_REQUIRE_DB
+        
+        unset E3_SITEMODS_PATH
+        unset E3_SITELIBS_PATH
+        unset E3_SITEAPPS_PATH
 
-	unset EPICS_DRIVER_PATH
+        unset EPICS_DRIVER_PATH
 
-	unset SCRIPT_DIR
-	
+        unset SCRIPT_DIR
+        
     fi
 
 
@@ -196,30 +196,30 @@ if [ -n "$EPICS_BASE" ]; then
     # If EPICS_ENV_PATH, it is EEE
     if [ -n "$EPICS_ENV_PATH" ]; then
 
-	# Decouple PATH from EPICS_ENV_PATH
-	eee_path=${PATH}
-	PATH=$(drop_from_path "${eee_path}" "${EPICS_ENV_PATH}")
-	export PATH
+        # Decouple PATH from EPICS_ENV_PATH
+        eee_path=${PATH}
+        PATH=$(drop_from_path "${eee_path}" "${EPICS_ENV_PATH}")
+        export PATH
 
-	# Decouple PATH from pvAccessCPP
-	eee_pvaccess_path=${PATH}
-	drop_eee_pvaccess_path="${EPICS_MODULES_PATH}/pvAccessCPP/5.0.0/${BASE}/bin/${EPICS_HOST_ARCH}"	
-	PATH=$(drop_from_path "${eee_pvaccess_path}" "${drop_eee_pvaccess_path}")
-	export PATH
+        # Decouple PATH from pvAccessCPP
+        eee_pvaccess_path=${PATH}
+        drop_eee_pvaccess_path="${EPICS_MODULES_PATH}/pvAccessCPP/5.0.0/${BASE}/bin/${EPICS_HOST_ARCH}"        
+        PATH=$(drop_from_path "${eee_pvaccess_path}" "${drop_eee_pvaccess_path}")
+        export PATH
 
-	# Decouple PYTHONPATH from pyaPy
-	eee_python_path=${PYTHONPATH}
-	drop_eee_python_path="${EPICS_MODULES_PATH}/pvaPy/0.6.0/${BASE}/lib/${EPICS_HOST_ARCH}"
-	PYTHONPATH=$(drop_from_path "${eee_python_path}" "${drop_eee_python_path}")
-	export PYTHONPATH
+        # Decouple PYTHONPATH from pyaPy
+        eee_python_path=${PYTHONPATH}
+        drop_eee_python_path="${EPICS_MODULES_PATH}/pvaPy/0.6.0/${BASE}/lib/${EPICS_HOST_ARCH}"
+        PYTHONPATH=$(drop_from_path "${eee_python_path}" "${drop_eee_python_path}")
+        export PYTHONPATH
 
-	
-	# Unset all unique EEE variables
-	unset BASE
-	unset EPICS_BASES_PATH
-	unset EPICS_DB_INCLUDE_PATH
-	unset EPICS_MODULES_PATH
-	unset EPICS_ENV_PATH
+        
+        # Unset all unique EEE variables
+        unset BASE
+        unset EPICS_BASES_PATH
+        unset EPICS_DB_INCLUDE_PATH
+        unset EPICS_MODULES_PATH
+        unset EPICS_ENV_PATH
     fi
     
     unset EPICS_BASE
