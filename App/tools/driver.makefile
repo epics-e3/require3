@@ -847,35 +847,35 @@ install: ${INSTALLS}
 
 ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 	@echo "Installing module dbd file(s) $^ to $(@D)"
-	$(INSTALL) -d -m444 $^ $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
-	$(INSTALL) -d -m555 $< $(@D)
+	$(INSTALL) -d -m$(SHRLIB_PERMISSIONS) $< $(@D)
 
 ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m444 $< $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
 
 ${INSTALL_META}: $(notdir ${INSTALL_META})
 	@echo "Installing metadata file $@"
-	$(INSTALL) -d -m444 $< $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
 
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
-	$(INSTALL) -d -m444 $^ $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
-	$(INSTALL) -d -m555 $^ $(@D)
+	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_CFGS}: ${CFGS}
 	@echo "Installing configuration files $^ to $(@D)"
-	$(INSTALL) -d -m444 $^ $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
-	$(INSTALL) -d -m555 $^ $(@D)
+	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
 # Create SNL code from st/stt file.
 # Important to have %.o: %.st and %.o: %.stt rule before %.o: %.c rule!
