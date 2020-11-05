@@ -14,36 +14,14 @@
 
 #define EPICSVER EPICS_VERSION*10000+EPICS_REVISION*100+EPICS_MODIFICATION
 
-#ifdef vxWorks
-#include "asprintf.h"
-#include <sysSymTbl.h>
-#ifdef _WRS_VXWORKS_MAJOR
-/* vxWorks 6+ */
-#include <private/shellLibP.h>
-#else
-/* vxWorks 5 */
-#include <shellLib.h>
-#include "strdup.h"
-#endif
-#include <symLib.h>
-#endif
-
 #if defined (_WIN32)
 #include "asprintf.h"
 #endif
 
-#if (EPICSVER<31400)
-extern char** ppGlobalEnviron;
-#define OSI_PATH_SEPARATOR "/"
-#define OSI_PATH_LIST_SEPARATOR ":"
-extern volatile int interruptAccept;
-
-#else
 #include <osiFileName.h>
 #include <iocsh.h>
 epicsShareFunc int epicsShareAPI iocshCmd(const char *cmd);
 #include <epicsExport.h>
-#endif
 
 #define IS_ABS_PATH(filename) (filename[0] == OSI_PATH_SEPARATOR[0])  /* may be different for other OS ? */
 
@@ -75,54 +53,11 @@ int runScript(const char* filename, const char* args)
         return -1;
     }
     
-    if (macCreateHandle(&mac,(
-#if (EPICSVER>=31501)
-        const
-#endif
-        char*[]){ "", "environ", NULL, NULL }) != 0) goto error;
+    if (macCreateHandle(&mac,(const char*[]){ "", "environ", NULL, NULL }) != 0) goto error;
     macSuppressWarning(mac, 1);
-#if (EPICSVER<31403)
-    /* Have no environment macro substitution, thus load envionment explicitly */
-    /* Actually, environmant macro substitution was introduced in 3.14.3 */
-    for (pairs = ppGlobalEnviron; *pairs; pairs++)
-    {
-        char* var, *eq;
-        if (runScriptDebug)
-            printf("runScript: environ %s\n", *pairs);
-
-        /* take a copy to replace '=' with null byte */
-        if ((var = strdup(*pairs)) == NULL) goto error;
-        eq = strchr(var, '=');
-        if (eq)
-        {
-            *eq = 0;
-            macPutValue(mac, var, eq+1);
-        }
-        free(var);            
-    }
-#endif
 
     if ((line_exp = malloc(line_exp_size)) == NULL) goto error;
     if ((line_raw = malloc(line_raw_size)) == NULL) goto error;
-
-#ifdef vxWorks
-    /* expand macros (environment variables) in file name because vxWorks shell can't do it */
-#if (EPICSVER<31400)
-    /* 3.13 version of macExpandString is broken and may write more than allowed */
-    while ((len = labs(macExpandString(mac, (char*)filename, line_exp, 
-            line_exp_size/2))) >= line_exp_size/2)
-#else       
-    while ((len = labs(macExpandString(mac, filename, line_exp, 
-            line_exp_size-1))) >= line_exp_size-2)
-#endif
-    {
-        if (runScriptDebug)
-            printf("runScript: grow expand buffer: len=%ld size=%ld\n", len, line_exp_size);
-        free(line_exp);
-        if ((line_exp = malloc(line_exp_size *= 2)) == NULL) goto error;
-    }
-    filename = line_exp;
-#endif
 
     /* add args to macro definitions */
     if (args)
@@ -188,13 +123,7 @@ int runScript(const char* filename, const char* args)
         if (runScriptDebug)
                 printf("runScript raw line (%ld chars): '%s'\n", len, line_raw);
         /* expand and check the buffer size (different epics versions write different may number of bytes)*/
-        while ((len = labs(macExpandString(mac, line_raw, line_exp, 
-#if (EPICSVER<31400)
-        /* 3.13 version of macExpandString is broken and may write more than allowed */
-                line_exp_size/2))) >= line_exp_size/2)
-#else       
-                line_exp_size-1))) >= line_exp_size-2)
-#endif
+        while ((len = labs(macExpandString(mac, line_raw, line_exp, line_exp_size-1))) >= line_exp_size-2)
         {
             if (runScriptDebug)
                 printf("runScript: grow expand buffer: len=%ld size=%ld\n", len, line_exp_size);
@@ -218,29 +147,9 @@ int runScript(const char* filename, const char* args)
             macPutValue(mac, p, line_raw);
             continue;
         }
-#ifdef _WRS_VXWORKS_MAJOR
-        if (strlen(line_exp) >= 255)
-        {
-            fprintf(stderr, "runScript: Line too long (>=255):\n%s\n", line_exp);
-            return -1;
-        }
-        else
-        {
-            SHELL_EVAL_VALUE result;
-            status = shellInterpEvaluate(line_exp, "C", &result);
-        }
-#elif defined(vxWorks)
-        if (strlen(line_exp) >= 120)
-        {
-            fprintf(stderr, "runScript: Line too long (>=120):\n%s\n", line_exp);
-            return -1;
-        }
-        status = execute(line_exp);
-#else
         if (runScriptDebug)
             printf("runScript: iocshCmd: '%s'\n", line_exp);
         status = iocshCmd(line_exp);
-#endif
         if (status != 0) break;
     }
     goto end;
@@ -262,9 +171,6 @@ end:
 
     return status;
 }
-
-#if (EPICSVER>=31400)
-/* initHooks is not included in iocCore in 3.13 */
 
 struct cmditem
 {
@@ -402,4 +308,3 @@ static void runScriptRegister(void)
     }
 }
 epicsExportRegistrar(runScriptRegister);
-#endif
