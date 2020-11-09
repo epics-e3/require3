@@ -442,17 +442,6 @@ debug::
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 
-ifneq ($(realpath $(EPICS_MODULES)),$(realpath $(E3_CELL_PATH)))
-install build::
-# Delete old build if INSTBASE has changed and module depends on other modules, but only if we are not
-# using cellinstall.
-	@+for ARCH in ${CROSS_COMPILER_TARGET_ARCHS}; do \
-	    echo '$(realpath ${EPICS_MODULES})' | cmp -s O.${EPICSVERSION}_$$ARCH/INSTBASE || \
-	    ( grep -qs "^[^#]" O.${EPICSVERSION}_$$ARCH/*.dep && \
-	     (echo "rebuilding $$ARCH"; $(RMDIR) O.${EPICSVERSION}_$$ARCH) ) || true; \
-	done
-endif
-
 # Loop over all architectures.
 install build debug::
 	@+for ARCH in ${CROSS_COMPILER_TARGET_ARCHS}; do \
@@ -572,16 +561,9 @@ endef
 $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*))),$(call ADD_SITEAPPS_INCLUDES,$m)))
 
 
-
-ifneq ($(wildcard ${MAKEHOME}/getPrerequisites.tcl),)
-# Include path for old style modules.
-OLD_INCLUDE = $(wildcard ${INSTBASE}/iocBoot/include)
-INSTALL_INCLUDES += $(addprefix -I,${OLD_INCLUDE})
-endif
-
 # Manually required modules.
 define ADD_MANUAL_DEPENDENCIES
-$(eval $(1)_VERSION := $(or $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB) 2>/dev/null))),$(basename $(lastword $(subst -, ,$(basename $(realpath ${INSTBASE}/iocBoot/${T_A}/$(1).dep)))))))
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB) 2>/dev/null)))
 endef
 $(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
 
@@ -786,7 +768,6 @@ vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(s
 PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${METAFILE}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
-	@echo $(realpath ${EPICS_MODULES}) > INSTBASE
 	@echo ${PRODUCTS} > PRODUCTS
 	@echo ${LIBVERSION} > LIBVERSION
 
@@ -1031,10 +1012,6 @@ ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 ifneq ($(strip ${REQ}),)
 # Manully added dependencies: ${REQ}
 	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${E3_SITEMODS_PATH}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
-endif
-ifdef OLD_INCLUDE
-# Check dependencies on old style driver headers.
-	@${MAKEHOME}/getPrerequisites.tcl -dep ${OLD_INCLUDE} | grep -vw -e ${PRJ} -e ^$$ >> $@ && echo "Warning: dependency on old style driver"; true;
 endif
 
 # Remove MakefileInclude after we are done because it interfers with our way to build.
