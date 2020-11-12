@@ -563,7 +563,7 @@ $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*
 
 # Manually required modules.
 define ADD_MANUAL_DEPENDENCIES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB) 2>/dev/null)))
+$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB) 2>/dev/null))))
 endef
 $(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
 
