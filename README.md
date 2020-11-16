@@ -12,12 +12,13 @@ a stand-alone EPICS module, but fits together with its "e3 wrapper", located at
 The main changes are the following. In all cases we have removed support for EPICS base 3.x, as well as
 VxWorks. Other changes
 
-* require.c: We have changed the way that versioning is handled to include the option of build numbers, which
-  we have found are necessary to handle some dependency issues. See the above documentation.
-* driver.makefile: A lot of simplifications have been added based on ESS's requirements (in particular, not
+* `require.c`: We have changed the way that versioning is handled to include the option of build numbers, which
+  we have found are necessary to handle some dependency issues. We are also more restrictive for version
+  numbering; for example, we do not use the syntax `require module,1.3+`. See the above documentation.
+* `driver.makefile`: A lot of simplifications have been added based on ESS's requirements (in particular, not
   needing to have EPICS base 3.x and 7.x together). There are also a number of additions to allow some extra
   flexibility in installing e.g. header files.
-* iocsh.bash: We have replaced the PSI startup script `iocsh` with an ESS version, `iocsh.bash`. 
+* `iocsh.bash`: We have replaced the PSI startup script `iocsh` with an ESS version, `iocsh.bash`. 
 
 # Original PSI README
 
