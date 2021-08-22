@@ -947,9 +947,7 @@ ${VERSIONFILE}:
 # EPICS R3.14.*:
 # Create file to fill registry from dbd file.
 ${REGISTRYFILE}: ${MODULEDBD}
-	$(RM) $@ temp.cpp
-	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v iocshRegisterCommon > temp.cpp
-	$(MV) temp.cpp $@
+	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) > $@
 
 # 3.14.12 complains if this rule is not overwritten
 ./%Include.dbd:
