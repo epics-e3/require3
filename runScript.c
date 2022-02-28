@@ -20,7 +20,7 @@
 
 #include <osiFileName.h>
 #include <iocsh.h>
-epicsShareFunc int epicsShareAPI iocshCmd(const char *cmd);
+DBCORE_API int epicsStdCall iocshCmd(const char *cmd);
 #include <epicsExport.h>
 
 #define IS_ABS_PATH(filename) (filename[0] == OSI_PATH_SEPARATOR[0])  /* may be different for other OS ? */

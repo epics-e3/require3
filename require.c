@@ -32,7 +32,7 @@
 #include <iocsh.h>
 #include <dbAccess.h>
 /* This prototype is missing in older EPICS versions */
-epicsShareFunc int epicsShareAPI iocshCmd(const char *cmd);
+DBCORE_API int epicsStdCall iocshCmd(const char *cmd);
 #include <epicsExit.h>
 #include <epicsStdio.h>
 #include <osiFileName.h>
