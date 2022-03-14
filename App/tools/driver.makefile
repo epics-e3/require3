@@ -58,6 +58,8 @@
 #    EPICS versions to skip. Usually 3.13 or 3.14
 # ARCH_FILTER
 #    Sub set of architectures to build for, e.g. %-ppc604
+# prebuild
+# Added a `prebuild` target that runs before build so module developers can run specific code before the build process.
 
 # Get the location of this file.
 MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
@@ -126,9 +128,10 @@ ENV=
 # Don't install anything (different from default EPICS make rules).
 default: build
 
+# Added to follow E3
 prebuild:
 
-IGNOREFILES = .gitignore
+IGNOREFILES = .cvsignore .gitignore
 %: ${IGNOREFILES}
 ${IGNOREFILES}:
 	@echo -e "O.*\n.gitignore" > $@
