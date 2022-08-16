@@ -95,12 +95,13 @@ DOCUEXT += template db dbt subs subst substitutions script
 SHELL = /bin/bash -O extglob
 
 # Some shell commands:
+RMDIR = rm -rf
 LN = ln -s
 EXISTS = test -e
 NM = nm
-RMDIR = rm -rf
 RM = rm -f
 CP = cp
+MKDIR = mkdir -p -m 775
 
 # This is to allow for build numbers in recognized versions. First regex is for grep, second for sed.
 VERSIONGLOB = +([0-9]).+([0-9]).+([0-9])?(-+([0-9]))
@@ -147,24 +148,10 @@ ifndef EPICSVERSION
 ## RUN 1
 # In source directory
 
-##---## In E3, we don't need to check which EPICS BASE
-
-# Find out which EPICS versions to build.
-#INSTALLED_EPICS_VERSIONS := $(patsubst ${EPICS_LOCATION}/base-%,%,$(wildcard ${EPICS_LOCATION}/base-*[0-9]))
-#EPICS_VERSIONS = $(filter-out ${EXCLUDE_VERSIONS:=%},${DEFAULT_EPICS_VERSION})
-#MISSING_EPICS_VERSIONS = $(filter-out ${BUILD_EPICS_VERSIONS},${DEFAULT_EPICS_VERSION})
-#BUILD_EPICS_VERSIONS = $(filter ${INSTALLED_EPICS_VERSIONS},${DEFAULT_EPICS_VERSION})
-
-#BUILD_EPICS_VERSIONS = ${DEFAULT_EPICS_VERSION}
-
 $(foreach v,$(sort $(basename ${BUILD_EPICS_VERSIONS})),$(eval EPICS_VERSIONS_$v=$(filter $v.%,${BUILD_EPICS_VERSIONS})))
 
-
-# # Che# ck only version of files needed to build the module. But which are they?
-# VERSIONCHECKFILES = $(filter-out /% -none-, $(wildcard *makefile* *Makefile* *.db *.template *.subs *.dbd *.cmd) ${SOURCES} ${DBDS} ${TEMPLATES} ${SCRIPTS} $(foreach v,3.13 3.14 3.15, ${SOURCES_$v} ${DBDS_$v}))
-# VERSIONCHECKCMD = ${MAKEHOME}/getVersion.tcl ${VERSIONDEBUGFLAG} ${VERSIONCHECKFILES}
-# LIBVERSION = $(or $(filter-out test,$(shell ${VERSIONCHECKCMD} 2>/dev/null)),${USER},test)
-# VERSIONDEBUGFLAG = $(if ${VERSIONDEBUG}, -d)
+# Set LIBVERSION to dev if not set
+LIBVERSION := $(or $(LIBVERSION),dev)
 
 # Default module name is name of current directory.
 # But in case of "src" or "snl", use parent directory instead.
@@ -182,37 +169,14 @@ export ARCH_FILTER
 export EXCLUDE_ARCHS
 export MAKE_FIRST
 
-# Since we force modules to be in lowercase, we need to use the correct variables here
-# e.g. MCoreUtils_E3_GIT_URL vs mcoreutils_E3_GIT_URL
-${PRJ}_E3_GIT_URL := $(${PROJECT}_E3_GIT_URL)
-export ${PRJ}_E3_GIT_URL
-${PRJ}_E3_GIT_DESC := $(${PROJECT}_E3_GIT_DESC)
-export ${PRJ}_E3_GIT_DESC
-${PRJ}_E3_GIT_STATUS := $(${PROJECT}_E3_GIT_STATUS)
-export ${PRJ}_E3_GIT_STATUS
-
-# Some shell commands:
-RMDIR = rm -rf
-LN = ln -s
-EXISTS = test -e
-NM = nm
-RM = rm -f
-MKDIR = mkdir -p -m 775
-
 clean::
 	$(RMDIR) O.*
-
-#clean.%::
-#	$(RMDIR) $(wildcard O.*${@:clean.%=%}*)
 
 uninstall:
 	$(RMDIR) ${MODULE_LOCATION}
 ifneq ($(strip $(E3_MODULES_VENDOR_LIBS_LOCATION)),)
 	$(RMDIR) $(E3_MODULES_VENDOR_LIBS_LOCATION)
 endif
-
-#uninstall.%:
-#	$(RMDIR) $(wildcard ${MODULE_LOCATION}/R*${@:uninstall.%=%}*)
 
 help:
 	@echo "usage:"
@@ -224,7 +188,6 @@ help:
 	do echo "  make $$target"; \
 	done
 	@echo "Makefile variables:(defaults) [comment]"
-#	@echo "  EPICS_VERSIONS   (${DEFAULT_EPICS_VERSION})"
 	@echo "  MODULE           (${PRJ}) [from current directory name]"
 	@echo "  PROJECT          [older name for MODULE]"
 	@echo "  SOURCES          (*.c *.cc *.cpp *.st *.stt *.gt)"
@@ -240,15 +203,9 @@ help:
 	@echo "  BUILDCLASSES     (Linux)"
 	@echo "  <module>_VERSION () [build against specific version of other module]"
 
-##  "make version" shows the module version and why it is what it is.       
-# version: ${IGNOREFILES}
-# 	@${VERSIONCHECKCMD}
-
 debug::
-#	@echo "INSTALLED_EPICS_VERSIONS = ${INSTALLED_EPICS_VERSIONS}"
+	@echo "===================== Pass 1 ====================="
 	@echo "BUILD_EPICS_VERSIONS = ${BUILD_EPICS_VERSIONS}"
-#	@echo "MISSING_EPICS_VERSIONS = ${MISSING_EPICS_VERSIONS}"
-#	@echo "EPICS_VERSIONS_3.14 = ${EPICS_VERSIONS_3.14}"
 	@echo "EPICS_VERSIONS_3.15 = ${EPICS_VERSIONS_3.15}"
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
 	@echo "LIBVERSION = ${LIBVERSION}"
@@ -261,13 +218,6 @@ MAKEVERSION = ${MAKE} -f ${USERMAKEFILE} LIBVERSION=${LIBVERSION}
 
 build install debug:: ${IGNOREFILES}
 	@+for VERSION in ${BUILD_EPICS_VERSIONS}; do ${MAKEVERSION} EPICSVERSION=$$VERSION $@; done
-
-#build: ${IGNOREFILES}
-#	${MAKE} -f ${USERMAKEFILE} LIBVERSION=${LIBVERSION} EPICSVERSION=$$DEFAULT_EPICS_VERSION
-#	 ${MAKEVERSION} EPICSVERSION=$${BUILD_EPICS_VERSIONS}
-# Handle cases where user requests a group of EPICS versions:
-# make <action>.3.13 or make <action>.3.14 instead of make <action> or
-# make 3.13 or make 3.14 instead of make.
 
 define VERSIONRULES
 $(1): ${IGNOREFILES}
@@ -319,9 +269,15 @@ else # EPICSVERSION
 # EPICSVERSION defined 
 # Second or third run (see T_A branch below)
 
-EPICS_BASE=${EPICS_LOCATION}
-#/base-${EPICSVERSION}
+ifneq ($(filter 3.13.%,$(EPICSVERSION)),)
 
+EPICS_BASETYPE=3.13
+CONFIG=${EPICS_BASE}/config
+export BUILD_TYPE=Vx
+
+else # 3.14+
+
+EPICS_BASETYPE=3.14
 CONFIG=${EPICS_BASE}/configure
 
 # There is no 64 bit support before 3.14.12 
@@ -411,10 +367,7 @@ SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
 DOCUDIR = .
-#DOCU = $(foreach DIR,${DOCUDIR},$(wildcard ${DIR}/*README*) $(foreach EXT,${DOCUEXT}, $(wildcard ${DIR}/*.${EXT})))
 export DOCU
-
-# Loop over all target architectures for third run.
 
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
 CROSS_COMPILER_TARGET_ARCHS := ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
@@ -439,6 +392,7 @@ uninstall::
 	$(RMDIR) ${INSTALL_REV}
 
 debug::
+	@echo "===================== Pass 2: EPICSVERSION = $(EPICSVERSION) ====================="
 	@echo "EPICS_BASE = ${EPICS_BASE}"
 	@echo "EPICSVERSION = ${EPICSVERSION}" 
 	@echo "CROSS_COMPILER_TARGET_ARCHS = ${CROSS_COMPILER_TARGET_ARCHS}"
@@ -582,28 +536,23 @@ INSTALL_CFG     = ${INSTALL_REV}/cfg
 INSTALL_DOC     = ${MODULE_LOCATION}/doc
 INSTALL_SCR     = ${INSTALL_REV}
 
-#INSTALL_DOCUS = $(addprefix ${INSTALL_DOC}/${PRJ}/,$(notdir ${DOCU}))
+# Different settings required to build library in EPICS 3.13 and 3.14.
+ifeq (${EPICS_BASETYPE},3.13) # only 3.13 from here
 
-#${INSTALL_DOC}/${PRJ}/%: %
-#	@echo "Installing documentation $@"
-#	$(RM) $@
-#	cp $^ $@
-#	chmod 444 $@
-#
-#${INSTALL_TEMPL}/%.template: %.template
-#	@echo "Installing template file $@"
-#	$(RM) $@
-#	echo "#${PRJ}Lib ${LIBVERSION}" > $@
-#	cat $^ >> $@
-#	chmod 444 $@
-#	$(SETLINKS) ${INSTALL_TEMPL} .template $(basename $(notdir $^))
-#
-#${INSTALL_TEMPL}/%.db: %.db
-#	@echo "Installing template file $@"
-#	$(RM) $@
-#	$(CP) $^ >> $@
-#	chmod 444 $@
-#	$(SETLINKS) ${INSTALL_TEMPL} .db $(basename $(notdir $^))
+# Convert sources to object code, skip .a and .o here.
+LIBOBJS += $(patsubst %,%.o,$(notdir $(basename $(filter-out %.o %.a,${SRCS}))))
+# Add all .a and .o with absolute path.
+LIBOBJS += $(filter /%.o /%.a,${SRCS})
+# Add all .a and .o with relative path, but go one directory up.
+LIBOBJS += $(patsubst %,../%,$(filter-out /%,$(filter %.o %.a,${SRCS})))
+LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
+LIBOBJS += $(foreach l,${USR_LIBOBJS}, $(addprefix ../,$(filter-out /%,$l)) $(filter /%,$l))
+
+LIBNAME = $(if $(strip ${LIBOBJS}),${PRJ}Lib,) # Must be the un-munched name.
+MODULELIB = ${LIBNAME:%=%.munch}
+PROD = ${MODULELIB}
+
+else # Only 3.14 from here.
 
 LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(filter-out /%,$l))$(filter /%,$l)))
 
@@ -673,19 +622,6 @@ DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
 
 # Create dbd file for GPIB code.
 DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
-
-# Create dbd file with references to all subRecord functions.
-# Problem: functions may be commented out. Better preprocess, but then generate headers first.
-#define maksubfuncfile
-#/static/ {static=1} \
-#/\([\t ]*(struct)?[\t ]*(genSub|sub|aSub)Record[\t ]*\*[\t ]*\w+[\t ]*\)/ { \
-#    match ($$0,/(\w+)[\t ]*\([\t ]*(struct)?[\t ]*\w+Record[\t ]*\*[\t ]*\w+[\t ]*\)/, a); \
-#    n=a[1];if(!static && !f[n]){f[n]=1;print "function (" n ")"}} \
-#/[;{}]/ {static=0}
-#endef 
-#
-#$(shell awk '$(maksubfuncfile)' $(addprefix ../,$(filter %.c %.cc %.C %.cpp, $(SRCS))) > ${SUBFUNCFILE})
-#DBDFILES += $(if $(shell cat ${SUBFUNCFILE}),${SUBFUNCFILE})
 
 # snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
 #SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),$(VERSIONGLOB))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
