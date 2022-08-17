@@ -168,6 +168,8 @@ export OS_CLASS_LIST
 export ARCH_FILTER
 export EXCLUDE_ARCHS
 export MAKE_FIRST
+export SUBS
+export TMPS
 
 clean::
 	$(RMDIR) O.*
@@ -216,7 +218,7 @@ debug::
 # Loop over all EPICS versions for second run.
 MAKEVERSION = ${MAKE} -f ${USERMAKEFILE} LIBVERSION=${LIBVERSION}
 
-build install debug:: ${IGNOREFILES}
+build install debug db_internal:: ${IGNOREFILES}
 	@+for VERSION in ${BUILD_EPICS_VERSIONS}; do ${MAKEVERSION} EPICSVERSION=$$VERSION $@; done
 
 define VERSIONRULES
@@ -360,6 +362,7 @@ export HDR_SUBDIRS
 
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
 TEMPLS += ${TEMPLATES_${EPICSVERSION}}
+TEMPLS += $(wildcard $(COMMON_DIR)/*.db)
 export TEMPLS
 
 SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
@@ -384,6 +387,24 @@ $(foreach a,${CROSS_COMPILER_TARGET_ARCHS},$(foreach l,$(LINK_$a),$(eval $(call 
 
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
+
+# Perform default database expansion of .substitions/.templates into $(COMMON_DIR)
+db_internal: $(COMMON_DIR)
+
+-include $(COMMON_DIR)/*.db.d
+
+define SUBS_EXPAND
+vpath $(notdir $2) $(dir $2)
+db_internal: $(COMMON_DIR)/$(notdir $(basename $2).db)
+
+$(COMMON_DIR)/$(notdir $(basename $2).db): $(notdir $2)
+	@printf "Inflating database ... %44s >>> %40s \n" "$$^" "$$@"
+	$(QUIET)$(MSI) -D $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$^ > $(COMMON_DIR)/$$(notdir $$(basename $2).db).d
+	$(QUIET)$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$^
+endef
+
+$(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
+$(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
 
 install build debug:: $(MAKE_FIRST)
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
@@ -484,7 +505,9 @@ EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
 
-COMMON_DIR = ../O.${EPICSVERSION}_Common
+COMMON_DIR_3.14 = ../O.${EPICSVERSION}_Common
+COMMON_DIR_3.13 = .
+#COMMON_DIR = ../O.${EPICSVERSION}_Common
 
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
