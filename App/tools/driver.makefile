@@ -111,7 +111,6 @@ VERSIONREGEX2 = [0-9]+\.[0-9]+\.[0-9]+\(-[0-9]+\)\?
 # Some generated file names:
 VERSIONFILE = ${PRJ}_version_${LIBVERSION}.c
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
-EXPORTFILE = ${PRJ}_exportAddress.c
 SUBFUNCFILE = ${PRJ}_subRecordFunctions.dbd
 DEPFILE = ${PRJ}.dep
 METAFILE = ${PRJ}_meta.yaml
@@ -129,10 +128,9 @@ ENV=
 # Don't install anything (different from default EPICS make rules).
 default: build
 
-# Added to follow E3
 prebuild:
 
-IGNOREFILES = .cvsignore .gitignore
+IGNOREFILES = .gitignore
 %: ${IGNOREFILES}
 ${IGNOREFILES}:
 	@echo -e "O.*\n.gitignore" > $@
@@ -208,7 +206,6 @@ help:
 debug::
 	@echo "===================== Pass 1 ====================="
 	@echo "BUILD_EPICS_VERSIONS = ${BUILD_EPICS_VERSIONS}"
-	@echo "EPICS_VERSIONS_3.15 = ${EPICS_VERSIONS_3.15}"
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "VERSIONCHECKFILES = ${VERSIONCHECKFILES}"
@@ -271,15 +268,6 @@ else # EPICSVERSION
 # EPICSVERSION defined 
 # Second or third run (see T_A branch below)
 
-ifneq ($(filter 3.13.%,$(EPICSVERSION)),)
-
-EPICS_BASETYPE=3.13
-CONFIG=${EPICS_BASE}/config
-export BUILD_TYPE=Vx
-
-else # 3.14+
-
-EPICS_BASETYPE=3.14
 CONFIG=${EPICS_BASE}/configure
 
 # There is no 64 bit support before 3.14.12 
@@ -316,6 +304,9 @@ CXXCMPLR=ANSI
 G++_ANSI = $(G++) -ansi
 OBJ=.o
 
+O.%:
+	+$(MKDIR) $@
+	
 ifndef T_A
 ## RUN 2
 # Target achitecture not yet defined
@@ -369,21 +360,9 @@ SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
-DOCUDIR = .
-export DOCU
-
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
 CROSS_COMPILER_TARGET_ARCHS := ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
 CROSS_COMPILER_TARGET_ARCHS := $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),$(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${CROSS_COMPILER_TARGET_ARCHS}),${CROSS_COMPILER_TARGET_ARCHS})))
-
-# Create build dirs (and links) if necessary.
-LINK_eldk52-e500v2 = eldk52-rt-e500v2 eldk52-xenomai-e500v2
-define MAKELINKDIRS
-LINKDIRS+=O.${EPICSVERSION}_$1
-O.${EPICSVERSION}_$1:
-	$(LN) O.${EPICSVERSION}_$2 O.${EPICSVERSION}_$1
-endef 
-$(foreach a,${CROSS_COMPILER_TARGET_ARCHS},$(foreach l,$(LINK_$a),$(eval $(call MAKELINKDIRS,$l,$a))))
 
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
@@ -406,6 +385,7 @@ endef
 $(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
 $(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
 
+
 install build debug:: $(MAKE_FIRST)
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
@@ -415,7 +395,6 @@ uninstall::
 debug::
 	@echo "===================== Pass 2: EPICSVERSION = $(EPICSVERSION) ====================="
 	@echo "EPICS_BASE = ${EPICS_BASE}"
-	@echo "EPICSVERSION = ${EPICSVERSION}" 
 	@echo "CROSS_COMPILER_TARGET_ARCHS = ${CROSS_COMPILER_TARGET_ARCHS}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
@@ -451,10 +430,7 @@ install build:
 
 else
 
-O.%:
-	+$(MKDIR) $@
-
-ifeq ($(shell echo "${LIBVERSION}" | grep -v -E "^$(VERSIONREGEX1)\$$"),)
+ifeq ($(shell echo "${LIBVERSION}" | grep -v -E "^[0-9]+\.[0-9]+\.[0-9]+\$$"),)
 install:: build
 	@test ! -d ${MODULE_LOCATION}/lib/${T_A} || \
         (echo -e "Error: ${MODULE_LOCATION}/lib/${T_A} already exists.\nNote: If you really want to overwrite then uninstall first."; false)
@@ -505,8 +481,6 @@ EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
 
-COMMON_DIR_3.14 = ../O.${EPICSVERSION}_Common
-COMMON_DIR_3.13 = .
 #COMMON_DIR = ../O.${EPICSVERSION}_Common
 
 # Remove include directory for this module from search path.
@@ -534,19 +508,8 @@ INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_V
 endef
 $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
 
-define ADD_SITEAPPS_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEAPPS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEAPPS_PATH}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
-INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEAPPS_PATH}/$(1)/%/include,$$($(1)_VERSION))
-endef
-$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEAPPS_PATH}/*))),$(call ADD_SITEAPPS_INCLUDES,$m)))
-
-
-# Manually required modules.
-define ADD_MANUAL_DEPENDENCIES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB) 2>/dev/null))))
-endef
-$(eval $(foreach m,${REQ},$(call ADD_MANUAL_DEPENDENCIES,$m)))
-
+INSTALLRULE=install:
+BUILDRULE=build:
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
@@ -559,30 +522,12 @@ INSTALL_CFG     = ${INSTALL_REV}/cfg
 INSTALL_DOC     = ${MODULE_LOCATION}/doc
 INSTALL_SCR     = ${INSTALL_REV}
 
-# Different settings required to build library in EPICS 3.13 and 3.14.
-ifeq (${EPICS_BASETYPE},3.13) # only 3.13 from here
-
-# Convert sources to object code, skip .a and .o here.
-LIBOBJS += $(patsubst %,%.o,$(notdir $(basename $(filter-out %.o %.a,${SRCS}))))
-# Add all .a and .o with absolute path.
-LIBOBJS += $(filter /%.o /%.a,${SRCS})
-# Add all .a and .o with relative path, but go one directory up.
-LIBOBJS += $(patsubst %,../%,$(filter-out /%,$(filter %.o %.a,${SRCS})))
-LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
-LIBOBJS += $(foreach l,${USR_LIBOBJS}, $(addprefix ../,$(filter-out /%,$l)) $(filter /%,$l))
-
-LIBNAME = $(if $(strip ${LIBOBJS}),${PRJ}Lib,) # Must be the un-munched name.
-MODULELIB = ${LIBNAME:%=%.munch}
-PROD = ${MODULELIB}
-
-else # Only 3.14 from here.
-
 LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(filter-out /%,$l))$(filter /%,$l)))
 
 MODULELIB = $(if ${LIBRARY_OBJS},${LIB_PREFIX}${PRJ}${SHRLIB_SUFFIX},)
 
-LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
-LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
+LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %(LIB_SUFFIX),$(sort ${SRCS})))))
+LIBOBJS += $(filter /%.$(OBJ) /%(LIB_SUFFIX),${SRCS})
 LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
 LIBS = -L ${EPICS_BASE_LIB} ${BASELIBS:%=-l%}
 LINK.cpp += ${LIBS}
@@ -608,7 +553,6 @@ MINOR=$(word 2,${MAJOR_MINOR_PATCH})
 PATCH=$(word 3,${MAJOR_MINOR_PATCH})
 ifneq (${MINOR},)
 ALLMINORS := $(shell for ((i=0;i<=${MINOR};i++));do echo $$i;done)
-PREREQUISITES = $(shell ${MAKEHOME}/getPrerequisites.tcl ${INSTALL_INCLUDE} | grep -vw ${PRJ})
 ifeq (${OS_CLASS}, Linux)
 PROVIDES = ${ALLMINORS:%=-Wl,--defsym,${PRJ}Lib_${MAJOR}.%=0}
 endif # Linux
@@ -616,9 +560,6 @@ endif # MINOR
 LDFLAGS += ${PROVIDES} ${USR_LDFLAGS_${T_A}}
 
 # Create and include dependency files.
-# 3.14.8 uses HDEPENDS to select depends mode
-# 3.14.12 uses 'HDEPENDSCFLAGS -MMD' (does not catch #include <...>)
-# 3.15 uses 'HDEPENDS_COMPFLAGS = -MM -MF $@' (does not catch #include <...>)
 HDEPENDS = 
 HDEPENDS_METHOD = COMP
 HDEPENDS_COMPFLAGS = -c
@@ -636,8 +577,7 @@ USR_DBDFLAGS += $(DBDEXPANDPATH)
 # Search all directories where sources or headers come from, plus existing os dependend subdirectories.
 SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out /%,$(dir ${SRCS:%=../%} ${HDRS:%=../%}))), $d $(addprefix $d/, os/${OS_CLASS} $(POSIX_$(POSIX)) os/default))))
 
-# Different macro name for 3.14.8.
-GENERIC_SRC_INCLUDES = $(SRC_INCLUDES)
+
 
 # Create dbd file for snl code.
 DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
@@ -646,10 +586,10 @@ DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
 # Create dbd file for GPIB code.
 DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 
-# snc location in 3.14: From latest version of module seq or fall back to globally installed snc.
-#SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),$(VERSIONGLOB))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
-SNCALL=$(shell ls  -dv $(E3_SITEMODS_PATH)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
-SNC=$(lastword $(SNCALL))/snc
+# snc location
+# In a conda environment we have only one version so this could be simplify
+SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
+
 
 
 ifneq ($(strip ${DBDFILES}),)
@@ -664,7 +604,6 @@ endif # MODULELIB
 debug::
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
 	@echo "OS_CLASS = ${OS_CLASS}"
-	@echo "T_A = ${T_A}"
 	@echo "MODULEDBD = ${MODULEDBD}"
 	@echo "RECORDS = ${RECORDS}"
 	@echo "MENUS = ${MENUS}"
@@ -692,23 +631,14 @@ build: ${DEPFILE}
 # Include default EPICS Makefiles (version dependent).
 # Avoid library installation when doing 'make build'.
 INSTALL_LOADABLE_SHRLIBS=
-# Avoid installing *.munch to bin directory.
-INSTALL_MUNCHS=
-
-# We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
-# mode. Including this causes all of the source files to be compiled!
-ifeq (,$(findstring debug,${MAKECMDGOALS}))
-include ${BASERULES} 
-endif
+include ${BASERULES}
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
 RELEASE_INCLUDES = -I${EPICS_BASE}/include 
-# For EPICS 3.15:
+# For EPICS 3.15+:
 RELEASE_INCLUDES += -I${EPICS_BASE}/include/compiler/${CMPLR_CLASS}
 RELEASE_INCLUDES += -I${EPICS_BASE}/include/os/${OS_CLASS}
-# Dor EPICS 3.13:
-EPICS_INCLUDES += -I$(EPICS_BASE_INCLUDE) -I$(EPICS_BASE_INCLUDE)/os/$(OS_CLASS)
 
 # Find all sources and set vpath accordingly.
 $(foreach file, ${SRCS} ${TEMPLS} ${DBDINSTALLS} ${SCR}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
@@ -806,7 +736,7 @@ ${INSTALL_META}: $(notdir ${INSTALL_META})
 
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
-	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
+	$(INSTALL) -d -m644 $^ $(@D)
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
@@ -883,89 +813,18 @@ SNCFLAGS += -r
 	${LN} $< $(*F).gt
 	gdc $(*F).gt
 
-# The original EPICS munching rules do not really work well.
-# Call the native vxWorks munch program.
-MUNCH_5=tclsh $(VX_DIR)/host/src/hutils/munch.tcl
-MUNCH_6=tclsh $(VX_DIR)/host/resource/hutils/tcl/munch.tcl
-MUNCH_=$(MUNCH_5)
-# VXWORKS_MAJOR_VERSION exsists since EPICS 3.14.12 or so.
-MUNCH=$(MUNCH_$(VXWORKS_MAJOR_VERSION))
-%.munch: CMPLR=TRAD
-%.munch: %
-	@echo Munching $<
-	$(RM) ctct.o ctdt.c
-	$(NM) $< | $(MUNCH) > ctdt.c
-	$(COMPILE.c) ctdt.c
-	$(LINK.c) $@ $< ctdt.o
-
-%_ctdt.c : %.nm
-	@echo Munching $*
-	@$(RM) $@
-	$(MUNCH) < $< > $@ 
-
 ${VERSIONFILE}:
 	echo "char _${PRJ}LibRelease[] = \"${LIBVERSION}\";" >> $@
 
-# EPICS R3.14.*:
 # Create file to fill registry from dbd file.
 ${REGISTRYFILE}: ${MODULEDBD}
 	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) > $@
 
-# 3.14.12 complains if this rule is not overwritten
-./%Include.dbd:
-
-# Add missing epicsExportAddress() calls for registry.
-
-define makexportfile
-BEGIN { print "/* This is a generated file. Do not modify! */"; \
-	print "#include <drvSup.h>"; \
-	print "#include <devSup.h>"; \
-	print "#include <recSup.h>"; \
-	print "#include <registryFunction.h>"; \
-	print "#include <epicsExport.h>"; \
-	print "/* These are the RegisterFunction and ExportAddress calls missing for 3.14 compatible code. */"; \
-      } \
-/ U pvar_func_register_func_/ {name=substr($$2,25); func_missing[name]=1; next;} \
-/ [A-Z] pvar_func_register_func_/ {name=substr($$3,25); func_found[name]=1; next;} \
-/ U pvar_func_/ {name=substr($$2,11); reg_missing[name]=1; next;} \
-/ [A-Z] pvar_func_/ {name=substr($$3,11); reg_found[name]=1; next;} \
-/ U pvar_/ {i=index(substr($$2,6),"_"); type=substr($$2,6,i-1); name=substr($$2,i+6); var_missing[name]=type; next;} \
-/ [A-Z] pvar_/ {i=index(substr($$3,6),"_"); name=substr($$3,i+6); var_found[name]=1; next;} \
-END {for (name in func_missing) if (!func_found[name]) { \
-	print "void " name "();"; \
-	print "epicsRegisterFunction(" name ");"} \
-     for (name in reg_missing) if (!reg_found[name]) { \
-	print "extern REGISTRYFUNCTION " name ";"; \
-	print "epicsExportRegistrar(" name ");"} \
-     for (name in var_missing) if (!var_found[name]) { \
-        type = var_missing[name]; \
-	print "extern " type " " name ";"; \
-	print "epicsExportAddress(" type ", " name ");"} \
-    }
-endef
-
-CORELIB = ${CORELIB_${OS_CLASS}}
-
-LSUFFIX_YES=$(SHRLIB_SUFFIX)
-LSUFFIX_NO=$(LIB_SUFFIX)
-LSUFFIX=$(LSUFFIX_$(SHARED_LIBRARIES))
-
-${EXPORTFILE}: $(filter-out $(basename ${EXPORTFILE})$(OBJ),${LIBOBJS})
-	$(RM) $@
-	$(NM) $^ ${BASELIBS:%=${EPICS_BASE}/lib/${T_A}/${LIB_PREFIX}%$(LSUFFIX)} ${CORELIB} | awk '$(makexportfile)' > $@
-
-
-${METAFILE}:
-	@echo "wrapper_url: '$(${PRJ}_E3_GIT_URL)'" > $@
-	@echo "wrapper_git_desc: '$(${PRJ}_E3_GIT_DESC)'" >> $@
-	@echo "wrapper_diffs: $(${PRJ}_E3_GIT_STATUS)" >> $@
-	@echo "module_git_desc: '$(${PRJ}_GIT_DESC)'" >> $@
-	@echo "module_diffs: $(${PRJ}_GIT_STATUS)" >> $@
-
 # Create dependency file for recursive requires.
+.PHONY: ${DEPFILE}
 ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	@echo "Collecting dependencies"
-	$(RM) $@
+	$(RM) $@.tmp
 	@echo "# Generated file. Do not edit." > $@
 # Check dependencies on other module headers.
 	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
