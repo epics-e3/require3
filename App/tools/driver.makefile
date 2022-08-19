@@ -511,8 +511,6 @@ INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_V
 endef
 $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
 
-INSTALLRULE=install:
-BUILDRULE=build:
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
@@ -717,8 +715,6 @@ debug::
 endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
-INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
-
 install: ${INSTALLS}
 
 ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
@@ -728,18 +724,13 @@ ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
 	$(INSTALL) -d -m$(SHRLIB_PERMISSIONS) $< $(@D)
-
 ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
 	@echo "Installing module dependency file $@"
 	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
 
-${INSTALL_META}: $(notdir ${INSTALL_META})
-	@echo "Installing metadata file $@"
-	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
-
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
-	$(INSTALL) -d -m644 $^ $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
