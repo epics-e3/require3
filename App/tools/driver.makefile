@@ -400,10 +400,13 @@ debug::
 	@echo "LIBVERSION = ${LIBVERSION}"
 
 # Loop over all architectures.
-install build debug::
-	@+for ARCH in ${CROSS_COMPILER_TARGET_ARCHS}; do \
-	    umask 002; echo MAKING ARCH $$ARCH; ${MAKE} -f ${USERMAKEFILE} T_A=$$ARCH $@; \
-	done
+install build debug:: $(COMMON_DIR)
+	@+failed_builds=0; \
+	for ARCH in ${CROSS_COMPILER_TARGET_ARCHS}; do \
+	    umask 002; echo MAKING ARCH $$ARCH; ${MAKE} -f ${USERMAKEFILE} T_A=$$ARCH $@ || ((failed_builds++)); \
+	done; \
+	((failed_builds == 0))
+
 
 else # T_A
 
