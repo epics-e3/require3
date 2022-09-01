@@ -351,6 +351,7 @@ export HDRS
 HDR_SUBDIRS = $(KEEP_HEADER_SUBDIRS)
 export HDR_SUBDIRS
 
+
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
 TEMPLS += ${TEMPLATES_${EPICSVERSION}}
 TEMPLS += $(wildcard $(COMMON_DIR)/*.db)
@@ -676,7 +677,6 @@ INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
 INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
-INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
 ifneq ($(strip $(HDR_SUBDIRS)),)
   INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir $(filter-out $(addsuffix /%,$(HDR_SUBDIRS)),${HDRS})))
 else
@@ -705,6 +705,18 @@ debug::
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
 	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
+
+define install_subdirs
+$1_HDRS = $$(filter $1/%,$$(HDRS))
+INSTALL_HDRS += $$(addprefix $$(INSTALL_INCLUDE)/,$$($1_HDRS:$1/%=%))
+vpath %.h ../$1
+vpath %.hpp ../$1
+vpath %.hh ../$1
+vpath %.hxx ../$1
+debug::
+	@echo "$1_HDRS = $$($1_HDRS)"
+endef
+$(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 define install_subdirs
 $1_HDRS = $$(filter $1/%,$$(HDRS))
