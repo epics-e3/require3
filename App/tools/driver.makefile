@@ -484,7 +484,7 @@ EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
 
-#COMMON_DIR = ../O.${EPICSVERSION}_Common
+COMMON_DIR = ../O.${EPICSVERSION}_Common
 
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
@@ -539,7 +539,7 @@ LOADABLE_LIBRARY=$(if ${LIBRARY_OBJS},${PRJ},)
 
 # Handle registry stuff automagically if we have a dbd file.
 # See ${REGISTRYFILE} and ${EXPORTFILE} rules below.
-LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE} ${EXPORTFILE})))
+LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})))
 
 
 # For backward compatibility:
@@ -824,12 +824,8 @@ ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(E3_SITEMODS_PATH)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(E3_SITEMODS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(E3_SITEAPPS_PATH)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\($(VERSIONREGEX2)\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u >> $@
 ifneq ($(strip ${REQ}),)
 # Manully added dependencies: ${REQ}
-	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${E3_SITEMODS_PATH}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
+	@$(foreach m,${REQ},echo "$m $(or ${$m_VERSION},$(and $(wildcard ${EPICS_MODULES}/$m),$(error REQUIRED module $m has no numbered version. Set $m_VERSION)),$(warning REQUIRED module $m not found for ${T_A}.))" >> $@;)
 endif
-
-# Remove MakefileInclude after we are done because it interfers with our way to build.
-build:
-	$(RM) MakefileInclude
 
 endif # In O.* directory
 endif # T_A defined
