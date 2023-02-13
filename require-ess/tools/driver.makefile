@@ -203,6 +203,10 @@ TEMPLS += ${TEMPLATES_${EPICSVERSION}}
 TEMPLS += $(wildcard $(COMMON_DIR)/*.db)
 export TEMPLS
 
+CFGS = ${CONFIGS}
+CFGS += ${CONFIGS_${EPICSVERSION}}
+export CFGS
+
 SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
@@ -315,8 +319,6 @@ export USR_LIBOBJS
 BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
 export BINS
 
-export CFG
-
 else # in O.*
 ## RUN 3
 # In build directory.
@@ -347,7 +349,7 @@ INSTALL_LIB     = ${INSTALL_REV}/lib/$(T_A)
 INSTALL_INCLUDE = ${INSTALL_REV}/include
 INSTALL_DBD     = ${INSTALL_REV}/dbd
 INSTALL_DB      = ${INSTALL_REV}/db
-INSTALL_CFG     = ${INSTALL_REV}/cfg
+INSTALL_CONFIG  = ${INSTALL_REV}/cfg
 INSTALL_DOC     = ${MODULE_LOCATION}/doc
 INSTALL_SCR     = ${INSTALL_REV}
 
@@ -423,6 +425,7 @@ debug::
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}"
 	@echo "SRCS = ${SRCS}"
 	@echo "REQ = ${REQ}"
+	@echo "CFGS = ${CFGS}"
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
 	@echo "DBDS_${OS_CLASS} = ${DBDS_${OS_CLASS}}"
@@ -456,7 +459,7 @@ RELEASE_INCLUDES += -I${EPICS_BASE}/include/compiler/${CMPLR_CLASS}
 RELEASE_INCLUDES += -I${EPICS_BASE}/include/os/${OS_CLASS}
 
 # Find all sources and set vpath accordingly.
-$(foreach file, ${SRCS} ${TEMPLS} ${DBDINSTALLS} ${SCR}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
+$(foreach file, ${SRCS} ${TEMPLS} ${DBDINSTALLS} ${SCR} ${CFGS}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
 
 # Do not treat %.dbd the same way because it creates a circular dependency
 # if a source dbd has the same name as the project dbd. Have to clear %.dbd and not use ../ path.
@@ -496,7 +499,7 @@ endif
 INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
 INSTALL_SCRS = $(addprefix ${INSTALL_SCR}/,$(notdir ${SCR}))
 INSTALL_BINS = $(addprefix ${INSTALL_BIN}/,$(notdir ${BINS}))
-INSTALL_CFGS = $(CFG:%=${INSTALL_CFG}/%)
+INSTALL_CONFIGS = $(addprefix ${INSTALL_CONFIG}/,$(notdir ${CFGS}))
 
 debug::
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
@@ -510,8 +513,8 @@ debug::
 	@echo "INSTALL_DBS = $(INSTALL_DBS)"
 	@echo "INSTALL_SCR = $(INSTALL_SCR)"
 	@echo "INSTALL_SCRS = $(INSTALL_SCRS)"
-	@echo "INSTALL_CFG = $(INSTALL_CFG)"
-	@echo "INSTALL_CFGS = $(INSTALL_CFGS)"
+	@echo "INSTALL_CONFIG = $(INSTALL_CONFIG)"
+	@echo "INSTALL_CONFIGS = $(INSTALL_CONFIGS)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
 	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
@@ -528,7 +531,7 @@ debug::
 endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
-INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS}
+INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
 
 install: ${INSTALLS}
 
@@ -551,7 +554,7 @@ ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
-${INSTALL_CFGS}: ${CFGS}
+${INSTALL_CONFIGS}: $(notdir ${INSTALL_CONFIGS})
 	@echo "Installing configuration files $^ to $(@D)"
 	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
