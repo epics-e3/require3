@@ -397,12 +397,6 @@ DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
 # Create dbd file for GPIB code.
 DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 
-# snc location
-SNCALL=$(shell ls  -dv $(EPICS_MODULES)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
-SNC=$(lastword $(SNCALL))/snc
-
-
-
 ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
 endif
@@ -569,39 +563,6 @@ ${INSTALL_CONFIGS}: $(notdir ${INSTALL_CONFIGS})
 ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
-
-# Create SNL code from st/stt file.
-# Important to have %.o: %.st and %.o: %.stt rule before %.o: %.c rule!
-
-CPPSNCFLAGS1  = $(filter -D%, ${OP_SYS_CFLAGS})
-CPPSNCFLAGS1 += $(filter-out ${OP_SYS_INCLUDE_CPPFLAGS} ,${CPPFLAGS}) ${CPPSNCFLAGS}
-CPPSNCFLAGS1 += -I $(dir $(SNC))../../include
-SNCFLAGS += -r
-
-%.i: %.st
-	@echo ">> Preprocessing $(<F)"
-	$(CPP) ${CPPSNCFLAGS1} $< > $(*F).i
-
-%.c: %.i
-	@echo ""
-	@echo ">> SNC building process .... "
-	@echo ">> SNC                  : $(SNC)"
-	@echo ">> SNC_VERSION          : $(sequencer_VERSION)"
-	@echo ">> SNC is defined as $(SNC)"
-	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $(*F).i -o $(*F).c
-
-%_snl.dbd: %.c
-	@echo ">> Building $(*F)_snl.dbd"
-	awk -F [\(\)]  '/epicsExportRegistrar/ { print "registrar (" $$2 ")"}' $(*F).c > $(*F)_snl.dbd
-
-%.c: %.stt
-	@echo ""
-	@echo ">> SNC building process .... "
-	@echo ">> SNC                  : $(SNC)"
-	@echo ">> SNC_VERSION          : $(sequencer_VERSION)"
-	@echo ">> SNC is defined as $(SNC)"
-	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $< -o $(*F).c
-
 
 # Create GPIB code from *.gt file.
 %.c %.dbd %.list: %.gt

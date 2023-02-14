@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New features
+
+* Allow for module-specific build rules (see: sequencer) to be installed and used
+  within e3
+
 ### Other changes
 
 * Rewrite `iocsh` converting it from being a shell script to a python (3.6) script
