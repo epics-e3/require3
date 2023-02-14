@@ -251,6 +251,7 @@ debug::
 	@echo "ARCH_FILTER = ${ARCH_FILTER}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
+	@echo "EPICS_MODULES = ${EPICS_MODULES}"
 
 # Create e.g. build-$(T_A) rules for each architecture, so that we can just do
 #   build: build-arch1 build-arch2
@@ -411,6 +412,9 @@ ifneq ($(MODULELIB),)
 LIBOBJS += $(addsuffix $(OBJ),$(basename ${VERSIONFILE}))
 endif # MODULELIB
 
+MODULE_RULES = ${CFGS:%=../%}
+MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
+
 debug::
 	@echo "===================== Pass 3: Build directory ====================="
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
@@ -434,6 +438,7 @@ debug::
 	@echo "TEMPLS = ${TEMPLS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "MODULE_LOCATION = ${MODULE_LOCATION}"
+	@echo "MODULE_RULES = ${MODULE_RULES}"
 
 build: MODULEINFOS
 build: ${MODULEDBD}
@@ -448,7 +453,10 @@ INSTALL_LOADABLE_SHRLIBS=
 # We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
 # mode. Including this causes all of the source files to be compiled!
 ifeq (,$(findstring debug,${MAKECMDGOALS}))
-include ${BASERULES}
+  include ${BASERULES}
+  ifneq ($(strip $(MODULE_RULES)),)
+    include $(MODULE_RULES)
+  endif
 endif
 
 # Fix incompatible release rules.
