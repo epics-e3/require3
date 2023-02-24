@@ -67,19 +67,21 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
 
-##---## In E3, We only use ONE EPICS_BASE in order to COMPILE A MODULE
-##---## 
-##---## In E3,  EPICS_LOCATION is the EPICS BASE  /testing/epics/base-MAJ.MIN.REV[.PATCH]
-EPICS_LOCATION =
-##---## In E3, we extract BASE_VERSION from EPICS_LOCATION
-E3_EPICS_VERSION:=$(patsubst base-%,%,$(notdir $(EPICS_LOCATION)))
-E3_SITEMODS_PATH =
-E3_SITEAPPS_PATH =
-BUILD_EPICS_VERSIONS = $(E3_EPICS_VERSION)
-##---## 
+##---## In E3/conda, We only use ONE EPICS_BASE in order to COMPILE A MODULE
+##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
+BUILD_EPICS_VERSIONS = $(EPICS_BASE_VERSION)
+MSI = ${EPICS_BASE_HOST_BIN}/msi
+CONFIG=${EPICS_BASE}/configure
+
+# Set LIBVERSION to dev if not set
+LIBVERSION := $(or $(LIBVERSION),dev)
+
+EPICSVERSION:=$(EPICS_BASE_VERSION)
 
 BUILDCLASSES = Linux
-EPICS_MODULES = 
+MODULE=
+PROJECT=
+PRJ := $(strip $(or ${MODULE},${PROJECT}))
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
@@ -87,14 +89,9 @@ MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${L
 # Override config here:
 -include ${MAKEHOME}/config
 
-# Use fancy glob to find latest versions.
-SHELL = /bin/bash -O extglob
-
 # Some shell commands:
 RMDIR = rm -rf
 LN = ln -s
-EXISTS = test -e
-NM = nm
 RM = rm -f
 CP = cp
 MKDIR = mkdir -p -m 775
@@ -107,7 +104,6 @@ VERSIONREGEX2 = [0-9]+\.[0-9]+\.[0-9]+\(-[0-9]+\)\?
 # Some generated file names:
 VERSIONFILE = ${PRJ}_version_${LIBVERSION}.c
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
-SUBFUNCFILE = ${PRJ}_subRecordFunctions.dbd
 DEPFILE = ${PRJ}.dep
 METAFILE = ${PRJ}_meta.yaml
 
@@ -126,6 +122,12 @@ default: build
 
 prebuild:
 
+clean:
+	$(RMDIR) O.*
+
+O.%:
+	+$(MKDIR) $@
+
 IGNOREFILES = .gitignore
 %: ${IGNOREFILES}
 ${IGNOREFILES}:
@@ -138,100 +140,28 @@ define uniq
   ${seen}
 endef
 
-ifndef EPICSVERSION
-## RUN 1
-# In source directory
-
-$(foreach v,$(sort $(basename ${BUILD_EPICS_VERSIONS})),$(eval EPICS_VERSIONS_$v=$(filter $v.%,${BUILD_EPICS_VERSIONS})))
-
-# Set LIBVERSION to dev if not set
-LIBVERSION := $(or $(LIBVERSION),dev)
-
-# Default module name is name of current directory.
-# But in case of "src" or "snl", use parent directory instead.
-# Avoid using environment variables for MODULE or PROJECT
-MODULE=
-PROJECT=
-PRJDIR:=$(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
-PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
-export PRJ
-
-OS_CLASS_LIST = $(BUILDCLASSES)
-export OS_CLASS_LIST
-
-export ARCH_FILTER
-export EXCLUDE_ARCHS
-export SUBS
-export TMPS
-
-clean:
-	$(RMDIR) O.*
-
-uninstall:
-	$(RMDIR) ${MODULE_LOCATION}
-ifneq ($(strip $(E3_MODULES_VENDOR_LIBS_LOCATION)),)
-	$(RMDIR) $(E3_MODULES_VENDOR_LIBS_LOCATION)
-endif
-
-debug::
-	@echo "===================== Pass 1 ====================="
-	@echo "BUILD_EPICS_VERSIONS = ${BUILD_EPICS_VERSIONS}"
-	@echo "BUILDCLASSES = ${BUILDCLASSES}"
-	@echo "LIBVERSION = ${LIBVERSION}"
-	@echo "ARCH_FILTER = ${ARCH_FILTER}"
-	@echo "PRJ = ${PRJ}"
-
-# Loop over all EPICS versions for second run.
-MAKEVERSION = ${MAKE} -f ${USERMAKEFILE} LIBVERSION=${LIBVERSION}
-
-build install debug db_internal:: ${IGNOREFILES}
-	@+for VERSION in ${BUILD_EPICS_VERSIONS}; do ${MAKEVERSION} EPICSVERSION=$$VERSION $@; done
-
-else # EPICSVERSION
-# EPICSVERSION defined 
-# Second or third run (see T_A branch below)
-
-CONFIG=${EPICS_BASE}/configure
-
-# There is no 64 bit support before 3.14.12 
-ifneq ($(filter %_64,$(EPICS_HOST_ARCH)),)
-ifeq ($(wildcard $(EPICS_BASE)/lib/$(EPICS_HOST_ARCH)),)
-EPICS_HOST_ARCH:=$(patsubst %_64,%,$(EPICS_HOST_ARCH))
-USR_CFLAGS_$(EPICS_HOST_ARCH) += -m32
-USR_CXXFLAGS_$(EPICS_HOST_ARCH) += -m32
-USR_LDFLAGS_$(EPICS_HOST_ARCH) += -m32
-endif
-endif
-
-
-${CONFIG}/CONFIG:
-	@echo "ERROR: EPICS release ${EPICSVERSION} not installed on this host."
-
 # Some TOP and EPICS_BASE tweeking necessary to work around release check in 3.14.10+.
 EB:=${EPICS_BASE}
 TOP:=${EPICS_BASE}
 -include ${CONFIG}/CONFIG
-BASE_CPPFLAGS=
 EPICS_BASE:=${EB}
-COMMON_DIR = O.${EPICSVERSION}_Common
+
+${CONFIG}/CONFIG:
+	@echo "ERROR: EPICS release ${EPICSVERSION} not installed on this host."
+
+# Variables that need to override data from ${CONFIG}/CONFIG
+BASE_CPPFLAGS=
 ifndef LEGACY_RSET
 USR_CPPFLAGS+=-DUSE_TYPED_RSET
 endif
+
 SHRLIB_VERSION=
-# do not link *everything* with readline (and curses)
-COMMANDLINE_LIBRARY =
-# Relax (3.13) cross compilers (default is STRICT) to allow sloppier syntax.
-CMPLR=STD
-GCC_STD = $(GCC)
-CXXCMPLR=ANSI
-G++_ANSI = $(G++) -ansi
 OBJ=.o
 
-O.%:
-	+$(MKDIR) $@
+COMMON_DIR = O.${EPICSVERSION}_Common
 	
 ifndef T_A
-## RUN 2
+## RUN 1
 # Target achitecture not yet defined
 # but EPICSVERSION is already known.
 # Still in source directory.
@@ -242,7 +172,6 @@ ifndef T_A
 
 AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.st *.stt *.gt))
 SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
-#SRCS += ${SOURCES_${EPICSVERSION}}
 export SRCS
 
 DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Record.dbd) $(strip $(filter-out %Include.dbd dbCommon.dbd %Record.dbd,$(wildcard *.dbd)) ${BPTS}))
@@ -285,8 +214,9 @@ SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
-CROSS_COMPILER_TARGET_ARCHS := ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
-CROSS_COMPILER_TARGET_ARCHS := $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),$(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${CROSS_COMPILER_TARGET_ARCHS}),${CROSS_COMPILER_TARGET_ARCHS})))
+ALL_ARCHS = ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
+BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),\
+        $(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${ALL_ARCHS}),${ALL_ARCHS})))
 
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
@@ -296,42 +226,52 @@ db_internal: $(COMMON_DIR)
 
 -include $(COMMON_DIR)/*.db.d
 
-define SUBS_EXPAND
-vpath $(notdir $2) $(dir $2)
-db_internal: $(COMMON_DIR)/$(notdir $(basename $2).db)
+VPATH += $(dir $(TMPS))
+VPATH += $(dir $(SUBS))
 
-$(COMMON_DIR)/$(notdir $(basename $2).db): $(notdir $2)
-	@printf "Inflating database ... %44s >>> %40s \n" "$$^" "$$@"
-	$(QUIET)$(MSI) -D $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$^ > $(COMMON_DIR)/$$(notdir $$(basename $2).db).d
-	$(QUIET)$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$^
-endef
+$(COMMON_DIR)/%.db: %.template
+	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
+	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
+	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^
 
-$(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
-$(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
+$(COMMON_DIR)/%.db: %.substitutions
+	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
+	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
+	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^
 
 install build debug::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
 debug::
-	@echo "===================== Pass 2: EPICSVERSION = $(EPICSVERSION) ====================="
+	@echo "===================== Pass 1 ====================="
+	@echo "BUILDCLASSES = ${BUILDCLASSES}"
+	@echo "LIBVERSION = ${LIBVERSION}"
+	@echo "PRJ = ${PRJ}"
 	@echo "EPICS_BASE = ${EPICS_BASE}"
-	@echo "CROSS_COMPILER_TARGET_ARCHS = ${CROSS_COMPILER_TARGET_ARCHS}"
+	@echo "BUILD_ARCHS = ${BUILD_ARCHS}"
+	@echo "ARCH_FILTER = ${ARCH_FILTER}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 
 # Loop over all architectures.
 install build debug:: $(COMMON_DIR)
 	@+failed_builds=0; \
-	for ARCH in ${CROSS_COMPILER_TARGET_ARCHS}; do \
+	for ARCH in ${BUILD_ARCHS}; do \
 	    umask 002; echo MAKING ARCH $$ARCH; ${MAKE} -f ${USERMAKEFILE} T_A=$$ARCH $@ || ((failed_builds++)); \
 	done; \
 	((failed_builds == 0))
 
+# This has to fit under .SECONDEXPANSION in order to catch TMPS and SUBS, which are typically defined
+# _after_ driver.makefile is included.
+.SECONDEXPANSION:
+db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.template,%.db,$$(TMPS))))
+
+db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%.db,$$(SUBS))))
 
 else # T_A
 
 ifeq ($(filter O.%,$(notdir ${CURDIR})),)
-## RUN 3
+## RUN 2
 # Target architecture defined.
 # Still in source directory, third run.
 
@@ -396,7 +336,7 @@ ${PRJ}_GIT_STATUS := [ $(shell git status --porcelain | grep -v "\.Makefile" | s
 export ${PRJ}_GIT_STATUS
 
 else # in O.*
-## RUN 4
+## RUN 3
 # In O.* directory.
 
 # Add macros like USR_CFLAGS_Linux.
@@ -760,41 +700,3 @@ endif
 
 endif # In O.* directory
 endif # T_A defined
-endif # EPICSVERSION defined
-
-
-
-
-##
-## Tuesday, January 30 14:03:35 CET 2018  : Default snc path (SNC) was changed in order to use E3_SITELIBS_PATH,
-##                                          at the same time, we also add E3_SITEMODS_PATH, E3_SITEAPPS_PATH also.
-##                                          They should be configured in E3/CONFIG_EXPORT and E3/CONFIG_E3_MAKEFILE.
-##                                          We also introduce E3_SEQUENCER_NAME also.
-##
-## Wednesday, January 31 15:18:33 CET 2018: Add Debug messages in SNC  
-##
-## Saturday, February 10 22:42:44 CET 2018: E3_SEQUENCER_VERSION was introduced. If not set, fall back to
-##                                          *.*.* versions number, and SNC will be selected via lastword
-##                                          in the original driver.makefile way.
-##                                          Default E3_SEQUENCER_NAME as sequencer, if it is not defined in
-##                                          CONFIG_MODULE in each module
-##
-## Tuesday, May  1 20:27:31 CEST 2018       : Generate a dependency file with module_name x.x.x instead of x.x
-##                                            add the exclusion for include for require.dep
-##
-## Sunday, May  6 22:10:24 CEST 2018        : add %.{hh,hpp,hxx} headers into vpath in order to install them properly
-## 
-## Tuesday, September 18 22:57:17 CEST 2018 : add *.iocsh in SCR
-##
-## Thursday, November  8 11:01:28 CET 2018  : Add    ADD_SITEMODS_INCLUDES and ADD_SITEAPPS_INCLUDES instead of ADD_FOREIGN_INCLUDES
-##                                            Remove the E3_SEQUENCER_*, use sequencer_VERSION instaed.
-##
-## Thursday, March  7 00:11:50 CET 2019     : Add E3_SITEMODS_PATH, E3_SITEAPPS_PATH in the dep file generation.
-##
-## Monday, September  9 15:25:53 CEST 2019  : Revert E3_SITEMODS_PATH from E3_SITELIBS_PATH in the snc path
-##
-## Tuesday, June 30 2020                    : Combine NFS E3 driver.makefile with conda version
-##
-## Friday, July 3 2020                      : Force all module names to be lowercase, to allow consistency between conda/nfs startup scripts.
-##
-## $(DATE)                                  : Removed the V3-specific code. Added metadata file.
