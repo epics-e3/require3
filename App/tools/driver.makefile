@@ -84,10 +84,6 @@ EPICS_MODULES =
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
 
-DOCUEXT = txt html htm doc pdf ps tex dvi gif jpg png
-DOCUEXT += TXT HTML HTM DOC PDF PS TEX DVI GIF JPG PNG
-DOCUEXT += template db dbt subs subst substitutions script
-
 # Override config here:
 -include ${MAKEHOME}/config
 
@@ -165,11 +161,10 @@ export OS_CLASS_LIST
 
 export ARCH_FILTER
 export EXCLUDE_ARCHS
-export MAKE_FIRST
 export SUBS
 export TMPS
 
-clean::
+clean:
 	$(RMDIR) O.*
 
 uninstall:
@@ -178,37 +173,11 @@ ifneq ($(strip $(E3_MODULES_VENDOR_LIBS_LOCATION)),)
 	$(RMDIR) $(E3_MODULES_VENDOR_LIBS_LOCATION)
 endif
 
-help:
-	@echo "usage:"
-	@for target in '' build '<EPICS version>' \
-	install 'install.<EPICS version>' \
-	uninstall 'uninstall.<EPICS version>' \
-        installui uninstallui \
-	clean help version; \
-	do echo "  make $$target"; \
-	done
-	@echo "Makefile variables:(defaults) [comment]"
-	@echo "  MODULE           (${PRJ}) [from current directory name]"
-	@echo "  PROJECT          [older name for MODULE]"
-	@echo "  SOURCES          (*.c *.cc *.cpp *.st *.stt *.gt)"
-	@echo "  DBDS             (*.dbd)"
-	@echo "  HEADERS          () [only those to install]"
-	@echo "  TEMPLATES        (*.template *.db *.subs) [db files]"
-	@echo "  SCRIPTS          (*.cmd) [startup and other scripts]"
-	@echo "  BINS             () [programs to install]"
-	@echo "  QT               (qt/*) [QT user interfaces to install]"
-	@echo "  EXCLUDE_VERSIONS () [versions not to build, e.g. 3.14]"
-	@echo "  EXCLUDE_ARCHS    () [target architectures not to build]"
-	@echo "  ARCH_FILTER      () [target architectures to build, e.g. SL6%]"
-	@echo "  BUILDCLASSES     (Linux)"
-	@echo "  <module>_VERSION () [build against specific version of other module]"
-
 debug::
 	@echo "===================== Pass 1 ====================="
 	@echo "BUILD_EPICS_VERSIONS = ${BUILD_EPICS_VERSIONS}"
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
 	@echo "LIBVERSION = ${LIBVERSION}"
-	@echo "VERSIONCHECKFILES = ${VERSIONCHECKFILES}"
 	@echo "ARCH_FILTER = ${ARCH_FILTER}"
 	@echo "PRJ = ${PRJ}"
 
@@ -217,52 +186,6 @@ MAKEVERSION = ${MAKE} -f ${USERMAKEFILE} LIBVERSION=${LIBVERSION}
 
 build install debug db_internal:: ${IGNOREFILES}
 	@+for VERSION in ${BUILD_EPICS_VERSIONS}; do ${MAKEVERSION} EPICSVERSION=$$VERSION $@; done
-
-define VERSIONRULES
-$(1): ${IGNOREFILES}
-	@+for VERSION in $${EPICS_VERSIONS_$(1)}; do $${MAKEVERSION} EPICSVERSION=$$$$VERSION build; done
-
-%.$(1): ${IGNOREFILES}
-	@+for VERSION in $${EPICS_VERSIONS_$(1)}; do $${MAKEVERSION} EPICSVERSION=$$$$VERSION $${@:%.$(1)=%}; done
-endef
-$(foreach v,$(sort $(basename ${INSTALLED_EPICS_VERSIONS})),$(eval $(call VERSIONRULES,$v)))
-
-# Handle cases where user requests one specific version:
-# make <action>.<version> instead of make <action> or
-# make <version> instead of make
-# EPICS version must be installed but need not be in EPICS_VERSIONS
-${INSTALLED_EPICS_VERSIONS}: ${IGNOREFILES}
-	+${MAKEVERSION} EPICSVERSION=$@ build
-
-${INSTALLED_EPICS_VERSIONS:%=build.%}: ${IGNOREFILES}
-	+${MAKEVERSION} EPICSVERSION=${@:build.%=%} build
-
-${INSTALLED_EPICS_VERSIONS:%=install.%}: ${IGNOREFILES}
-	+${MAKEVERSION} EPICSVERSION=${@:install.%=%} install
-
-${INSTALLED_EPICS_VERSIONS:%=debug.%}:
-	+${MAKEVERSION} EPICSVERSION=${@:debug.%=%} debug
-
-# Install user interfaces to global location.
-# Keep a list of installed files in a hidden file for uninstall.
-define INSTALL_UI_RULE
-INSTALL_$(1)=$(2)
-$(1)_FILES=$$(wildcard $$(or $${$(1)},$(3)))
-installui: install$(1)
-install$(1): uninstall$(1)
-	@$$(if $${$(1)_FILES},echo "Installing $(1) user interfaces";$$(MKDIR) $${INSTALL_$(1)})
-	@$$(if $${$(1)_FILES},$(CP) -v -t $${INSTALL_$(1)} $${$(1)_FILES:%='%'})
-	@$$(if $${$(1)_FILES},echo "$$(patsubst %,'%',$$(notdir $${$(1)_FILES}))" > $${INSTALL_$(1)}/.$${PRJ}-$$(LIBVERSION)-$(1).txt)
-
-uninstallui: uninstall$(1)
-uninstall$(1):
-	@echo "Removing old $(1) user interfaces"
-	@$$(RM) -v $$(addprefix $${INSTALL_$(1)}/,$$(sort $$(patsubst %,'%',$$(notdir $${$(1)_FILES})) $$(shell cat $${INSTALL_$(1)}/.$${PRJ}-*.txt 2>/dev/null)) .$${PRJ}-*-$(1).txt)
-endef
-
-# You can add more UI rules following this pattern:
-#$(eval $(call INSTALL_UI_RULE,VARIABLE,installdir,sourcedefaultlocation))
-$(eval $(call INSTALL_UI_RULE,QT,${CONFIGBASE}/qt,qt/*))
 
 else # EPICSVERSION
 # EPICSVERSION defined 
@@ -386,12 +309,8 @@ endef
 $(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
 $(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
 
-
-install build debug:: $(MAKE_FIRST)
+install build debug::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
-
-uninstall::
-	$(RMDIR) ${INSTALL_REV}
 
 debug::
 	@echo "===================== Pass 2: EPICSVERSION = $(EPICSVERSION) ====================="
