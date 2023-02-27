@@ -507,6 +507,7 @@ INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
 INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
+INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
 ifneq ($(strip $(HDR_SUBDIRS)),)
   INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir $(filter-out $(addsuffix /%,$(HDR_SUBDIRS)),${HDRS})))
 else
