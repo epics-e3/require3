@@ -15,20 +15,16 @@
 # Therefore, it calls itself recursively.
 #
 # - First run: (see comment ## RUN 1)
-#   Find out what to build
-#   Iterate over all installed EPICS versions
+#   Find the sources etc.
+#   Include EPICS configuration files for ${EPICSVERSION}, determined by ${EPICS_BASE}
+#   Iterate over all target architectures (${T_A}) defined.
 #
 # - Second run: (see comment ## RUN 2)
-#   Find the sources etc.
-#   Include EPICS configuration files for this ${EPICSVERSION}
-#   Iterate over all target architectures (${T_A}) defined for this version
-#
-# - Third run: (see comment ## RUN 3)
 #   Check which target architectures to build.
 #   Create O.${EPICSVERSION}_${T_A} subdirectories if necessary.
 #   Change to O.${EPICSVERSION}_${T_A} subdirectories.
 #
-# - Fourth run: (see comment ## RUN 4)
+# - Third run: (see comment ## RUN 3)
 #   Compile everything.
 #
 # Module names are derived from the directory name (unless overwritten
@@ -54,12 +50,8 @@
 # HEADERS
 #    Header files to install (e.g. to be included by other drivers)
 #    If not defined, all headers are for local use only.
-# EXCLUDE_VERSIONS
-#    EPICS versions to skip. Usually 3.13 or 3.14
 # ARCH_FILTER
 #    Sub set of architectures to build for, e.g. %-ppc604
-# prebuild
-# Added a `prebuild` target that runs before build so module developers can run specific code before the build process.
 
 # Get the location of this file.
 MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
@@ -67,27 +59,32 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
 
-##---## In E3/conda, We only use ONE EPICS_BASE in order to COMPILE A MODULE
+##---## In conda, We only use one version of EPICS base when compiling modules.
 ##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
-BUILD_EPICS_VERSIONS = $(EPICS_BASE_VERSION)
 MSI = ${EPICS_BASE_HOST_BIN}/msi
 CONFIG=${EPICS_BASE}/configure
 
 # Set LIBVERSION to dev if not set
 LIBVERSION := $(or $(LIBVERSION),dev)
-
 EPICSVERSION:=$(EPICS_BASE_VERSION)
 
 BUILDCLASSES = Linux
+OS_CLASS_LIST = $(BUILDCLASSES)
+
 MODULE=
 PROJECT=
-PRJ := $(strip $(or ${MODULE},${PROJECT}))
+PRJDIR := $(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
+PRJDIR := $(shell echo $(PRJDIR) | tr '[:upper:]' '[:lower:]')
+PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
 
 # Override config here:
 -include ${MAKEHOME}/config
+
+# Use fancy glob to find latest versions.
+SHELL = /bin/bash -O extglob
 
 # Some shell commands:
 RMDIR = rm -rf
@@ -128,6 +125,9 @@ clean:
 O.%:
 	+$(MKDIR) $@
 
+uninstall:
+	$(RMDIR) ${MODULE_LOCATION}
+
 IGNOREFILES = .gitignore
 %: ${IGNOREFILES}
 ${IGNOREFILES}:
@@ -147,28 +147,28 @@ TOP:=${EPICS_BASE}
 EPICS_BASE:=${EB}
 
 ${CONFIG}/CONFIG:
-	@echo "ERROR: EPICS release ${EPICSVERSION} not installed on this host."
+	$(error EPICS release ${EPICSVERSION} not installed on this host.)
 
 # Variables that need to override data from ${CONFIG}/CONFIG
 BASE_CPPFLAGS=
+
 ifndef LEGACY_RSET
 USR_CPPFLAGS+=-DUSE_TYPED_RSET
 endif
 
 SHRLIB_VERSION=
+
 OBJ=.o
 
 COMMON_DIR = O.${EPICSVERSION}_Common
 	
 ifndef T_A
 ## RUN 1
-# Target achitecture not yet defined
-# but EPICSVERSION is already known.
+# Target achitecture not yet defined, but EPICSVERSION is already known.
 # Still in source directory.
 
-# Look for sources etc.
-# Select target architectures to build.
-# Export everything for third run:
+# Look for sources etc., and select target architectures to build.
+# Export everything for second run:
 
 AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.st *.stt *.gt))
 SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
@@ -202,7 +202,6 @@ export HDRS
 
 HDR_SUBDIRS = $(KEEP_HEADER_SUBDIRS)
 export HDR_SUBDIRS
-
 
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
 TEMPLS += ${TEMPLATES_${EPICSVERSION}}
@@ -239,6 +238,7 @@ $(COMMON_DIR)/%.db: %.substitutions
 	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
 	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^
 
+
 install build debug::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
@@ -253,27 +253,37 @@ debug::
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 
-# Loop over all architectures.
-install build debug:: $(COMMON_DIR)
-	@+failed_builds=0; \
-	for ARCH in ${BUILD_ARCHS}; do \
-	    umask 002; echo MAKING ARCH $$ARCH; ${MAKE} -f ${USERMAKEFILE} T_A=$$ARCH $@ || ((failed_builds++)); \
-	done; \
-	((failed_builds == 0))
+# Create e.g. build-$(T_A) rules for each architecture, so that we can just do
+#   build: build-arch1 build-arch2
+define target_rule
+$1-%: | $(COMMON_DIR)
+	$${MAKE} -f $${USERMAKEFILE} T_A=$$* $1
+endef
+$(foreach target,install build debug,$(eval $(call target_rule,$(target))))
+
+.SECONDEXPANSION:
 
 # This has to fit under .SECONDEXPANSION in order to catch TMPS and SUBS, which are typically defined
 # _after_ driver.makefile is included.
-.SECONDEXPANSION:
 db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.template,%.db,$$(TMPS))))
 
 db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%.db,$$(SUBS))))
+
+# This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
+# and ARCH_FILTER, which are defined _after_ driver.makefile.
+$(foreach target,install build debug,$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
 
 else # T_A
 
 ifeq ($(filter O.%,$(notdir ${CURDIR})),)
 ## RUN 2
 # Target architecture defined.
-# Still in source directory, third run.
+# Still in source directory, second run.
+
+# Add sources for specific epics types or architectures.
+ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
+VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
+export VAR_EXTENSIONS
 
 ifeq ($(filter ${OS_CLASS},${OS_CLASS_LIST}),)
 
@@ -304,18 +314,10 @@ install:: build
         $(RMDIR) ${MODULE_LOCATION}/lib/${T_A})
 endif
 
-install build debug:: O.${EPICSVERSION}_Common O.${EPICSVERSION}_${T_A}
+install build debug:: O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
 endif
-
-# Add sources for specific epics types or architectures.
-ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
-VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
-export VAR_EXTENSIONS
-
-REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
-export REQ
 
 SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
 USR_LIBOBJS += ${LIBOBJS} $(foreach x,${VAR_EXTENSIONS},${LIBOBJS_$x})
@@ -337,7 +339,7 @@ export ${PRJ}_GIT_STATUS
 
 else # in O.*
 ## RUN 3
-# In O.* directory.
+# In build directory.
 
 # Add macros like USR_CFLAGS_Linux.
 EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
@@ -348,22 +350,6 @@ COMMON_DIR = ../O.${EPICSVERSION}_Common
 
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
-EPICS_INCLUDES =
-
-# Add include directory of foreign modules to include file search path.
-# Default is to use latest version of any module.
-# The user can overwrite the version by defining <module>_VERSION=<version>.
-# For each foreign module look for include/ for the EPICS base version in use.
-# The user can overwrite (or add) by defining <module>_INC=<relative/path> (not recommended!).
-# Only really existing directories are added to the search path.
-
-# The tricky part is to sort versions numerically. Make can't but ls -v can.
-# Only accept numerical versions (needs extended glob).
-# define ADD_FOREIGN_INCLUDES
-# $(eval $(1)_VERSION := $(patsubst ${EPICS_MODULES}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${EPICS_MODULES}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
-# INSTALL_INCLUDES += $$(patsubst %,-I${EPICS_MODULES}/$(1)/%/include,$$($(1)_VERSION))
-# endef
-# $(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(call ADD_FOREIGN_INCLUDES,$m)))
 
 define ADD_SITEMODS_INCLUDES
 $(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
@@ -387,8 +373,8 @@ LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(f
 
 MODULELIB = $(if ${LIBRARY_OBJS},${LIB_PREFIX}${PRJ}${SHRLIB_SUFFIX},)
 
-LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %(LIB_SUFFIX),$(sort ${SRCS})))))
-LIBOBJS += $(filter /%.$(OBJ) /%(LIB_SUFFIX),${SRCS})
+LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
+LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
 LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
 LIBS = -L ${EPICS_BASE_LIB} ${BASELIBS:%=-l%}
 LINK.cpp += ${LIBS}
@@ -398,27 +384,8 @@ PRODUCT_OBJS = ${LIBRARY_OBJS}
 LOADABLE_LIBRARY=$(if ${LIBRARY_OBJS},${PRJ},)
 
 # Handle registry stuff automagically if we have a dbd file.
-# See ${REGISTRYFILE} and ${EXPORTFILE} rules below.
+# See ${REGISTRYFILE} rule below.
 LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})))
-
-
-# For backward compatibility:
-# Provide a global symbol for every version with the same
-# major and equal or smaller minor version number.
-# Other code using this will look for one of those symbols.
-# Add an undefined symbol for the version of every used driver.
-# This is done with the #define in the used headers (see below).
-MAJOR_MINOR_PATCH=$(subst ., ,${LIBVERSION})
-MAJOR=$(word 1,${MAJOR_MINOR_PATCH})
-MINOR=$(word 2,${MAJOR_MINOR_PATCH})
-PATCH=$(word 3,${MAJOR_MINOR_PATCH})
-ifneq (${MINOR},)
-ALLMINORS := $(shell for ((i=0;i<=${MINOR};i++));do echo $$i;done)
-ifeq (${OS_CLASS}, Linux)
-PROVIDES = ${ALLMINORS:%=-Wl,--defsym,${PRJ}Lib_${MAJOR}.%=0}
-endif # Linux
-endif # MINOR
-LDFLAGS += ${PROVIDES} ${USR_LDFLAGS_${T_A}}
 
 # Create and include dependency files.
 HDEPENDS = 
@@ -437,8 +404,6 @@ USR_DBDFLAGS += $(DBDEXPANDPATH)
 
 # Search all directories where sources or headers come from, plus existing os dependend subdirectories.
 SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out /%,$(dir ${SRCS:%=../%} ${HDRS:%=../%}))), $d $(addprefix $d/, os/${OS_CLASS} $(POSIX_$(POSIX)) os/default))))
-
-
 
 # Create dbd file for snl code.
 DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
@@ -463,6 +428,7 @@ LIBOBJS += $(addsuffix $(OBJ),$(basename ${VERSIONFILE}))
 endif # MODULELIB
 
 debug::
+	@echo "===================== Pass 3: Build directory ====================="
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
 	@echo "OS_CLASS = ${OS_CLASS}"
 	@echo "MODULEDBD = ${MODULEDBD}"
@@ -492,7 +458,12 @@ build: ${DEPFILE}
 # Include default EPICS Makefiles (version dependent).
 # Avoid library installation when doing 'make build'.
 INSTALL_LOADABLE_SHRLIBS=
+
+# We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
+# mode. Including this causes all of the source files to be compiled!
+ifeq (,$(findstring debug,${MAKECMDGOALS}))
 include ${BASERULES}
+endif
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
@@ -617,59 +588,35 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 
 # Create SNL code from st/stt file.
 # Important to have %.o: %.st and %.o: %.stt rule before %.o: %.c rule!
-# Preprocess in any case because docu and implemented EPICS rules mismatch here.
 
 CPPSNCFLAGS1  = $(filter -D%, ${OP_SYS_CFLAGS})
 CPPSNCFLAGS1 += $(filter-out ${OP_SYS_INCLUDE_CPPFLAGS} ,${CPPFLAGS}) ${CPPSNCFLAGS}
 CPPSNCFLAGS1 += -I $(dir $(SNC))../../include
 SNCFLAGS += -r
 
+%.i: %.st
+	@echo ">> Preprocessing $(<F)"
+	$(CPP) ${CPPSNCFLAGS1} $< > $(*F).i
 
-# 1) ESS uses 7.0.3.1 as the minimal EPICS BASE, so we don't need to check 3.13,
-# 2) We also need -c option in $(COMPILE.c) in order to compile generated source file properly
-# 3) SNC (2.1.21) should use -o, because without them, snc returns $(*F).i.c instead of $(*F).c
-#    With the EPICS standard building rule, -o and mv are used.
-# 
-# Tuesday, November 28 15:59:37 CET 2017, Jeong Han Lee
-
-
-%$(OBJ) %_snl.dbd: %.st
+%.c: %.i
 	@echo ""
 	@echo ">> SNC building process .... "
 	@echo ">> SNC                  : $(SNC)"
 	@echo ">> SNC_VERSION          : $(sequencer_VERSION)"
-	@echo ">> Preprocessing $(<F)"
-	$(RM) $(*F).i
-	$(CPP) ${CPPSNCFLAGS1} $< > $(*F).i
-	@echo ">> Converting $(*F).i to $(*F).c"
-	$(RM) $@
 	@echo ">> SNC is defined as $(SNC)"
-	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $(*F).i -o $(*F).c.tmp
-	@mv $(*F).c.tmp $(*F).c
-	@echo ">> Compiling $(*F).c"
-	$(RM) $@
-	$(COMPILE.c) -c ${SNC_CFLAGS} $(*F).c 
+	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $(*F).i -o $(*F).c
+
+%_snl.dbd: %.c
 	@echo ">> Building $(*F)_snl.dbd"
 	awk -F [\(\)]  '/epicsExportRegistrar/ { print "registrar (" $$2 ")"}' $(*F).c > $(*F)_snl.dbd
 
-%$(OBJ) %_snl.dbd: %.stt
+%.c: %.stt
 	@echo ""
 	@echo ">> SNC building process .... "
 	@echo ">> SNC                  : $(SNC)"
 	@echo ">> SNC_VERSION          : $(sequencer_VERSION)"
-	@echo ">> Preprocessing $(<F)"
-	$(RM) $(*F).i
-	$(CPP) ${CPPSNCFLAGS1} $< > $(*F).i
-	@echo ">> Converting $(*F).i to $(*F).c"
-	$(RM) $@
 	@echo ">> SNC is defined as $(SNC)"
-	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $(*F).i -o $(*F).c.tmp
-	@mv $(*F).c.tmp $(*F).c
-	@echo ">> Compiling $(*F).c"
-	$(RM) $@
-	$(COMPILE.c) -c ${SNC_CFLAGS} $(*F).c
-	@echo "Building $(*F)_snl.dbd"
-	awk -F [\(\)]  '/epicsExportRegistrar/ { print "registrar(" $$2 ")"}' $(*F).c > $(*F)_snl.dbd
+	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $< -o $(*F).c
 
 
 # Create GPIB code from *.gt file.
@@ -683,7 +630,7 @@ ${VERSIONFILE}:
 
 # Create file to fill registry from dbd file.
 ${REGISTRYFILE}: ${MODULEDBD}
-	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) > $@
+	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
 
 # Create dependency file for recursive requires.
 .PHONY: ${DEPFILE}
