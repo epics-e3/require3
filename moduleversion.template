@@ -1,12 +1,13 @@
-record (waveform, "$(REQUIRE_IOC):MODULES")
+record(waveform, "$(REQUIRE_IOC):Modules")
 {
-    field (DESC, "List of loaded modules")
-    field (FTVL, "STRING")
-    field (NELM, "$(MODULE_COUNT)")
-    field (PINI, "YES")
+    field(DESC, "Names of loaded modules")
+    field(FTVL, "STRING")
+    field(NELM, "$(MODULE_COUNT)")
+    field(PINI, "YES")
+    field(DISP, "1")
 }
 
-record (waveform, "$(REQUIRE_IOC):VERSIONS")
+record (waveform, "$(REQUIRE_IOC):Versions")
 {
     field (DESC, "Versions of loaded modules")
     field (FTVL, "STRING")
@@ -14,17 +15,28 @@ record (waveform, "$(REQUIRE_IOC):VERSIONS")
     field (PINI, "YES")
 }
 
-record (waveform, "$(REQUIRE_IOC):MOD_VER")
+record(waveform, "$(REQUIRE_IOC):ModuleVersions")
 {
-    field (DESC, "List of loaded modules")
-    field (FTVL, "CHAR")
-    field (NELM, "$(BUFFER_SIZE)")
-    field (PINI, "YES")
+    field(DESC, "Name and version of the loaded modules")
+    field(FTVL, "CHAR")
+    field(NELM, "$(BUFFER_SIZE)")
+    field(PINI, "YES")
+    field(DISP, "1")
 }
 
-record (stringin, "$(REQUIRE_IOC):$(MODULE)_VER")
+record(stringin, "$(REQUIRE_IOC):$(MODULE)Version")
 {
-    field (DESC, "Module $(MODULE) version")
-    field (VAL,  "$(VERSION)")
-    field (PINI, "YES")
+    field(DESC, "Module $(MODULE) version")
+    field(VAL,  "$(VERSION)")
+    field(PINI, "YES")
+    field(DISP, "1")
+}
+
+record(stringin,"$(REQUIRE_IOC):BaseVersion")
+{
+    field(DESC, "EPICS Base version")
+    field(DTYP, "getenv")
+    field(INP,  "@EPICS_VERSION_FULL")
+    field(PINI, "YES")
+    field(DISP, "1")
 }

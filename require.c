@@ -447,8 +447,11 @@ static void fillModuleListRecord(initHookState state)
         if (requireDebug)
             printf("require: fillModuleListRecord\n");
 
-        have_modules = (getRecordHandle(":MODULES", DBF_STRING, moduleCount, &modules) == 0);
-        have_versions = (getRecordHandle(":VERSIONS", DBF_STRING, moduleCount, &versions) == 0);
+        have_modules  = (getRecordHandle(":Modules",  DBF_STRING, moduleCount, &modules) == 0);
+        have_versions = (getRecordHandle(":Versions", DBF_STRING, moduleCount, &versions) == 0);
+        
+        moduleListBufferSize += moduleCount * maxModuleNameLength;
+        have_modver   = (getRecordHandle(":ModuleVersions",  DBF_CHAR, moduleListBufferSize, &modver) == 0);
 
         moduleListBufferSize += moduleCount * maxModuleNameLength;
         have_modver = (getRecordHandle(":MOD_VER", DBF_CHAR, moduleListBufferSize, &modver) == 0);
