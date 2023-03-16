@@ -415,7 +415,7 @@ DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 
 # snc location
 # In a conda environment we have only one version so this could be simplify
-SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/seq/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
+SNC=$(lastword $(dir ${EPICS_BASE})seq/bin/$(EPICS_HOST_ARCH)/snc $(shell ls -dv ${EPICS_MODULES}/sequencer/$(or $(seq_VERSION),+([0-9]).+([0-9]).+([0-9]))/bin/${EPICS_HOST_ARCH}/snc 2>/dev/null))
 
 
 
