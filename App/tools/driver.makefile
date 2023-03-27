@@ -342,11 +342,13 @@ COMMON_DIR = ../O.${EPICSVERSION}_Common
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
 
-define ADD_SITEMODS_INCLUDES
-$(eval $(1)_VERSION := $(patsubst ${E3_SITEMODS_PATH}/$(1)/%/include,%,$(firstword $(shell ls -dvr ${E3_SITEMODS_PATH}/$(1)/$(VERSIONGLOB)/include 2>/dev/null))))
-INSTALL_INCLUDES += $$(patsubst %,-I${E3_SITEMODS_PATH}/$(1)/%/include,$$($(1)_VERSION))
+
+$(foreach m, $(wildcard ${EPICS_MODULES}/*/*),$(eval $(patsubst $(EPICS_MODULES)/%/,%,$(dir $m))_VERSION := $(notdir $m)))
+
+define ADD_INCLUDES_TEMPLATE
+INSTALL_INCLUDES += $$(patsubst %,-I${2}/${1}/%/include,$${${1}_VERSION})
 endef
-$(eval $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${E3_SITEMODS_PATH}/*))),$(call ADD_SITEMODS_INCLUDES,$m)))
+$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*)))   ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(EPICS_MODULES))))
 
 BASERULES=${EPICS_BASE}/configure/RULES
 
