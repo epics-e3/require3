@@ -73,9 +73,7 @@ OS_CLASS_LIST = $(BUILDCLASSES)
 
 MODULE=
 PROJECT=
-PRJDIR := $(subst -,_,$(subst .,_,$(notdir $(patsubst %Lib,%,$(patsubst %/snl,%,$(patsubst %/src,%,${PWD}))))))
-PRJDIR := $(shell echo $(PRJDIR) | tr '[:upper:]' '[:lower:]')
-PRJ = $(strip $(or ${MODULE},${PROJECT},${PRJDIR}))
+PRJ := $(strip $(or ${MODULE},${PROJECT}))
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
