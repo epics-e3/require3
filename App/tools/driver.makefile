@@ -304,16 +304,8 @@ install build:
 
 else
 
-ifeq ($(shell echo "${LIBVERSION}" | grep -v -E "^[0-9]+\.[0-9]+\.[0-9]+\$$"),)
 install:: build
-	@test ! -d ${MODULE_LOCATION}/lib/${T_A} || \
-        (echo -e "Error: ${MODULE_LOCATION}/lib/${T_A} already exists.\nNote: If you really want to overwrite then uninstall first."; false)
-else
-install:: build
-	@test ! -d ${MODULE_LOCATION}/lib/${T_A} || \
-        (echo -e "Warning: Re-installing ${MODULE_LOCATION}/lib/${T_A}"; \
-        $(RMDIR) ${MODULE_LOCATION}/lib/${T_A})
-endif
+	$(if $(wildcard ${MODULE_LOCATION}/lib/${T_A}),$(error ${MODULE_LOCATION}/lib/${T_A} already exists. If you really want to overwrite then uninstall first.))
 
 install build debug:: O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
