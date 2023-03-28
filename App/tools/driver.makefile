@@ -40,7 +40,7 @@
 #    Name of the built module.
 #    If not defined, it is derived from the directory name.
 # SOURCES
-#    All source files to compile. 
+#    All source files to compile.
 #    If not defined, default is all *.c *.cc *.cpp *.st *.stt in
 #    the source directory (where you run make).
 #    If you define this, you must list ALL sources.
@@ -160,7 +160,7 @@ COMMANDLINE_LIBRARY =
 OBJ=.o
 
 COMMON_DIR = O.${EPICSVERSION}_Common
-	
+
 ifndef T_A
 ## RUN 1
 # Target achitecture not yet defined, but EPICSVERSION is already known.
@@ -383,7 +383,7 @@ LOADABLE_LIBRARY=$(if ${LIBRARY_OBJS},${PRJ},)
 LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})))
 
 # Create and include dependency files.
-HDEPENDS = 
+HDEPENDS =
 HDEPENDS_METHOD = COMP
 HDEPENDS_COMPFLAGS = -c
 MKMF = DO_NOT_USE_MKMF
@@ -432,9 +432,9 @@ debug::
 	@echo "BPTS = ${BPTS}"
 	@echo "DBDINSTALLS = ${DBDINSTALLS}"
 	@echo "HDRS = ${HDRS}"
-	@echo "SOURCES = ${SOURCES}" 
-	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}" 
-	@echo "SRCS = ${SRCS}" 
+	@echo "SOURCES = ${SOURCES}"
+	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}"
+	@echo "SRCS = ${SRCS}"
 	@echo "REQ = ${REQ}"
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
@@ -462,7 +462,7 @@ endif
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
-RELEASE_INCLUDES = -I${EPICS_BASE}/include 
+RELEASE_INCLUDES = -I${EPICS_BASE}/include
 # For EPICS 3.15+:
 RELEASE_INCLUDES += -I${EPICS_BASE}/include/compiler/${CMPLR_CLASS}
 RELEASE_INCLUDES += -I${EPICS_BASE}/include/os/${OS_CLASS}

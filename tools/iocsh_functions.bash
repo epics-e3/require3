@@ -47,7 +47,7 @@ function checkIfVar
         # exist
     fi
     echo "${result}"
-}
+};
 
 
 
@@ -421,7 +421,7 @@ function set_e3_cmd_top(){
   local file_path=""
   local file_top=""
   local file_name=""
-    
+
   if [ -f "$file" ]; then
 	  file_path="$(readlink -e "$file")"
 	  file_top="${file_path%/*}"
