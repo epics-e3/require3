@@ -85,9 +85,6 @@ PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
 # Override config here:
 -include ${MAKEHOME}/config
 
-# Use fancy glob to find latest versions.
-SHELL = /bin/bash -O extglob
-
 # Some shell commands:
 RMDIR = rm -rf
 LN = ln -s
