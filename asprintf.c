@@ -20,7 +20,17 @@ int vasprintf(char** pbuffer, const char* format, va_list ap)
     #define ap2 ap
 #endif
 
-#if defined(_WIN32)
+#if defined(vxWorks)
+    {
+        FILE* f;
+        /* print to null device to get required buffer length */
+        if ((f = fopen("/null","w")) != NULL)
+        {
+            len = vfprintf(f, format, ap2);
+            fclose(f);
+        }
+    }
+#elif defined(_WIN32)
     len = _vscprintf(format, ap2);
 #else
     len = vsnprintf(NULL, 0, format, ap2);

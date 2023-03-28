@@ -29,9 +29,7 @@
 #
 # Module names are derived from the directory name (unless overwritten
 # with the MODULE variable in your Makefile).
-# A LIBVERSION number is generated from the latest CVS or GIT tag of the sources.
-# If any file is not up-to-date in CVS/GIT, not tagged, or tagged differently from the
-# other files, the version is a test version and labelled with the user name.
+# LIBVERSION is set to "dev" if not overwritten.
 # The library is installed to ${EPICS_MODULES}/${MODULE}/${LIBVERSION}/lib/${T_A}/.
 # A module can be loaded with  require "<module>" [,"<version>"] [,"<variable>=<substitution>, ..."]
 #
@@ -77,6 +75,12 @@ PRJ := $(strip $(or ${MODULE},${PROJECT}))
 
 MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
 
+# $PREFIX can be used to refer to dependencies installed by conda
+# (like -I$(PREFIX)/include/libxml2)
+# Set PREFIX to
+# - PREFIX if set (when using conda-build)
+# - CONDA_PREFIX otherwise (when compiling locally in a conda env)
+PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
 
 # Override config here:
 -include ${MAKEHOME}/config
@@ -91,16 +95,10 @@ RM = rm -f
 CP = cp
 MKDIR = mkdir -p -m 775
 
-# This is to allow for build numbers in recognized versions. First regex is for grep, second for sed.
-VERSIONGLOB = +([0-9]).+([0-9]).+([0-9])?(-+([0-9]))
-VERSIONREGEX1 = [0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?
-VERSIONREGEX2 = [0-9]+\.[0-9]+\.[0-9]+\(-[0-9]+\)\?
-
 # Some generated file names:
 VERSIONFILE = ${PRJ}_version_${LIBVERSION}.c
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
 DEPFILE = ${PRJ}.dep
-METAFILE = ${PRJ}_meta.yaml
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -321,15 +319,6 @@ export BINS
 
 export CFG
 
-# These variables are written into a .yaml file in the installed module directory to keep track of 
-# metadata for which module was compiled.
-
-${PRJ}_GIT_DESC := $(shell git describe --tags 2> /dev/null || git rev-parse HEAD)
-export ${PRJ}_GIT_DESC
-# The formatting here is just to make sure this is properly parseable .yaml data
-${PRJ}_GIT_STATUS := [ $(shell git status --porcelain | grep -v "\.Makefile" | sed 's/^/\\\"/' | sed 's/$$/\\\", /')]
-export ${PRJ}_GIT_STATUS
-
 else # in O.*
 ## RUN 3
 # In build directory.
@@ -484,7 +473,7 @@ vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(so
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
 
-PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${METAFILE}
+PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
 	@echo ${PRODUCTS} > PRODUCTS
@@ -500,7 +489,6 @@ ${MODULEDBD}: ${DBDFILES}
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
 INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
-INSTALL_META = ${METAFILE:%=${INSTALL_REV}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
 INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
 ifneq ($(strip $(HDR_SUBDIRS)),)
@@ -517,7 +505,6 @@ debug::
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
 	@echo "INSTALL_LIBS = $(INSTALL_LIBS)"
 	@echo "INSTALL_DEPS = $(INSTALL_DEPS)"
-	@echo "INSTALL_META = $(INSTALL_META)"
 	@echo "INSTALL_DBD = $(INSTALL_DBD)"
 	@echo "INSTALL_DBDS = $(INSTALL_DBDS)"
 	@echo "INSTALL_INCLUDE = $(INSTALL_INCLUDE)"
@@ -544,14 +531,7 @@ debug::
 endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
-define install_subdirs
-$1_HDRS = $$(filter $1/%,$$(HDRS))
-INSTALL_HDRS += $$(addprefix $$(INSTALL_INCLUDE)/,$$($1_HDRS:$1/%=%))
-vpath %h ../$1
-debug::
-	@echo "$1_HDRS = $$($1_HDRS)"
-endef
-$(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
+INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS}
 
 install: ${INSTALLS}
 

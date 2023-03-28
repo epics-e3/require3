@@ -26,10 +26,9 @@
 EXIST=1
 NON_EXIST=0
 REALTIME=
-__LOADER__=
 
-function pushd() { builtin pushd "$@" >/dev/null; }
-function popd() { builtin popd "$@" >/dev/null; }
+function pushd { builtin pushd "$@" > /dev/null; }
+function popd  { builtin popd  "$@" > /dev/null; }
 
 function checkIfVar
 {
@@ -40,11 +39,11 @@ function checkIfVar
     local var=$1
     local result=""
     if [ -z "$var" ]; then
-        result=$NON_EXIST
-        # doesn't exist
+	result=$NON_EXIST
+	# doesn't exist
     else
-        result=$EXIST
-        # exist
+	result=$EXIST
+	# exist
     fi
     echo "${result}"
 };
