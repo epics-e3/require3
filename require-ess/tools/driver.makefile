@@ -227,15 +227,15 @@ db_internal: $(COMMON_DIR)
 VPATH += $(dir $(TMPS))
 VPATH += $(dir $(SUBS))
 
-$(COMMON_DIR)/%.db: %.template
-	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
-	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
-	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^
-
 $(COMMON_DIR)/%.db: %.substitutions
 	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
 	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
 	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^
+
+$(COMMON_DIR)/%.db: %.template
+	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
+	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
+	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^
 
 
 install build debug::

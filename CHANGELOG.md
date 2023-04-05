@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Allow for module-specific build rules (see: sequencer) to be installed and used
   within e3
 
+### Bugfixes
+
+* Fixed an issue where .template and .substitutions files with the same name would build incorrectly
+
 ### Other changes
 
 * Rewrite `iocsh` converting it from being a shell script to a python (3.6) script
