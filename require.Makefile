@@ -29,6 +29,7 @@ APPDB := $(APP)/Db
 
 SOURCES += $(APPSRC)/require.c
 SOURCES += $(APPSRC)/afterInit.c
+SOURCES += $(APPSRC)/version.c
 
 DBDS    += $(APPSRC)/require.dbd
 DBDS    += $(APPSRC)/afterInit.dbd
