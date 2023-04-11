@@ -15,9 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Autocompletion for `iocsh.bash` has been added
 * Removed `iocsh_gdb.bash` and `iocsh_nice.bash`, both of whose functionality can be called via `iocsh.bash -dg` and `iocsh.bash -n`, respectively.
 * Require will automatically build `.template` and `.substitutions` files into the common build directory instead of into the source Db path
-* Rudimentary testing has been added:
-* * Tests that the correct version is loaded
-* * Tests that elementary patching/building works as expected
 * Added consistency check between e3 environment variables and path to `iocsh.bash`. `iocsh.bash` will abort if these are not consistent.
 * Add e3 version infomation to the shell prompt
 * Add option to allow override of automatic addition of `iocInit` to generated startup script
