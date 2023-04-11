@@ -1,5 +1,4 @@
 O.*
-require.Makefile
 core.*
 *~
 test/*
