@@ -1,4 +1,4 @@
-_iocsh_bash() 
+_iocsh_bash()
 {
     local cur prev opts
     COMPREPLY=()

@@ -4,7 +4,7 @@
 * Copyright (c) 2006 UChicago, as Operator of Argonne
 *     National Laboratory.
 * EPICS BASE is distributed subject to a Software License Agreement found
-* in file LICENSE that is included with this distribution. 
+* in file LICENSE that is included with this distribution.
 \*************************************************************************/
 
 /* for vasprintf */
@@ -47,7 +47,7 @@ extern void dbLoadRecords(const char*, const char*);
 #endif
 
 #if (EPICS_VERSION*10000+EPICS_REVISION*100+EPICS_MODIFICATION>=31600)
-#define dbmfStrdup(s) dbmfStrdup((char*)s) 
+#define dbmfStrdup(s) dbmfStrdup((char*)s)
 #endif
 
 static int line_num;
@@ -348,9 +348,9 @@ variable_definition: WORD EQUALS WORD
     ;
 
 %%
- 
+
 #include "dbLoadTemplate_lex.c"
- 
+
 static int yyerror(char* str)
 {
     if (str)
@@ -369,7 +369,7 @@ int dbLoadTemplate(const char *sub_file, const char *cmd_collect, const char *pa
     int i;
 
     line_num = 1;
-    
+
     if (!sub_file || !*sub_file) {
         fprintf(stderr, "must specify variable substitution file\n");
         return -1;
