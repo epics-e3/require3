@@ -1,3 +1,0 @@
-registrar(runScriptRegister)
-variable(runScriptDebug,int)
-variable(exprDebug,int)
