@@ -1,4 +1,8 @@
 ---
+default:
+  tags:
+    - docker
+
 stages:
   - check
 
