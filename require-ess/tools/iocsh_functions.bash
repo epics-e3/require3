@@ -29,26 +29,22 @@ EXIST=1
 NON_EXIST=0
 REALTIME=
 
-
-function checkIfVar
-{
-    #@ Usage Example :
-    # if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
-    #    die 1 " $var is not defined!. Please run conda activate <env> "
-    # fi
-    local var=$1
-    local result=""
-    if [ -z "$var" ]; then
-	result=$NON_EXIST
-	# doesn't exist
-    else
-	result=$EXIST
-	# exist
-    fi
-    echo "${result}"
-};
-
-
+function checkIfVar {
+  #@ Usage Example :
+  # if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
+  #    die 1 " $var is not defined!. Please run conda activate <env> "
+  # fi
+  local var=$1
+  local result=""
+  if [ -z "$var" ]; then
+    result=$NON_EXIST
+    # doesn't exist
+  else
+    result=$EXIST
+    # exist
+  fi
+  echo "${result}"
+}
 
 function read_file_get_string {
   local FILENAME=$1
@@ -256,10 +252,10 @@ function check_mandatory_env_settings() {
   var_list+=(E3_REQUIRE_DB)
   var_list+=(E3_REQUIRE_DBD)
   var_list+=(E3_REQUIRE_VERSION)
-  for var in "${var_list[@]}";  do
-	  if [[ $(checkIfVar "${!var}") -eq "$NON_EXIST" ]]; then
-	    die 1 " $var is not defined!. Please run conda activate <env> "
-	  fi
+  for var in "${var_list[@]}"; do
+    if [[ $(checkIfVar "${!var}") -eq "$NON_EXIST" ]]; then
+      die 1 " $var is not defined!. Please run conda activate <env> "
+    fi
   done
 
   if [[ -z "$IOCNAME" ]]; then
