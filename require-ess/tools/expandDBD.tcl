@@ -38,7 +38,7 @@ proc opendbd {name} {
 
 scanmatch $global_context {^[ \t]*(#|%|$)} {
     continue
-} 
+}
 
 if {$recordtypes} {
     scanmatch $global_context {include[ \t]+"?((.*)Record.dbd)"?} {
@@ -96,7 +96,7 @@ proc includeFile {context filename} {
     #puts "#include $filename from $FileName($matchInfo(handle))"
     scanfile $context $file
     close $file
-}   
+}
 
 foreach filename $argv {
     global filesDone quiet
