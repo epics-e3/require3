@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2034
 # -*- mode: sh -*-
 #
 #  Copyright (c) 2004 - 2017    Paul Scherrer Institute
@@ -27,8 +29,6 @@ EXIST=1
 NON_EXIST=0
 REALTIME=
 
-function pushd { builtin pushd "$@" > /dev/null; }
-function popd  { builtin popd  "$@" > /dev/null; }
 
 function checkIfVar
 {
@@ -100,6 +100,7 @@ function basecode_generator() { #@ Generator BASECODE
   base_code=${epics_ver_maj}${epics_ver_mid}${epics_ver_min}${epics_ver_patch}
 
   echo "$base_code"
+
 }
 
 function version() {
@@ -150,8 +151,8 @@ function printIocEnv() {
 # Ctrl+c : OK
 # exit   : OK
 # kill softioc process : OK
-# kill main precess : Enter twice in terminal,
-#                     close softIoc, but STATUP file is remained.
+# kill main process : Enter twice in terminal,
+#                     close softIoc, but STARTUP file is remained.
 #
 
 function softIoc_end() {
@@ -201,7 +202,6 @@ function iocsh_ps1() {
 #    So, the whole PV and record name in moduleversion.template has 59 + 1.
 #  */
 
-
 function require_ioc() {
   # e3-ioc-hash-hostname-pid fails when host has icslab-ser03 and IOCUSER-VIRTUALBOX
   # so better to keep simple in case when hostname is long.
@@ -246,7 +246,7 @@ function loadRequire() {
 
 }
 
-function check_mandatory_env_settings(){
+function check_mandatory_env_settings() {
   declare -a var_list=()
   var_list+=(EPICS_HOST_ARCH)
   var_list+=(EPICS_BASE)
@@ -256,8 +256,8 @@ function check_mandatory_env_settings(){
   var_list+=(E3_REQUIRE_DB)
   var_list+=(E3_REQUIRE_DBD)
   var_list+=(E3_REQUIRE_VERSION)
-  for var in ${var_list[@]};  do
-	  if [[ $(checkIfVar ${!var}) -eq "$NON_EXIST" ]]; then
+  for var in "${var_list[@]}";  do
+	  if [[ $(checkIfVar "${!var}") -eq "$NON_EXIST" ]]; then
 	    die 1 " $var is not defined!. Please run conda activate <env> "
 	  fi
   done
@@ -267,7 +267,7 @@ function check_mandatory_env_settings(){
   else
     echo "IOCNAME is set to $IOCNAME"
   fi
-};
+}
 
 function setPaths() {
   while [ "$#" -gt 0 ]; do
@@ -415,19 +415,20 @@ function loadFiles() {
 
 }
 
-function set_e3_cmd_top(){
+function set_e3_cmd_top() {
   local file=$1
   local file_path=""
   local file_top=""
   local file_name=""
 
   if [ -f "$file" ]; then
-	  file_path="$(readlink -e "$file")"
-	  file_top="${file_path%/*}"
-	  file_name=${file##*/}
-	  printf "# Set E3_CMD_TOP for the absolute path where %s exists\n" "$file_name"
-    printf "epicsEnvSet E3_CMD_TOP \"$file_top\"\n"
-	  printf "#\n"
+    file_path="$(readlink -e "$file")"
+    file_top="${file_path%/*}"
+    file_name=${file##*/}
+    printf "# Set E3_CMD_TOP for the absolute path where %s exists\n" "$file_name"
+    printf "epicsEnvSet E3_CMD_TOP \"%s\"\n" "$file_top"
+    printf "#\n"
+
   fi
 }
 
