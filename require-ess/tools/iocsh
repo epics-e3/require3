@@ -59,15 +59,6 @@ declare BASECODE=""
 # To get the absolute path where iocsh is executed
 IOCSH_TOP=${PWD}
 
-# Check whether an expected e3 environment variable is defined.
-#
-if [[ -z "${EPICS_DRIVER_PATH}" ]]; then
-  set -a
-  # shellcheck source=require-ess/tools/activate
-  . "${SC_TOP}"/activate "no_msg"
-  set +a
-fi
-
 # Check that the e3 environment definition and the path for this script
 # are consistent
 if [ "${E3_REQUIRE_BIN}" != "${SC_TOP}" ]; then
