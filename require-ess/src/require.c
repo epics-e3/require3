@@ -743,7 +743,7 @@ int require(const char *module, const char *version, const char *args) {
 
   if (module == NULL) {
     printf(
-        "Usage: require \"<module>\" [, \"<version>\" | \"ifexists\"] [, "
+        "Usage: require \"<module>\" [, \"<version>\" ] [, "
         "\"<args>\"]\n");
     printf("Loads " PREFIX "<module>" INFIX EXT " and <libname>.dbd\n");
     printf("And calls <module>_registerRecordDeviceDriver\n");
@@ -877,7 +877,6 @@ static int require_priv(const char *module, const char *version,
   const char *loaded = NULL;
   const char *found = NULL;
   HMODULE libhandle;
-  int ifexists = 0;
   const char *driverpath;
   const char *dirname;
   const char *end;
@@ -924,11 +923,6 @@ static int require_priv(const char *module, const char *version,
 
   if (driverpath == NULL) driverpath = ".";
   if (requireDebug) printf("require: searchpath=%s\n", driverpath);
-
-  if (version && strcmp(version, "ifexists") == 0) {
-    ifexists = 1;
-    version = NULL;
-  }
 
   /* check already loaded verion */
   loaded = getLibVersion(module);
@@ -1084,7 +1078,7 @@ static int require_priv(const char *module, const char *version,
         fprintf(stderr, "Module %s%s%s not available\n", module,
                 version ? " version " : "", version ? version : "");
       if (founddir) free(founddir);
-      return ifexists ? 0 : -1;
+      return -1;
     }
 
     /* founddir = "<dirname>/[dirlen]<module>/<version>" */
