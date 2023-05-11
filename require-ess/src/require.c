@@ -1079,12 +1079,12 @@ static int require_priv(const char *module, const char *version) {
                   "%n%s.dep",
                   founddir, &releasediroffs, targetArch, &libdiroffs, module)) {
       /* filename =
-         "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
+         "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
       fprintf(stderr, "Dependency file %s not found\n", filename);
     } else {
       /* filename =
-       * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
+       * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
       if (handleDependencies(module, filename) == -1) return -1;
     }
@@ -1093,12 +1093,12 @@ static int require_priv(const char *module, const char *version) {
 
     if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX "%n" EXT, module, &extoffs))) {
       /* filename =
-         "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs](EXT)?"
+         "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs](EXT)?"
        */
       printf("Module %s has no library\n", module);
     } else {
       /* filename =
-       * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs]EXT"
+       * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs]EXT"
        */
       printf("Loading library %s\n", filename);
       if ((libhandle = loadlib(filename)) == NULL) return -1;
@@ -1161,14 +1161,11 @@ static int require_priv(const char *module, const char *version) {
     registerModule(module, found, filename);
   }
 
-  status = 0;
-
   if (requireDebug) printf("require: looking for template directory\n");
   /* filename =
-   * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]..."
+   * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]..."
    */
-  if (!((TRY_FILE(releasediroffs, TEMPLATEDIR) ||
-         TRY_FILE(releasediroffs, ".." OSI_PATH_SEPARATOR TEMPLATEDIR)) &&
+  if (!(TRY_FILE(releasediroffs, TEMPLATEDIR) &&
         setupDbPath(module, filename) == 0)) {
     /* if no template directory found, restore TEMPLATES to initial value */
     char *t;
@@ -1176,15 +1173,6 @@ static int require_priv(const char *module, const char *version) {
     if (globalTemplates && (!t || strcmp(globalTemplates, t) != 0))
       putenvprintf("TEMPLATES=%s", globalTemplates);
   }
-
-  if (founddir) free(founddir);
-
-  /* no need to execute startup script twice if not with new arguments */
-  if (loaded) {
-    return 0;
-  }
-
-  return status;
 
 require_priv_error:
   if (founddir) free(founddir);
