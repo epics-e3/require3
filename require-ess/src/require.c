@@ -1087,39 +1087,6 @@ static int require_priv(
         }
         END_DIR_LOOP
       }
-      else {
-        /* filename = "<dirname>/[dirlen]<module>/" */
-        if (requireDebug) printf("require: no %s directory\n", filename);
-
-        /* try local/old style module only if no new style candidate has been
-         * found */
-        if (!found) {
-          /* look for dep file */
-          releasediroffs = libdiroffs = dirlen;
-          if (TRY_FILE(dirlen, "%s%s.dep", module, versionstr)) {
-            /* filename =
-               "<dirname>/[dirlen][releasediroffs][libdiroffs]<module>(-<version>)?.dep"
-             */
-            if (requireDebug) printf("require: found old style %s\n", filename);
-            printf("Module %s%s found in %.*s\n", module, versionstr, dirlen,
-                   filename);
-            goto checkdep;
-          }
-
-          /* look for library file */
-          if (TRY_FILE(dirlen, PREFIX "%s" INFIX "%s%n" EXT, module, versionstr,
-                       &extoffs)
-              /* filename =
-                 "<dirname>/[dirlen][releasediroffs][libdiroffs]PREFIX<module>INFIX(-<version>)?[extoffs]EXT"
-               */
-          ) {
-            if (requireDebug) printf("require: found old style %s\n", filename);
-            printf("Module %s%s found in %.*s\n", module, versionstr, dirlen,
-                   filename);
-            goto loadlib;
-          }
-        }
-      }
       /* filename = "<dirname>/[dirlen]..." */
       if (!found && requireDebug)
         printf("require: no matching version in %.*s\n", dirlen, filename);
@@ -1162,7 +1129,6 @@ static int require_priv(
        */
       fprintf(stderr, "Dependency file %s not found\n", filename);
     } else {
-    checkdep:
       /* filename =
        * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
@@ -1184,7 +1150,6 @@ static int require_priv(
        */
       printf("Module %s has no library\n", module);
     } else {
-    loadlib:
       /* filename =
        * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs]EXT"
        */
