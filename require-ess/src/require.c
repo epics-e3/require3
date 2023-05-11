@@ -724,11 +724,10 @@ it calls epicsExit to abort the application.
 
 /* wrapper to abort statup script */
 static int require_priv(const char *module, const char *version,
-                        const char *args, const char *versionstr);
+                        const char *args);
 
 int require(const char *module, const char *version, const char *args) {
   int status;
-  char *versionstr;
   static int firstTime = 1;
 
   if (firstTime) {
@@ -772,27 +771,7 @@ int require(const char *module, const char *version, const char *args) {
     return 0;
   }
 
-  if (version) {
-    /* needed for old style only: */
-    if (asprintf(&versionstr, "-%s", version) < 0) return errno;
-    if (isdigit((unsigned char)version[0]) &&
-        version[strlen(version) - 1] == '+') {
-      /*
-          user may give a minimal version (e.g. "1.2.4+")
-          load highest matching version (here "1.2") and check later
-      */
-      char *p = strrchr(versionstr, '.');
-      if (p == NULL) p = versionstr;
-      *p = 0;
-    }
-  } else {
-    versionstr = "";
-  }
-  if (requireDebug) printf("require: versionstr = \"%s\"\n", versionstr);
-
-  status = require_priv(module, version, args, versionstr);
-
-  if (version) free(versionstr);
+  status = require_priv(module, version, args);
 
   if (status == 0) return 0;
   if (status != -1) perror("require");
@@ -891,10 +870,8 @@ static int handleDependencies(const char *module, char *depfilename) {
   return 0;
 }
 
-static int require_priv(
-    const char *module, const char *version, const char *args,
-    const char *versionstr /* "-<version>" or "" (for old style only */
-) {
+static int require_priv(const char *module, const char *version,
+                        const char *args) {
   int status;
   int returnvalue = 0;
   const char *loaded = NULL;
@@ -951,7 +928,6 @@ static int require_priv(
   if (version && strcmp(version, "ifexists") == 0) {
     ifexists = 1;
     version = NULL;
-    versionstr = "";
   }
 
   /* check already loaded verion */
@@ -1111,8 +1087,6 @@ static int require_priv(
       return ifexists ? 0 : -1;
     }
 
-    versionstr = "";
-
     /* founddir = "<dirname>/[dirlen]<module>/<version>" */
     printf("Module %s version %s found in %s" OSI_PATH_SEPARATOR "\n", module,
            found, founddir);
@@ -1132,29 +1106,19 @@ static int require_priv(
       /* filename =
        * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
-      /* or (old)
-       * "<dirname>/[dirlen]][releasediroffs][libdiroffs]<module>(-<version>)?.dep"
-       */
       if (handleDependencies(module, filename) == -1) return -1;
     }
 
     if (requireDebug) printf("require: looking for library file\n");
 
-    if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX "%s%n" EXT, module, versionstr,
-                   &extoffs))) {
+    if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX "%n" EXT, module, &extoffs))) {
       /* filename =
          "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs](EXT)?"
-       */
-      /* or  (old)
-         "<dirname>/[dirlen][releasediroffs][libdiroffs]PREFIX<module>INFIX(-<version>)?[extoffs](EXT)?"
        */
       printf("Module %s has no library\n", module);
     } else {
       /* filename =
        * "<dirname>/[dirlen]<module>/<version>/R<epicsRelease>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs]EXT"
-       */
-      /* or  (old)
-       * "<dirname>/[dirlen][releasediroffs][libdiroffs]PREFIX<module>INFIX(-<version>)?[extoffs]EXT"
        */
       printf("Loading library %s\n", filename);
       if ((libhandle = loadlib(filename)) == NULL) return -1;
@@ -1180,15 +1144,15 @@ static int require_priv(
       }
 
       /* load dbd file */
-      if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s%s.dbd",
-                            module, versionstr) ||
-          TRY_NONEMPTY_FILE(releasediroffs, "%s%s.dbd", module, versionstr) ||
+      if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s.dbd",
+                            module) ||
+          TRY_NONEMPTY_FILE(releasediroffs, "%s.dbd", module) ||
           TRY_NONEMPTY_FILE(releasediroffs,
                             ".." OSI_PATH_SEPARATOR "dbd" OSI_PATH_SEPARATOR
-                            "%s%s.dbd",
-                            module, versionstr) ||
-          TRY_NONEMPTY_FILE(releasediroffs, ".." OSI_PATH_SEPARATOR "%s%s.dbd",
-                            module, versionstr) ||
+                            "%s.dbd",
+                            module) ||
+          TRY_NONEMPTY_FILE(releasediroffs, ".." OSI_PATH_SEPARATOR "%s.dbd",
+                            module) ||
           TRY_NONEMPTY_FILE(releasediroffs,
                             ".." OSI_PATH_SEPARATOR ".." OSI_PATH_SEPARATOR
                             "dbd" OSI_PATH_SEPARATOR "%s.dbd",
