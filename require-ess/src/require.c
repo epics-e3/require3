@@ -517,22 +517,6 @@ static void registerExternalModules() {
 static void registerExternalModules() { ; }
 #endif
 
-size_t foreachLoadedLib(size_t (*func)(const char *name, const char *version,
-                                       const char *path, void *arg),
-                        void *arg) {
-  moduleitem *m;
-  int result;
-
-  for (m = loadedModules; m; m = m->next) {
-    const char *name = m->content;
-    const char *version = name + strlen(name) + 1;
-    const char *path = version + strlen(version) + 1;
-    result = func(name, version, path, arg);
-    if (result) return result;
-  }
-  return 0;
-}
-
 const char *getLibVersion(const char *libname) {
   moduleitem *m;
 

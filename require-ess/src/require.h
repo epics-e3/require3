@@ -14,9 +14,6 @@ extern "C" {
 #endif  // __GNUC__
 
 int require(const char *libname, const char *version);
-size_t foreachLoadedLib(size_t (*func)(const char *name, const char *version,
-                                       const char *path, void *arg),
-                        void *arg);
 const char *getLibVersion(const char *libname);
 const char *getLibLocation(const char *libname);
 int libversionShow(const char *outfile);
