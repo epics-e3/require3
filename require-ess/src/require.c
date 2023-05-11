@@ -1125,18 +1125,7 @@ static int require_priv(const char *module, const char *version) {
 
       /* load dbd file */
       if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s.dbd",
-                            module) ||
-          TRY_NONEMPTY_FILE(releasediroffs, "%s.dbd", module) ||
-          TRY_NONEMPTY_FILE(releasediroffs,
-                            ".." OSI_PATH_SEPARATOR "dbd" OSI_PATH_SEPARATOR
-                            "%s.dbd",
-                            module) ||
-          TRY_NONEMPTY_FILE(releasediroffs, ".." OSI_PATH_SEPARATOR "%s.dbd",
-                            module) ||
-          TRY_NONEMPTY_FILE(releasediroffs,
-                            ".." OSI_PATH_SEPARATOR ".." OSI_PATH_SEPARATOR
-                            "dbd" OSI_PATH_SEPARATOR "%s.dbd",
-                            module)) /* org EPICSbase */ {
+                            module)) {
         printf("Loading dbd file %s\n", filename);
         if (dbLoadDatabase(filename, NULL, NULL) != 0) {
           fprintf(stderr, "Error loading %s\n", filename);
