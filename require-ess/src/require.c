@@ -637,7 +637,8 @@ static int compareVersions(const char *found, const char *request,
   semver_t *sv_found, *sv_request;
   int match;
 
-  debug("require: compareVersions(found=%s, request=%s)\n", found, request);
+  debug("require: compareVersions(found=%s, request=%s)\n", found,
+        request ? request : "");
 
   if (request == NULL || request[0] == 0) {
     debug("require: compareVersions: MATCH empty version requested\n");
@@ -895,6 +896,7 @@ static int require_priv(
     const char *versionstr /* "-<version>" or "" (for old style only */
 ) {
   int status;
+  int returnvalue = 0;
   const char *loaded = NULL;
   const char *found = NULL;
   HMODULE libhandle;
@@ -979,8 +981,8 @@ static int require_priv(
     /* Search for module in driverpath */
     for (dirname = driverpath; dirname != NULL; dirname = end) {
       /* get one directory from driverpath */
-      int dirlen;
-      int modulediroffs;
+      int dirlen = 0;
+      int modulediroffs = 0;
       DIR_HANDLE dir;
       DIR_ENTRY direntry;
 
@@ -1019,7 +1021,7 @@ static int require_priv(
           /* Look for highest matching version. */
           if (requireDebug)
             printf("require: checking version %s against required %s\n",
-                   currentFilename, version);
+                   currentFilename, version ? version : "");
 
           switch ((status = compareVersions(currentFilename, version, FALSE))) {
             case MATCH: /* all given numbers match. */
@@ -1028,7 +1030,7 @@ static int require_priv(
 
               if (requireDebug)
                 printf("require: %s %s may match %s\n", module, currentFilename,
-                       version);
+                       version ? version : "");
 
               /* Check if it has our EPICS version and architecture. */
               /* Even if it has no library, at least it has a dep file in the
@@ -1138,6 +1140,7 @@ static int require_priv(
       else
         fprintf(stderr, "Module %s%s%s not available\n", module,
                 version ? " version " : "", version ? version : "");
+      if (founddir) free(founddir);
       return ifexists ? 0 : -1;
     }
 
@@ -1207,7 +1210,8 @@ static int require_priv(
         fprintf(stderr,
                 "Requested %s version %s not available, found only %s.\n",
                 module, version, found);
-        return -1;
+        returnvalue = -1;
+        goto require_priv_error;
       }
 
       /* load dbd file */
@@ -1227,7 +1231,8 @@ static int require_priv(
         printf("Loading dbd file %s\n", filename);
         if (dbLoadDatabase(filename, NULL, NULL) != 0) {
           fprintf(stderr, "Error loading %s\n", filename);
-          return -1;
+          returnvalue = -1;
+          goto require_priv_error;
         }
 
         /* when dbd is loaded call register function */
@@ -1263,12 +1268,18 @@ static int require_priv(
       putenvprintf("TEMPLATES=%s", globalTemplates);
   }
 
+  if (founddir) free(founddir);
+
   /* no need to execute startup script twice if not with new arguments */
   if (loaded && args == NULL) {
     return 0;
   }
 
   return status;
+
+require_priv_error:
+  if (founddir) free(founddir);
+  return returnvalue;
 }
 
 static const iocshFuncDef requireDef = {
