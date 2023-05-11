@@ -723,10 +723,9 @@ it calls epicsExit to abort the application.
 */
 
 /* wrapper to abort statup script */
-static int require_priv(const char *module, const char *version,
-                        const char *args);
+static int require_priv(const char *module, const char *version);
 
-int require(const char *module, const char *version, const char *args) {
+int require(const char *module, const char *version) {
   int status;
   static int firstTime = 1;
 
@@ -742,26 +741,15 @@ int require(const char *module, const char *version, const char *args) {
   }
 
   if (module == NULL) {
-    printf(
-        "Usage: require \"<module>\" [, \"<version>\" ] [, "
-        "\"<args>\"]\n");
+    printf("Usage: require \"<module>\" [, \"<version>\" ]\n");
     printf("Loads " PREFIX "<module>" INFIX EXT " and <libname>.dbd\n");
     printf("And calls <module>_registerRecordDeviceDriver\n");
-    printf("If available, runs startup script snippet (only before iocInit)\n");
     return -1;
   }
 
   if (interruptAccept) {
     fprintf(stderr, "Error! Modules can only be loaded before iocIint!\n");
     return -1;
-  }
-
-  /* either order for version and args, either may be empty or NULL */
-  if (version && strchr(version, '=')) {
-    const char *v = version;
-    version = args;
-    args = v;
-    if (requireDebug) printf("require: swap version and args\n");
   }
 
   if (version && version[0] == 0) version = NULL;
@@ -771,7 +759,7 @@ int require(const char *module, const char *version, const char *args) {
     return 0;
   }
 
-  status = require_priv(module, version, args);
+  status = require_priv(module, version);
 
   if (status == 0) return 0;
   if (status != -1) perror("require");
@@ -861,7 +849,7 @@ static int handleDependencies(const char *module, char *depfilename) {
       *end = 0;
     }
     printf("Module %s depends on %s %s\n", module, rmodule, rversion);
-    if (require(rmodule, rversion, NULL) != 0) {
+    if (require(rmodule, rversion) != 0) {
       fclose(depfile);
       return -1;
     }
@@ -870,8 +858,7 @@ static int handleDependencies(const char *module, char *depfilename) {
   return 0;
 }
 
-static int require_priv(const char *module, const char *version,
-                        const char *args) {
+static int require_priv(const char *module, const char *version) {
   int status;
   int returnvalue = 0;
   const char *loaded = NULL;
@@ -894,8 +881,7 @@ static int require_priv(const char *module, const char *version,
   static char *globalTemplates = NULL;
 
   if (requireDebug)
-    printf("require: module=\"%s\" version=\"%s\" args=\"%s\"\n", module,
-           version, args);
+    printf("require: module=\"%s\" version=\"%s\"\n", module, version);
 
 #if defined __GNUC__ && __GNUC__ < 3
 #define TRY_FILE(offs, args...)                                \
@@ -1194,7 +1180,7 @@ static int require_priv(const char *module, const char *version,
   if (founddir) free(founddir);
 
   /* no need to execute startup script twice if not with new arguments */
-  if (loaded && args == NULL) {
+  if (loaded) {
     return 0;
   }
 
@@ -1206,15 +1192,14 @@ require_priv_error:
 }
 
 static const iocshFuncDef requireDef = {
-    "require", 3,
+    "require", 2,
     (const iocshArg *[]){
         &(iocshArg){"module", iocshArgString},
         &(iocshArg){"[version]", iocshArgString},
-        &(iocshArg){"[substitutions]", iocshArgString},
     }};
 
 static void requireFunc(const iocshArgBuf *args) {
-  require(args[0].sval, args[1].sval, args[2].sval);
+  require(args[0].sval, args[1].sval);
 }
 
 static const iocshFuncDef libversionShowDef = {
