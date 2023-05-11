@@ -1086,7 +1086,10 @@ static int require_priv(const char *module, const char *version) {
       /* filename =
        * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
-      if (handleDependencies(module, filename) == -1) return -1;
+      if (handleDependencies(module, filename) == -1) {
+        returnvalue = -1;
+        goto require_priv_end;
+      }
     }
 
     if (requireDebug) printf("require: looking for library file\n");
@@ -1101,11 +1104,17 @@ static int require_priv(const char *module, const char *version) {
        * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs]EXT"
        */
       printf("Loading library %s\n", filename);
-      if ((libhandle = loadlib(filename)) == NULL) return -1;
+      if ((libhandle = loadlib(filename)) == NULL) {
+        returnvalue = -1;
+        goto require_priv_end;
+      }
 
       /* now check what version we really got (with compiled-in version number)
        */
-      if (asprintf(&symbolname, "_%sLibRelease", module) < 0) return errno;
+      if (asprintf(&symbolname, "_%sLibRelease", module) < 0) {
+        returnvalue = errno;
+        goto require_priv_end;
+      }
 
       found = (const char *)getAddress(libhandle, symbolname);
       free(symbolname);
@@ -1120,7 +1129,7 @@ static int require_priv(const char *module, const char *version) {
                 "Requested %s version %s not available, found only %s.\n",
                 module, version, found);
         returnvalue = -1;
-        goto require_priv_error;
+        goto require_priv_end;
       }
 
       /* load dbd file */
@@ -1130,16 +1139,20 @@ static int require_priv(const char *module, const char *version) {
         if (dbLoadDatabase(filename, NULL, NULL) != 0) {
           fprintf(stderr, "Error loading %s\n", filename);
           returnvalue = -1;
-          goto require_priv_error;
+          goto require_priv_end;
         }
 
         /* when dbd is loaded call register function */
-        if (asprintf(&symbolname, "%s_registerRecordDeviceDriver", module) < 0)
-          return errno;
+        if (asprintf(&symbolname, "%s_registerRecordDeviceDriver", module) <
+            0) {
+          returnvalue = errno;
+          goto require_priv_end;
+        }
 
         printf("Calling function %s\n", symbolname);
-        iocshCmd(symbolname);
+        returnvalue = iocshCmd(symbolname);
         free(symbolname);
+        if (returnvalue) goto require_priv_end;
       } else {
         /* no dbd file, but that might be OK */
         printf("%s has no dbd file\n", module);
@@ -1163,7 +1176,7 @@ static int require_priv(const char *module, const char *version) {
       putenvprintf("TEMPLATES=%s", globalTemplates);
   }
 
-require_priv_error:
+require_priv_end:
   if (founddir) free(founddir);
   return returnvalue;
 }
