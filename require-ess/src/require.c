@@ -15,6 +15,9 @@
 
 #include <ctype.h>
 #include <dbAccess.h>
+#include <epicsExit.h>
+#include <epicsExport.h>
+#include <epicsStdio.h>
 #include <epicsVersion.h>
 #include <errno.h>
 #include <initHooks.h>
@@ -25,12 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-/* This prototype is missing in older EPICS versions */
-DBCORE_API int epicsStdCall iocshCmd(const char *cmd);
-#include <epicsExit.h>
-#include <epicsExport.h>
-#include <epicsStdio.h>
-#include <osiFileName.h>
 
 #include "version.h"
 
@@ -776,6 +773,13 @@ static off_t fileSize(const char *filename) {
 }
 #define fileExists(filename) (fileSize(filename) >= 0)
 #define fileNotEmpty(filename) (fileSize(filename) > 0)
+#define TRY_FILE(offs, ...)                                           \
+  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
+   fileExists(filename))
+
+#define TRY_NONEMPTY_FILE(offs, ...)                                  \
+  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
+   fileNotEmpty(filename))
 
 static int handleDependencies(const char *module, char *depfilename) {
   FILE *depfile;
@@ -842,24 +846,6 @@ static int require_priv(const char *module, const char *version) {
   static char *globalTemplates = NULL;
 
   debug("require: module=\"%s\" version=\"%s\"\n", module, version);
-
-#if defined __GNUC__ && __GNUC__ < 3
-#define TRY_FILE(offs, args...)                                \
-  (snprintf(filename + offs, sizeof(filename) - offs, args) && \
-   fileExists(filename))
-
-#define TRY_NONEMPTY_FILE(offs, args...)                       \
-  (snprintf(filename + offs, sizeof(filename) - offs, args) && \
-   fileNotEmpty(filename))
-#else
-#define TRY_FILE(offs, ...)                                           \
-  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
-   fileExists(filename))
-
-#define TRY_NONEMPTY_FILE(offs, ...)                                  \
-  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
-   fileNotEmpty(filename))
-#endif
 
   driverpath = getenv("EPICS_DRIVER_PATH");
   if (!globalTemplates) {
