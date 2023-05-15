@@ -431,11 +431,11 @@ void registerModule(const char *module, const char *version,
     return;
   /*
      Require DB has the following four PVs:
-     - $(REQUIRE_IOC):$(MODULE)_VER
-     - $(REQUIRE_IOC):MOD_VER
-     - $(REQUIRE_IOC):VERSIONS
-     - $(REQUIRE_IOC):MODULES
-     We reserved 30 chars for :$(MODULE)_VER, so MODULE has the maximum 24
+     - $(REQUIRE_IOC):$(MODULE)Version
+     - $(REQUIRE_IOC):ModuleVersions
+     - $(REQUIRE_IOC):Versions
+     - $(REQUIRE_IOC):Modules
+     We reserved 30 chars for :$(MODULE)Version, so MODULE has the maximum 24
      chars. And we've reserved for 30 chars for $(REQUIRE_IOC). So, the whole PV
      and record name in moduleversion.template has 59 + 1.
    */
