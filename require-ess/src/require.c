@@ -121,7 +121,11 @@ void set_require_env() {
   sprintf(epicsRelease, "%s.%s.%s", epics_version_major, epics_version_middle,
           epics_version_minor);
   targetArch = getenv("EPICS_HOST_ARCH");
-  return;
+
+  putenvprintf("T_A=%s", targetArch);
+  putenvprintf("EPICS_HOST_ARCH=%s", targetArch);
+  putenvprintf("EPICS_RELEASE=%s", epicsRelease);
+  putenvprintf("OS_CLASS=%s", osClass);
 }
 
 static HMODULE loadlib(const char *libname) {
@@ -375,15 +379,8 @@ void registerModule(const char *module, const char *version,
   char *absLocationRequire = NULL;
   char *argstring = NULL;
   const char *mylocation;
-  static int firstTime = 1;
 
   debug("require: registerModule(%s,%s,%s)\n", module, version, location);
-
-  if (firstTime) {
-    initHookRegister(fillModuleListRecord);
-    debug("require: initHookRegister\n");
-    firstTime = 0;
-  }
 
   if (!version) version = "";
 
@@ -706,18 +703,6 @@ static int require_priv(const char *module, const char *version);
 
 int require(const char *module, const char *version) {
   int status;
-  static int firstTime = 1;
-
-  if (firstTime) {
-    firstTime = 0;
-
-    set_require_env();
-
-    putenvprintf("T_A=%s", targetArch);
-    putenvprintf("EPICS_HOST_ARCH=%s", targetArch);
-    putenvprintf("EPICS_RELEASE=%s", epicsRelease);
-    putenvprintf("OS_CLASS=%s", osClass);
-  }
 
   if (module == NULL) {
     printf("Usage: require \"<module>\" [, \"<version>\" ]\n");
@@ -1197,6 +1182,9 @@ static void requireRegister(void) {
     iocshRegister(&ldDef, ldFunc);
     iocshRegister(&pathAddDef, pathAddFunc);
     registerExternalModules();
+
+    set_require_env();
+    initHookRegister(fillModuleListRecord);
   }
 }
 
