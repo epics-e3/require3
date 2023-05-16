@@ -978,17 +978,93 @@ static int fetch_module_version(char *filename, size_t max_file_len,
   return 0;
 }
 
+/*
+ * Loads the shared library if available.
+ *
+ * Returns the actual version string for the module, and NULL if there is a
+ * mismatch.
+ */
+static const char *compare_module_version(char *filename, const char *module,
+                                          const char *version, int libdiroffs) {
+  HMODULE libhandle;
+  char *symbolname;
+  const char *found;
+  /* filename =
+     "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)?"
+   */
+  if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX EXT, module))) {
+    printf("Module %s has no library\n", module);
+    found = version;
+  } else {
+    printf("Loading library %s\n", filename);
+    if ((libhandle = loadlib(filename)) == NULL) {
+      return NULL;
+    }
+
+    /* now check what version we really got (with compiled-in version number)
+     */
+    if (asprintf(&symbolname, "_%sLibRelease", module) < 0) {
+      return NULL;
+    }
+
+    found = (const char *)getAddress(libhandle, symbolname);
+    free(symbolname);
+    printf("Loaded %s version %s\n", module, found);
+
+    /* check what we got */
+    debug("require: compare requested version %s with loaded version %s\n",
+          version, found);
+    if (compareVersions(found, version, FALSE) == MISMATCH) {
+      fprintf(stderr, "Requested %s version %s not available, found only %s.\n",
+              module, version, found);
+      return NULL;
+    }
+  }
+  return found;
+}
+
+/*
+ * Loads the module .dbd file and runs registerRecordDeviceDriver.
+ */
+static int load_module_data(char *filename, const char *module,
+                            const char *version, int releasediroffs) {
+  int returnvalue = NULL;
+  char *symbolname;
+
+  /* load dbd file */
+  if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s.dbd",
+                        module)) {
+    printf("Loading dbd file %s\n", filename);
+    if (dbLoadDatabase(filename, NULL, NULL) != 0) {
+      fprintf(stderr, "Error loading %s\n", filename);
+      return -1;
+    }
+
+    /* when dbd is loaded call register function */
+    if (asprintf(&symbolname, "%s_registerRecordDeviceDriver", module) < 0) {
+      return -1;
+    }
+
+    printf("Calling function %s\n", symbolname);
+    returnvalue = iocshCmd(symbolname);
+    free(symbolname);
+    if (returnvalue) return -1;
+  } else {
+    /* no dbd file, but that might be OK */
+    printf("%s has no dbd file\n", module);
+  }
+  return 0;
+}
+
 static int require_priv(const char *module, const char *version) {
   int returnvalue = 0;
   const char *loaded = NULL;
   const char *found = NULL;
-  HMODULE libhandle;
   const char *dirname;
 
   int dirlen;
   int releasediroffs;
   int libdiroffs;
-  char *symbolname;
   char filename[PATH_MAX];
 
   static char *globalTemplates = NULL;
@@ -1049,75 +1125,24 @@ static int require_priv(const char *module, const char *version) {
         goto require_priv_end;
       }
     }
-
     releasediroffs += dirlen;
     libdiroffs += dirlen;
 
-    debug("require: looking for library file\n");
-
-    if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX EXT, module))) {
-      /* filename =
-         "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)?"
-       */
-      printf("Module %s has no library\n", module);
-    } else {
-      /* filename =
-       * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)"
-       */
-      printf("Loading library %s\n", filename);
-      if ((libhandle = loadlib(filename)) == NULL) {
-        returnvalue = -1;
-        goto require_priv_end;
-      }
-
-      /* now check what version we really got (with compiled-in version number)
-       */
-      if (asprintf(&symbolname, "_%sLibRelease", module) < 0) {
-        returnvalue = errno;
-        goto require_priv_end;
-      }
-
-      found = (const char *)getAddress(libhandle, symbolname);
-      free(symbolname);
-      printf("Loaded %s version %s\n", module, found);
-
-      /* check what we got */
-      debug("require: compare requested version %s with loaded version %s\n",
-            version, found);
-      if (compareVersions(found, version, FALSE) == MISMATCH) {
-        fprintf(stderr,
-                "Requested %s version %s not available, found only %s.\n",
-                module, version, found);
-        returnvalue = -1;
-        goto require_priv_end;
-      }
-
-      /* load dbd file */
-      if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s.dbd",
-                            module)) {
-        printf("Loading dbd file %s\n", filename);
-        if (dbLoadDatabase(filename, NULL, NULL) != 0) {
-          fprintf(stderr, "Error loading %s\n", filename);
-          returnvalue = -1;
-          goto require_priv_end;
-        }
-
-        /* when dbd is loaded call register function */
-        if (asprintf(&symbolname, "%s_registerRecordDeviceDriver", module) <
-            0) {
-          returnvalue = errno;
-          goto require_priv_end;
-        }
-
-        printf("Calling function %s\n", symbolname);
-        returnvalue = iocshCmd(symbolname);
-        free(symbolname);
-        if (returnvalue) goto require_priv_end;
-      } else {
-        /* no dbd file, but that might be OK */
-        printf("%s has no dbd file\n", module);
-      }
+    /* Step 3: Ensure that we have loaded the correct version */
+    debug("require: Check that the loaded and requested versions match");
+    found = compare_module_version(filename, module, version, libdiroffs);
+    if (!found) {
+      returnvalue = -1;
+      goto require_priv_end;
     }
+
+    /* Step 4: Load module data */
+    debug("require: Load module data\n");
+    returnvalue = load_module_data(filename, module, version, releasediroffs);
+    if (returnvalue) {
+      goto require_priv_end;
+    }
+
     /* register module with path */
     filename[releasediroffs] = 0;
     registerModule(module, found, filename);
