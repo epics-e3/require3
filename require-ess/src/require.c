@@ -823,38 +823,181 @@ static int handleDependencies(const char *module, char *depfilename) {
   return 0;
 }
 
-static int require_priv(const char *module, const char *version) {
-  int status;
-  int returnvalue = 0;
-  const char *loaded = NULL;
-  const char *found = NULL;
-  HMODULE libhandle;
-  const char *driverpath;
+/*
+ * Fetches the correct module version based on the requested version by
+ * searching through EPICS_DRIVER_PATH until it finds a matching version.
+ *
+ * Sets <filename> to be the path the the underlying module.
+ */
+static int fetch_module_version(char *filename, size_t max_file_len,
+                                const char *module, const char *version) {
   const char *dirname;
+  const char *driverpath;
   const char *end;
-
-  int releasediroffs;
-  int libdiroffs;
-  int extoffs;
+  const char *found = NULL;
   char *founddir = NULL;
-  char *symbolname;
-  char filename[PATH_MAX];
 
   int someVersionFound = 0;
   int someArchFound = 0;
 
-  static char *globalTemplates = NULL;
-
-  debug("require: module=\"%s\" version=\"%s\"\n", module, version);
-
   driverpath = getenv("EPICS_DRIVER_PATH");
+  if (driverpath == NULL) driverpath = ".";
+  debug("require: searchpath=%s\n", driverpath);
+
+  for (dirname = driverpath; dirname != NULL; dirname = end) {
+    /* get one directory from driverpath */
+    int dirlen = 0;
+    int modulediroffs = 0;
+    DIR_HANDLE dir;
+    DIR_ENTRY direntry;
+
+    end = strchr(dirname, OSI_PATH_LIST_SEPARATOR[0]);
+    if (end && end[1] == OSI_PATH_SEPARATOR[0] &&
+        end[2] == OSI_PATH_SEPARATOR[0]) /* "http://..." and friends */
+      end = strchr(end + 2, OSI_PATH_LIST_SEPARATOR[0]);
+    if (end)
+      dirlen = (int)(end++ - dirname);
+    else
+      dirlen = (int)strlen(dirname);
+    if (dirlen == 0) continue; /* ignore empty driverpath elements */
+
+    debug("require: trying %.*s\n", dirlen, dirname);
+
+    snprintf(filename, max_file_len,
+             "%.*s" OSI_PATH_SEPARATOR "%s" OSI_PATH_SEPARATOR "%n", dirlen,
+             dirname, module, &modulediroffs);
+    dirlen++;
+    /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
+
+    /* Does the module directory exist? */
+    IF_OPEN_DIR(filename) {
+      debug("require: found directory %s\n", filename);
+
+      /* Now look for versions. */
+      START_DIR_LOOP {
+        char *currentFilename = FILENAME(direntry);
+
+        SKIP_NON_DIR(direntry)
+        if (currentFilename[0] == '.') continue; /* ignore hidden directories */
+
+        someVersionFound = 1;
+
+        /* Look for highest matching version. */
+        debug("require: checking version %s against required %s\n",
+              currentFilename, version ? version : "");
+
+        switch (compareVersions(currentFilename, version, FALSE)) {
+          case MATCH: /* all given numbers match. */
+          {
+            someArchFound = 1;
+
+            debug("require: %s %s may match %s\n", module, currentFilename,
+                  version ? version : "");
+
+            /* Check if it has our EPICS version and architecture. */
+            /* Even if it has no library, at least it has a dep file in the
+             * lib dir */
+
+            /* Step 1 : library file location */
+            /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
+            if (!TRY_FILE(modulediroffs,
+                          "%s" OSI_PATH_SEPARATOR LIBDIR
+                          "%s" OSI_PATH_SEPARATOR,
+                          currentFilename, targetArch)) {
+              /* filename =
+               * "<dirname>/[dirlen]<module>/[modulediroffs]<version>/lib/<targetArch>/"
+               */
+              debug("require: %s %s has no support for %s %s\n", module,
+                    currentFilename, epicsRelease, targetArch);
+              continue;
+            }
+
+            /* Is it higher than the one we found before? */
+            if (found)
+              debug(
+                  "require: %s %s support for %s %s found, compare against "
+                  "previously found %s\n",
+                  module, currentFilename, epicsRelease, targetArch, found);
+            if (!found ||
+                compareVersions(currentFilename, found, TRUE) == HIGHER) {
+              debug("require: %s %s looks promising\n", module,
+                    currentFilename);
+              break;
+            }
+            debug("require: version %s is lower than %s \n", currentFilename,
+                  found);
+            continue;
+          }
+          default: {
+            debug("require: %s %s does not match %s\n", module, currentFilename,
+                  version);
+            continue;
+          }
+        }
+        /* we have found something */
+        free(founddir);
+        /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]..." */
+        if (asprintf(&founddir, "%.*s%s", modulediroffs, filename,
+                     currentFilename) < 0)
+          return errno;
+        /* founddir = "<dirname>/[dirlen]<module>/[modulediroffs]<version>" */
+        found = founddir + modulediroffs; /* version part in the path */
+      }
+      END_DIR_LOOP
+    }
+    /* filename = "<dirname>/[dirlen]..." */
+    if (!found)
+      debug("require: no matching version in %.*s\n", dirlen, filename);
+  }
+
+  if (!found) {
+    if (someArchFound)
+      fprintf(stderr,
+              "Module %s%s%s not available for %s\n(but maybe for other "
+              "EPICS versions or architectures)\n",
+              module, version ? " version " : "", version ? version : "",
+              targetArch);
+    else if (someVersionFound)
+      fprintf(
+          stderr,
+          "Module %s%s%s not available (but other versions are available)\n",
+          module, version ? " version " : "", version ? version : "");
+    else
+      fprintf(stderr, "Module %s%s%s not available\n", module,
+              version ? " version " : "", version ? version : "");
+    if (founddir) free(founddir);
+    return -1;
+  }
+
+  /* founddir = "<dirname>/[dirlen]<module>/<version>" */
+  printf("Module %s version %s found in %s" OSI_PATH_SEPARATOR "\n", module,
+         found, founddir);
+
+  snprintf(filename, max_file_len, "%s" OSI_PATH_SEPARATOR, founddir);
+  free(founddir);
+  return 0;
+}
+
+static int require_priv(const char *module, const char *version) {
+  int returnvalue = 0;
+  const char *loaded = NULL;
+  const char *found = NULL;
+  HMODULE libhandle;
+  const char *dirname;
+
+  int dirlen;
+  int releasediroffs;
+  int libdiroffs;
+  char *symbolname;
+  char filename[PATH_MAX];
+
+  static char *globalTemplates = NULL;
   if (!globalTemplates) {
     char *t = getenv("TEMPLATES");
     if (t) globalTemplates = strdup(t);
   }
 
-  if (driverpath == NULL) driverpath = ".";
-  debug("require: searchpath=%s\n", driverpath);
+  debug("require: module=\"%s\" version=\"%s\"\n", module, version);
 
   /* check already loaded verion */
   loaded = getLibVersion(module);
@@ -880,144 +1023,19 @@ static int require_priv(const char *module, const char *version) {
   } else {
     debug("require: no %s version loaded yet\n", module);
 
-    /* Search for module in driverpath */
-    for (dirname = driverpath; dirname != NULL; dirname = end) {
-      /* get one directory from driverpath */
-      int dirlen = 0;
-      int modulediroffs = 0;
-      DIR_HANDLE dir;
-      DIR_ENTRY direntry;
+    /* Step 1: Search for module in driverpath */
+    returnvalue =
+        fetch_module_version(filename, sizeof(filename), module, version);
+    if (returnvalue) goto require_priv_end;
 
-      end = strchr(dirname, OSI_PATH_LIST_SEPARATOR[0]);
-      if (end && end[1] == OSI_PATH_SEPARATOR[0] &&
-          end[2] == OSI_PATH_SEPARATOR[0]) /* "http://..." and friends */
-        end = strchr(end + 2, OSI_PATH_LIST_SEPARATOR[0]);
-      if (end)
-        dirlen = (int)(end++ - dirname);
-      else
-        dirlen = (int)strlen(dirname);
-      if (dirlen == 0) continue; /* ignore empty driverpath elements */
-
-      debug("require: trying %.*s\n", dirlen, dirname);
-
-      snprintf(filename, sizeof(filename),
-               "%.*s" OSI_PATH_SEPARATOR "%s" OSI_PATH_SEPARATOR "%n", dirlen,
-               dirname, module, &modulediroffs);
-      dirlen++;
-      /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
-
-      /* Does the module directory exist? */
-      IF_OPEN_DIR(filename) {
-        debug("require: found directory %s\n", filename);
-
-        /* Now look for versions. */
-        START_DIR_LOOP {
-          char *currentFilename = FILENAME(direntry);
-
-          SKIP_NON_DIR(direntry)
-          if (currentFilename[0] == '.')
-            continue; /* ignore hidden directories */
-
-          someVersionFound = 1;
-
-          /* Look for highest matching version. */
-          debug("require: checking version %s against required %s\n",
-                currentFilename, version ? version : "");
-
-          switch ((status = compareVersions(currentFilename, version, FALSE))) {
-            case MATCH: /* all given numbers match. */
-            {
-              someArchFound = 1;
-
-              debug("require: %s %s may match %s\n", module, currentFilename,
-                    version ? version : "");
-
-              /* Check if it has our EPICS version and architecture. */
-              /* Even if it has no library, at least it has a dep file in the
-               * lib dir */
-
-              /* Step 1 : library file location */
-              /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
-              if (!TRY_FILE(modulediroffs,
-                            "%s" OSI_PATH_SEPARATOR LIBDIR
-                            "%s" OSI_PATH_SEPARATOR,
-                            currentFilename, targetArch)) {
-                /* filename =
-                 * "<dirname>/[dirlen]<module>/[modulediroffs]<version>/lib/<targetArch>/"
-                 */
-                debug("require: %s %s has no support for %s %s\n", module,
-                      currentFilename, epicsRelease, targetArch);
-                continue;
-              }
-
-              /* Is it higher than the one we found before? */
-              if (found)
-                debug(
-                    "require: %s %s support for %s %s found, compare against "
-                    "previously found %s\n",
-                    module, currentFilename, epicsRelease, targetArch, found);
-              if (!found ||
-                  compareVersions(currentFilename, found, TRUE) == HIGHER) {
-                debug("require: %s %s looks promising\n", module,
-                      currentFilename);
-                break;
-              }
-              debug("require: version %s is lower than %s \n", currentFilename,
-                    found);
-              continue;
-            }
-            default: {
-              debug("require: %s %s does not match %s\n", module,
-                    currentFilename, version);
-              continue;
-            }
-          }
-          /* we have found something */
-          free(founddir);
-          /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]..." */
-          if (asprintf(&founddir, "%.*s%s", modulediroffs, filename,
-                       currentFilename) < 0)
-            return errno;
-          /* founddir = "<dirname>/[dirlen]<module>/[modulediroffs]<version>" */
-          found = founddir + modulediroffs; /* version part in the path */
-        }
-        END_DIR_LOOP
-      }
-      /* filename = "<dirname>/[dirlen]..." */
-      if (!found)
-        debug("require: no matching version in %.*s\n", dirlen, filename);
-    }
-
-    if (!found) {
-      if (someArchFound)
-        fprintf(stderr,
-                "Module %s%s%s not available for %s\n(but maybe for other "
-                "EPICS versions or architectures)\n",
-                module, version ? " version " : "", version ? version : "",
-                targetArch);
-      else if (someVersionFound)
-        fprintf(
-            stderr,
-            "Module %s%s%s not available (but other versions are available)\n",
-            module, version ? " version " : "", version ? version : "");
-      else
-        fprintf(stderr, "Module %s%s%s not available\n", module,
-                version ? " version " : "", version ? version : "");
-      if (founddir) free(founddir);
-      return -1;
-    }
-
-    /* founddir = "<dirname>/[dirlen]<module>/<version>" */
-    printf("Module %s version %s found in %s" OSI_PATH_SEPARATOR "\n", module,
-           found, founddir);
-
-    /* Step 2 : Looking for  Dep file */
+    /* Step 2 : Looking for .dep file */
     debug("require: looking for dependency file\n");
 
-    if (!TRY_FILE(0,
-                  "%s" OSI_PATH_SEPARATOR "%n" LIBDIR "%s" OSI_PATH_SEPARATOR
-                  "%n%s.dep",
-                  founddir, &releasediroffs, targetArch, &libdiroffs, module)) {
+    dirlen = strlen(filename);
+    if (!TRY_FILE(dirlen,
+                  OSI_PATH_SEPARATOR "%n" LIBDIR "%s" OSI_PATH_SEPARATOR
+                                     "%n%s.dep",
+                  &releasediroffs, targetArch, &libdiroffs, module)) {
       /* filename =
          "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
@@ -1032,16 +1050,19 @@ static int require_priv(const char *module, const char *version) {
       }
     }
 
+    releasediroffs += dirlen;
+    libdiroffs += dirlen;
+
     debug("require: looking for library file\n");
 
-    if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX "%n" EXT, module, &extoffs))) {
+    if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX EXT, module))) {
       /* filename =
-         "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs](EXT)?"
+         "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)?"
        */
       printf("Module %s has no library\n", module);
     } else {
       /* filename =
-       * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX[extoffs]EXT"
+       * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)"
        */
       printf("Loading library %s\n", filename);
       if ((libhandle = loadlib(filename)) == NULL) {
@@ -1116,7 +1137,6 @@ static int require_priv(const char *module, const char *version) {
   }
 
 require_priv_end:
-  if (founddir) free(founddir);
   return returnvalue;
 }
 
