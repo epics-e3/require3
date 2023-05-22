@@ -151,8 +151,8 @@ static unsigned long maxModuleNameLength = 0;
 
 int putenvprintf(const char *format, ...) {
   va_list ap;
-  char *var;
-  char *val;
+  char *var = NULL;
+  char *val = NULL;
   int status = 0;
 
   if (!format) return -1;
@@ -181,7 +181,7 @@ int putenvprintf(const char *format, ...) {
 }
 
 void pathAdd(const char *varname, const char *dirname) {
-  char *old_path;
+  char *old_path = NULL;
 
   if (!varname || !dirname) {
     fprintf(stderr, "usage: pathAdd \"ENVIRONMENT_VARIABLE\",\"directory\"\n");
@@ -198,7 +198,7 @@ void pathAdd(const char *varname, const char *dirname) {
     putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
   } else {
     size_t len = strlen(dirname);
-    char *p;
+    char *p = NULL;
 
     /* skip over "." at the beginning */
     if (old_path[0] == '.' && old_path[1] == OSI_PATH_LIST_SEPARATOR[0])
@@ -226,7 +226,7 @@ void pathAdd(const char *varname, const char *dirname) {
 }
 
 char *realpathSeparator(const char *location) {
-  size_t ll;
+  size_t ll = 0;
   char *buffer = malloc(PATH_MAX + strlen(OSI_PATH_SEPARATOR));
   buffer = realpath(location, buffer);
   if (!buffer) {
@@ -272,7 +272,7 @@ static int setupDbPath(const char *module, const char *dbdir) {
 
 static int getRecordHandle(const char *namepart, short type, long minsize,
                            DBADDR *paddr) {
-  char recordname[PVNAME_STRINGSZ] = "";
+  char recordname[PVNAME_STRINGSZ] = {0};
   long dummy = 0L;
   long offset = 0L;
 
@@ -322,9 +322,9 @@ must wait until initHooks is loaded before we can register the hook.
 static void fillModuleListRecord(initHookState state) {
   /* MODULES record exists and has allocated memory */
   if (state == initHookAfterFinishDevSup) {
-    DBADDR modules, versions, modver;
-    int have_modules, have_versions, have_modver;
-    moduleitem *m;
+    DBADDR modules = {0}, versions = {0}, modver = {0};
+    int have_modules = 0, have_versions = 0, have_modver = 0;
+    moduleitem *m = NULL;
     int i = 0;
     long c = 0;
 
@@ -368,14 +368,14 @@ static void fillModuleListRecord(initHookState state) {
 
 void registerModule(const char *module, const char *version,
                     const char *location) {
-  moduleitem *m, **pm;
+  moduleitem *m = NULL, **pm = NULL;
   size_t lm = strlen(module) + 1;
   size_t lv = (version ? strlen(version) : 0) + 1;
   size_t ll = 1;
   char *absLocation = NULL;
   char *absLocationRequire = NULL;
   char *argstring = NULL;
-  const char *mylocation;
+  const char *mylocation = NULL;
 
   debug("require: registerModule(%s,%s,%s)\n", module, version, location);
 
@@ -453,13 +453,13 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
                           size_t size, /* size of info structure */
                           void *data   /* user-supplied arg */
 ) {
-  void *handle;
+  void *handle = NULL;
   char *location = NULL;
-  char *p;
-  char *version;
-  char *symname;
+  char *p = NULL;
+  char *version = NULL;
+  char *symname = NULL;
   /* get space for library path + "LibRelease" */
-  char name[PATH_MAX + 11];
+  char name[PATH_MAX + 11] = {0};
 
   (void)data; /* unused */
   if (size < sizeof(struct dl_phdr_info))
@@ -510,7 +510,7 @@ static void registerExternalModules() { ; }
 #endif
 
 const char *getLibVersion(const char *libname) {
-  moduleitem *m;
+  moduleitem *m = NULL;
 
   for (m = loadedModules; m; m = m->next) {
     if (strcmp(m->content, libname) == 0) {
@@ -521,8 +521,8 @@ const char *getLibVersion(const char *libname) {
 }
 
 const char *getLibLocation(const char *libname) {
-  moduleitem *m;
-  char *v;
+  moduleitem *m = NULL;
+  char *v = NULL;
 
   for (m = loadedModules; m; m = m->next) {
     if (strcmp(m->content, libname) == 0) {
@@ -534,7 +534,7 @@ const char *getLibLocation(const char *libname) {
 }
 
 int isModuleLoaded(const char *libname) {
-  moduleitem *m;
+  moduleitem *m = NULL;
 
   for (m = loadedModules; m; m = m->next) {
     if (strcmp(m->content, libname) == 0) return TRUE;
@@ -543,8 +543,8 @@ int isModuleLoaded(const char *libname) {
 }
 
 int libversionShow(const char *outfile) {
-  moduleitem *m;
-  size_t lm, lv;
+  moduleitem *m = NULL;
+  size_t lm = 0, lv = 0;
 
   FILE *out = epicsGetStdout();
 
@@ -589,7 +589,7 @@ static int compareDigit(int found, int requested, const char *name) {
 }
 
 static int compareNumericVersion(semver_t *sv_found, semver_t *sv_request) {
-  int match;
+  int match = 0;
 
   match = compareDigit(sv_found->major, sv_request->major, "major");
   if (match != MATCH) {
@@ -607,8 +607,8 @@ static int compareNumericVersion(semver_t *sv_found, semver_t *sv_request) {
  */
 static int compareVersions(const char *found, const char *request,
                            int already_matched) {
-  semver_t *sv_found, *sv_request;
-  int match;
+  semver_t *sv_found = NULL, *sv_request = NULL;
+  int match = 0;
 
   debug("require: compareVersions(found=%s, request=%s)\n", found,
         request ? request : "");
@@ -699,7 +699,7 @@ it calls epicsExit to abort the application.
 static int require_priv(const char *module, const char *version);
 
 int require(const char *module, const char *version) {
-  int status;
+  int status = 0;
 
   if (module == NULL) {
     printf("Usage: require \"<module>\" [, \"<version>\" ]\n");
@@ -733,7 +733,7 @@ int require(const char *module, const char *version) {
 }
 
 static off_t fileSize(const char *filename) {
-  struct stat filestat;
+  struct stat filestat = {0};
   if (stat(filename, &filestat) != 0) {
     debug("require: %s does not exist\n", filename);
     return -1;
@@ -782,11 +782,11 @@ static off_t fileSize(const char *filename) {
    fileNotEmpty(filename))
 
 static int handleDependencies(const char *module, char *depfilename) {
-  FILE *depfile;
-  char buffer[40];
-  char *end;      /* end of string */
-  char *rmodule;  /* required module */
-  char *rversion; /* required version */
+  FILE *depfile = NULL;
+  char buffer[40] = {0};
+  char *end = NULL;      /* end of string */
+  char *rmodule = NULL;  /* required module */
+  char *rversion = NULL; /* required version */
 
   debug("require: parsing dependency file %s\n", depfilename);
   depfile = fopen(depfilename, "r");
@@ -831,9 +831,9 @@ static int handleDependencies(const char *module, char *depfilename) {
  */
 static int fetch_module_version(char *filename, size_t max_file_len,
                                 const char *module, const char *version) {
-  const char *dirname;
-  const char *driverpath;
-  const char *end;
+  const char *dirname = NULL;
+  const char *driverpath = NULL;
+  const char *end = NULL;
   const char *found = NULL;
   char *founddir = NULL;
 
@@ -848,8 +848,8 @@ static int fetch_module_version(char *filename, size_t max_file_len,
     /* get one directory from driverpath */
     int dirlen = 0;
     int modulediroffs = 0;
-    DIR_HANDLE dir;
-    DIR_ENTRY direntry;
+    DIR_HANDLE dir = NULL;
+    DIR_ENTRY direntry = NULL;
 
     end = strchr(dirname, OSI_PATH_LIST_SEPARATOR[0]);
     if (end && end[1] == OSI_PATH_SEPARATOR[0] &&
@@ -986,9 +986,9 @@ static int fetch_module_version(char *filename, size_t max_file_len,
  */
 static const char *compare_module_version(char *filename, const char *module,
                                           const char *version, int libdiroffs) {
-  HMODULE libhandle;
-  char *symbolname;
-  const char *found;
+  HMODULE libhandle = NULL;
+  char *symbolname = NULL;
+  const char *found = NULL;
   /* filename =
      "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)?"
    */
@@ -1029,7 +1029,7 @@ static const char *compare_module_version(char *filename, const char *module,
 static int load_module_data(char *filename, const char *module,
                             const char *version, int releasediroffs) {
   int returnvalue = NULL;
-  char *symbolname;
+  char *symbolname = NULL;
 
   /* load dbd file */
   if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s.dbd",
@@ -1060,12 +1060,12 @@ static int require_priv(const char *module, const char *version) {
   int returnvalue = 0;
   const char *loaded = NULL;
   const char *found = NULL;
-  const char *dirname;
+  const char *dirname = NULL;
 
-  int dirlen;
-  int releasediroffs;
-  int libdiroffs;
-  char filename[PATH_MAX];
+  int dirlen = 0;
+  int releasediroffs = 0;
+  int libdiroffs = 0;
+  char filename[PATH_MAX] = {0};
 
   static char *globalTemplates = NULL;
   if (!globalTemplates) {
