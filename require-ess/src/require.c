@@ -197,7 +197,7 @@ void pathAdd(const char *varname, const char *dirname) {
   if (old_path == NULL) {
     putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
   } else {
-    size_t len = strlen(dirname);
+    size_t len = strnlen(dirname, PATH_MAX);
     char *p = NULL;
 
     /* skip over "." at the beginning */
@@ -227,13 +227,14 @@ void pathAdd(const char *varname, const char *dirname) {
 
 char *realpathSeparator(const char *location) {
   size_t ll = 0;
-  char *buffer = malloc(PATH_MAX + strlen(OSI_PATH_SEPARATOR));
+  int buffer_size = PATH_MAX + strlen(OSI_PATH_SEPARATOR);
+  char *buffer = malloc(buffer_size);
   buffer = realpath(location, buffer);
   if (!buffer) {
     debug("require: realpath(%s) failed\n", location);
     return NULL;
   }
-  ll = strlen(buffer);
+  ll = strnlen(buffer, buffer_size);
   /* linux realpath removes trailing slash */
   if (buffer[ll - strlen(OSI_PATH_SEPARATOR)] != OSI_PATH_SEPARATOR[0]) {
     strcpy(buffer + ll + 1 - strlen(OSI_PATH_SEPARATOR), OSI_PATH_SEPARATOR);
@@ -276,7 +277,7 @@ static int getRecordHandle(const char *namepart, short type, long minsize,
   long dummy = 0L;
   long offset = 0L;
 
-  sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strlen(namepart) - 1),
+  sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ-1) - 1),
           getenv("REQUIRE_IOC"), namepart);
 
   if (dbNameToAddr(recordname, paddr) != 0) {
@@ -485,7 +486,7 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
   }
   *(symname = p + 2) = '_';                     /* replace "lib" with "_" */
   p = strchr(symname, '.');                     /* find ".so" extension */
-  if (p == NULL) p = symname + strlen(symname); /* no file extension ? */
+  if (p == NULL) p = symname + strnlen(symname, PATH_MAX); /* no file extension ? */
   strcpy(p, "LibRelease");          /* append "LibRelease" to module name */
   version = dlsym(handle, symname); /* find symbol "_<module>LibRelease" */
   if (version) {
@@ -858,7 +859,7 @@ static int fetch_module_version(char *filename, size_t max_file_len,
     if (end)
       dirlen = (int)(end++ - dirname);
     else
-      dirlen = (int)strlen(dirname);
+      dirlen = (int)strnlen(dirname, PATH_MAX);
     if (dirlen == 0) continue; /* ignore empty driverpath elements */
 
     debug("require: trying %.*s\n", dirlen, dirname);
@@ -1107,7 +1108,7 @@ static int require_priv(const char *module, const char *version) {
     /* Step 2 : Looking for .dep file */
     debug("require: looking for dependency file\n");
 
-    dirlen = strlen(filename);
+    dirlen = strnlen(filename, PATH_MAX);
     if (!TRY_FILE(dirlen,
                   OSI_PATH_SEPARATOR "%n" LIBDIR "%s" OSI_PATH_SEPARATOR
                                      "%n%s.dep",
