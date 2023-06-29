@@ -93,6 +93,7 @@ int requireDebug;
 
 #define LIBDIR "lib" OSI_PATH_SEPARATOR
 #define TEMPLATEDIR "db"
+#define LIBRELEASE "LibRelease"
 
 #ifndef OS_CLASS
 #error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
@@ -460,7 +461,7 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
   char *version = NULL;
   char *symname = NULL;
   /* get space for library path + "LibRelease" */
-  char name[PATH_MAX + 11] = {0};
+  char name[PATH_MAX + (sizeof(LIBRELEASE)/sizeof(char))] = {0};
 
   (void)data; /* unused */
   if (size < sizeof(struct dl_phdr_info))
@@ -487,7 +488,7 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
   *(symname = p + 2) = '_';                     /* replace "lib" with "_" */
   p = strchr(symname, '.');                     /* find ".so" extension */
   if (p == NULL) p = symname + strnlen(symname, PATH_MAX); /* no file extension ? */
-  strcpy(p, "LibRelease");          /* append "LibRelease" to module name */
+  strcpy(p, LIBRELEASE);          /* append "LibRelease" to module name */
   version = dlsym(handle, symname); /* find symbol "_<module>LibRelease" */
   if (version) {
     *p = 0;
