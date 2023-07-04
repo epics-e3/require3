@@ -1030,7 +1030,7 @@ static const char *compare_module_version(char *filename, const char *module,
  */
 static int load_module_data(char *filename, const char *module,
                             const char *version, int releasediroffs) {
-  int returnvalue = NULL;
+  int returnvalue = 0;
   char *symbolname = NULL;
 
   /* load dbd file */
