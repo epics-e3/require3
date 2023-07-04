@@ -31,6 +31,7 @@ SOURCES += $(APPSRC)/require.c
 SOURCES += $(APPSRC)/version.c
 SOURCES += $(APPSRC)/afterInit.c
 SOURCES += $(APPSRC)/common.c
+SOURCES += $(APPSRC)/module.c
 DBDS    += $(APPSRC)/require.dbd
 DBDS    += $(APPSRC)/afterInit.dbd
 
