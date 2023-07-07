@@ -559,11 +559,11 @@ static off_t fileSize(const char *filename) {
 #define fileExists(filename) (fileSize(filename) >= 0)
 #define fileNotEmpty(filename) (fileSize(filename) > 0)
 #define TRY_FILE(offs, ...)                                           \
-  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
+  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) && \
    fileExists(filename))
 
 #define TRY_NONEMPTY_FILE(offs, ...)                                  \
-  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
+  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) && \
    fileNotEmpty(filename))
 
 static int handleDependencies(const char *module, char *depfilename) {
