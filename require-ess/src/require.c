@@ -614,12 +614,14 @@ static int handleDependencies(const char *module, char *depfilename) {
  *
  * Sets <filename> to be the path the the underlying module.
  */
-static int fetch_module_version(char *filename, size_t max_file_len,
+static char* fetch_module_version(char *filename, size_t max_file_len,
                                 const char *module, const char *version) {
   const char *dirname = NULL;
   const char *driverpath = NULL;
   const char *end = NULL;
   const char *found = NULL;
+  int versionLength = 0;
+  char *selectedVersion = NULL;
   char *founddir = NULL;
 
   int someVersionFound = 0;
@@ -720,11 +722,11 @@ static int fetch_module_version(char *filename, size_t max_file_len,
           }
         }
         /* we have found something */
-        free(founddir);
+        if (founddir) free(founddir);
         /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]..." */
         if (asprintf(&founddir, "%.*s%s", modulediroffs, filename,
                      currentFilename) < 0)
-          return errno;
+          return NULL;
         /* founddir = "<dirname>/[dirlen]<module>/[modulediroffs]<version>" */
         found = founddir + modulediroffs; /* version part in the path */
       }
@@ -751,7 +753,7 @@ static int fetch_module_version(char *filename, size_t max_file_len,
       fprintf(stderr, "Module %s%s%s not available\n", module,
               version ? " version " : "", version ? version : "");
     if (founddir) free(founddir);
-    return -1;
+    return NULL;
   }
 
   /* founddir = "<dirname>/[dirlen]<module>/<version>" */
@@ -759,8 +761,11 @@ static int fetch_module_version(char *filename, size_t max_file_len,
          found, founddir);
 
   snprintf(filename, max_file_len, "%s" OSI_PATH_SEPARATOR, founddir);
+  versionLength = strlen(found)+1;
+  selectedVersion = calloc(versionLength, sizeof(char));
+  memcpy(selectedVersion, found, versionLength);
   free(founddir);
-  return 0;
+  return selectedVersion;
 }
 
 /*
@@ -846,6 +851,7 @@ static int require_priv(const char *module, const char *version) {
   const char *loaded = NULL;
   const char *found = NULL;
   const char *dirname = NULL;
+  char *selectedVersion = NULL;
 
   int dirlen = 0;
   int releasediroffs = 0;
@@ -885,10 +891,12 @@ static int require_priv(const char *module, const char *version) {
     debug("require: no %s version loaded yet\n", module);
 
     /* Step 1: Search for module in driverpath */
-    returnvalue =
+    selectedVersion =
         fetch_module_version(filename, sizeof(filename), module, version);
-    if (returnvalue) goto require_priv_end;
-
+    if (!selectedVersion){
+      returnvalue = -1;
+      goto require_priv_end;
+    }
     /* Step 2 : Looking for .dep file */
     debug("require: looking for dependency file\n");
 
@@ -914,8 +922,8 @@ static int require_priv(const char *module, const char *version) {
     libdiroffs += dirlen;
 
     /* Step 3: Ensure that we have loaded the correct version */
-    debug("require: Check that the loaded and requested versions match");
-    found = compare_module_version(filename, module, version, libdiroffs);
+    debug("require: Check that the loaded and requested versions match\n");
+    found = compare_module_version(filename, module, selectedVersion, libdiroffs);
     if (!found) {
       returnvalue = -1;
       goto require_priv_end;
@@ -923,7 +931,7 @@ static int require_priv(const char *module, const char *version) {
 
     /* Step 4: Load module data */
     debug("require: Load module data\n");
-    returnvalue = load_module_data(filename, module, version, releasediroffs);
+    returnvalue = load_module_data(filename, module, found, releasediroffs);
     if (returnvalue) {
       goto require_priv_end;
     }
@@ -947,6 +955,7 @@ static int require_priv(const char *module, const char *version) {
   }
 
 require_priv_end:
+  free(selectedVersion);
   return returnvalue;
 }
 
