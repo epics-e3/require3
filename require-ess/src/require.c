@@ -141,8 +141,6 @@ static HMODULE loadlib(const char *libname) {
 
 struct linkedList loadedModules = {0};
 static unsigned long moduleCount = 0;
-static unsigned long moduleListBufferSize = 1;
-static unsigned long maxModuleNameLength = 0;
 
 static int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
@@ -236,9 +234,8 @@ static void fillModuleListRecord(initHookState state) {
     have_versions =
         (getRecordHandle(":Versions", DBF_STRING, moduleCount, &versions) == 0);
 
-    moduleListBufferSize += moduleCount * maxModuleNameLength;
     have_modver = (getRecordHandle(":ModuleVersions", DBF_CHAR,
-                                   moduleListBufferSize, &modver) == 0);
+                                   0, &modver) == 0);
 
     for (m = loadedModules.head, i = 0; m; m = m->next, i++) {
       if (have_modules) {
@@ -254,10 +251,10 @@ static void fillModuleListRecord(initHookState state) {
                 MAX_STRING_SIZE - 1, m->version);
       }
       if (have_modver) {
-        debug("require: %s+=\"%-*s%s\"\n", modver.precord->name,
-              (int)maxModuleNameLength, m->name, m->version);
-        c += sprintf((char *)(modver.pfield) + c, "%-*s%s\n",
-                     (int)maxModuleNameLength, m->name, m->version);
+        debug("require: %s+=\"%s %s\"\n", modver.precord->name,
+              m->name, m->version);
+        c += sprintf((char *)(modver.pfield) + c, "%s %s\n",
+                     m->name, m->version);
       }
     }
     if (have_modules) dbGetRset(&modules)->put_array_info(&modules, i);
