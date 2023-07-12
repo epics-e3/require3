@@ -146,6 +146,9 @@ ${CONFIG}/CONFIG:
 # Variables that need to override data from ${CONFIG}/CONFIG
 BASE_CPPFLAGS=
 
+# This is (at the moment) only used for a single module. If LEGACY_RSET is defined then
+# we use the _old_ untyped `struct rset` definitions for record device support. Otherwise,
+# we use the updated `struct typed_rset` ones. This helps remove some compiler warnings.
 ifndef LEGACY_RSET
 USR_CPPFLAGS+=-DUSE_TYPED_RSET
 endif
