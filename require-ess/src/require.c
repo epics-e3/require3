@@ -140,7 +140,6 @@ static HMODULE loadlib(const char *libname) {
 }
 
 struct linkedList loadedModules = {0};
-static unsigned long moduleCount = 0;
 
 static int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
@@ -217,49 +216,47 @@ We can fill the records only after they have been initialized, at
 initHookAfterFinishDevSup. But use double indirection here because in 3.13 we
 must wait until initHooks is loaded before we can register the hook.
 */
-
 static void fillModuleListRecord(initHookState state) {
-  /* MODULES record exists and has allocated memory */
-  if (state == initHookAfterFinishDevSup) {
-    DBADDR modules = {0}, versions = {0}, modver = {0};
-    int have_modules = 0, have_versions = 0, have_modver = 0;
-    struct module *m = NULL;
-    int i = 0;
-    long c = 0;
+  if (state != initHookAfterFinishDevSup)
+    return;
 
-    debug("require: fillModuleListRecord\n");
+  struct dbAddr modules = {0}, versions = {0}, modver = {0};
+  char *bufferModules, *bufferVersions, *bufferModver;
+  struct module *m = NULL;
+  int i = 0;
+  int c = 0;
 
-    have_modules =
-        (getRecordHandle(":Modules", DBF_STRING, moduleCount, &modules) == 0);
-    have_versions =
-        (getRecordHandle(":Versions", DBF_STRING, moduleCount, &versions) == 0);
+  getRecordHandle(":Modules", DBF_STRING, 0, &modules);
+  getRecordHandle(":Versions", DBF_STRING, 0, &versions);
+  getRecordHandle(":ModuleVersions", DBF_CHAR, 0, &modver);
 
-    have_modver = (getRecordHandle(":ModuleVersions", DBF_CHAR,
-                                   0, &modver) == 0);
+  bufferModules = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
+  bufferVersions = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
+  bufferModver = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
 
-    for (m = loadedModules.head, i = 0; m; m = m->next, i++) {
-      if (have_modules) {
-        debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
-              MAX_STRING_SIZE - 1, m->name);
-        sprintf((char *)(modules.pfield) + i * MAX_STRING_SIZE, "%.*s",
-                MAX_STRING_SIZE - 1, m->name);
-      }
-      if (have_versions) {
-        debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
-              MAX_STRING_SIZE - 1, m->version);
-        sprintf((char *)(versions.pfield) + i * MAX_STRING_SIZE, "%.*s",
-                MAX_STRING_SIZE - 1, m->version);
-      }
-      if (have_modver) {
-        debug("require: %s+=\"%s %s\"\n", modver.precord->name,
-              m->name, m->version);
-        c += sprintf((char *)(modver.pfield) + c, "%s %s\n",
-                     m->name, m->version);
-      }
-    }
-    if (have_modules) dbGetRset(&modules)->put_array_info(&modules, i);
-    if (have_versions) dbGetRset(&versions)->put_array_info(&versions, i);
-    if (have_modver) dbGetRset(&modver)->put_array_info(&modver, c + 1);
+  for (m = loadedModules.head, i = 0; m != NULL ; m = m->next, i++){
+    debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
+          MAX_STRING_SIZE - 1, m->name);
+    sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, m->name);
+    debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
+          MAX_STRING_SIZE - 1, m->version);
+    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, m->version);
+    debug("require: %s+=\"%s %s\"\n", modver.precord->name,
+          m->name, m->version);
+    c += sprintf((char *)(bufferModver) + c, "%s %s\n",
+                 m->name, m->version);
+  }
+
+  if (dbPut(&modules, DBF_STRING, bufferModules, loadedModules.size) != 0){
+    errlogPrintf("require: Error to put Modules\n");
+  }
+  if (dbPut(&versions, DBF_STRING, bufferVersions, loadedModules.size) != 0){
+    errlogPrintf("require: Error to put Versions\n");
+  }
+  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0){
+    printf("require: Error to put ModuleVersions");
   }
 }
 
