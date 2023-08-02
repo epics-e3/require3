@@ -97,6 +97,9 @@ int requireDebug;
 #define TEMPLATEDIR "db"
 #define LIBRELEASE "LibRelease"
 
+#define E3_REQUIRE_LOCATION "E3_REQUIRE_LOCATION"
+#define E3_REQUIRE_VERSION "E3_REQUIRE_VERSION"
+
 #ifndef OS_CLASS
 #error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
 #endif  // OS_CLASS
@@ -260,69 +263,23 @@ static void fillModuleListRecord(initHookState state) {
   }
 }
 
-#if defined(__linux)
-/* This is the Linux link.h, not the EPICS link.h ! */
-#include <link.h>
+static int registerRequire(){
+  char *requireLocation = NULL;
+  char *requireVersion = NULL;
 
-static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
-                          size_t size, /* size of info structure */
-                          void *data   /* user-supplied arg */
-) {
-  void *handle = NULL;
-  char *location = NULL;
-  char *p = NULL;
-  char *version = NULL;
-  char *symname = NULL;
-  /* get space for library path + "LibRelease" */
-  char name[PATH_MAX + (sizeof(LIBRELEASE)/sizeof(char))] = {0};
-
-  struct linkedList *linkedlist = (struct linkedList*)data;
-  if (size < sizeof(struct dl_phdr_info))
-    return 0; /* wrong version of struct dl_phdr_info */
-
-  /* find a symbol with a name like "_<module>LibRelease"
-     where <module> is from the library name "<location>/lib<module>.so" */
-
-  /* no library name */
-  if (info->dlpi_name == NULL || info->dlpi_name[0] == 0) return 0;
-  /* get a modifiable copy of the library name */
-  strcpy(name, info->dlpi_name);
-  /* re-open already loaded library */
-  handle = dlopen(info->dlpi_name, RTLD_LAZY);
-  /* find file name part in "<location>/lib<module>.so" */
-  p = strrchr(name, '/');
-  if (p) {
-    location = name;
-    *++p = 0;
-  } else {
-    /* terminate "<location>/" (if exists) */
-    p = name;
+  requireLocation = getenv(E3_REQUIRE_LOCATION);
+  if (!requireLocation){
+    printf("require: Failed to get " E3_REQUIRE_LOCATION "\n");
+    return -1;
   }
-  *(symname = p + 2) = '_';                     /* replace "lib" with "_" */
-  p = strchr(symname, '.');                     /* find ".so" extension */
-  if (p == NULL) p = symname + strnlen(symname, PATH_MAX); /* no file extension ? */
-  strcpy(p, LIBRELEASE);          /* append "LibRelease" to module name */
-  version = dlsym(handle, symname); /* find symbol "_<module>LibRelease" */
-  if (version) {
-    *p = 0;
-    symname++; /* get "<module>" from "_<module>LibRelease" */
-    if ((p = strstr(name, "/" LIBDIR)) != NULL)
-      p[1] = 0; /* cut "<location>" before LIBDIR */
-    if (getLibVersion(linkedlist, symname) == NULL)
-      registerModule(linkedlist, symname, version, location);
+  requireVersion = getenv(E3_REQUIRE_VERSION);
+  if (!requireVersion){
+    printf("require: Failed to get " E3_REQUIRE_VERSION "\n");
+    return -1;
   }
-  dlclose(handle);
+  registerModule(&loadedModules, "require", requireVersion, requireLocation);
   return 0;
 }
-
-static void registerExternalModules() {
-  /* iterate over all loaded libraries */
-  dl_iterate_phdr(findLibRelease, (void *)&loadedModules);
-}
-
-#else
-static void registerExternalModules() { ; }
-#endif
 
 int libversionShow(const char *outfile) {
   struct module *m = NULL;
@@ -1000,7 +957,9 @@ static void requireRegister(void) {
     iocshRegister(&libversionShowDef, libversionShowFunc);
     iocshRegister(&ldDef, ldFunc);
     iocshRegister(&pathAddDef, pathAddFunc);
-    registerExternalModules();
+    if(registerRequire() != 0){
+      printf("require: Could not register require.\n");
+    }
 
     set_require_env();
     initHookRegister(fillModuleListRecord);
