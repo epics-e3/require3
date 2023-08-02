@@ -171,11 +171,8 @@ static int setupDbPath(const char *module, const char *dbdir) {
   return 0;
 }
 
-static int getRecordHandle(const char *namepart, short type, long minsize,
-                           DBADDR *paddr) {
+static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
   char recordname[PVNAME_STRINGSZ] = {0};
-  long dummy = 0L;
-  long offset = 0L;
 
   sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ-1) - 1),
           getenv("REQUIRE_IOC"), namepart);
@@ -193,13 +190,6 @@ static int getRecordHandle(const char *namepart, short type, long minsize,
         pamapdbfType[type].strvalue);
     return -1;
   }
-  if (paddr->no_elements < minsize) {
-    fprintf(stderr,
-            "require:getRecordHandle : record %s has not enough elements: %lu "
-            "instead of %lu\n",
-            recordname, paddr->no_elements, minsize);
-    return -1;
-  }
   if (paddr->pfield == NULL) {
     fprintf(
         stderr,
@@ -207,9 +197,6 @@ static int getRecordHandle(const char *namepart, short type, long minsize,
         recordname);
     return -1;
   }
-
-  /* update array information */
-  dbGetRset(paddr)->get_array_info(paddr, &dummy, &offset);
 
   return 0;
 }
@@ -229,9 +216,9 @@ static void fillModuleListRecord(initHookState state) {
   int i = 0;
   int c = 0;
 
-  getRecordHandle(":Modules", DBF_STRING, 0, &modules);
-  getRecordHandle(":Versions", DBF_STRING, 0, &versions);
-  getRecordHandle(":ModuleVersions", DBF_CHAR, 0, &modver);
+  getRecordHandle(":Modules", DBF_STRING, &modules);
+  getRecordHandle(":Versions", DBF_STRING, &versions);
+  getRecordHandle(":ModuleVersions", DBF_CHAR, &modver);
 
   bufferModules = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
   bufferVersions = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
