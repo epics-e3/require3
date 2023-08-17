@@ -211,6 +211,12 @@ SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
+INSTALL_LICENSE = ${MODULE_LOCATION}/doc
+# Find all license files to distribute with binaries
+LICENSES = $(shell find -not -path '*/.*' -type f -iname LICENSE)
+LICENSES += $(shell find -not -path '*/.*' -type f -iname Copyright)
+export LICENSES
+
 # Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
 ALL_ARCHS = ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
 BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),\
@@ -252,6 +258,7 @@ debug::
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "EPICS_MODULES = ${EPICS_MODULES}"
+	@echo "LICENSES = ${LICENSES}"
 
 # Create e.g. build-$(T_A) rules for each architecture, so that we can just do
 #   build: build-arch1 build-arch2
@@ -272,6 +279,20 @@ db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
 # and ARCH_FILTER, which are defined _after_ driver.makefile.
 $(foreach target,install build debug,$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+
+# The licenses should be installed after everything
+define license_install =
+$1: $2
+	@echo "Installing license file $$^"
+	$$(INSTALL) -d -m444 $$^ $$(@D)
+
+install:: $1
+
+endef
+# Creates a target for every license file to be installed.  Some modules have
+# more than one license file that needs distribution.  For them we add the
+# previous directory so we have them separate by projects inside /doc.
+$(foreach d, $(LICENSES), $(eval $(call license_install, $(INSTALL_LICENSE)/$(filter-out ., $(lastword $(subst /, , $(dir $(d))))/$(notdir $(d))), $(d))))
 
 else # T_A
 

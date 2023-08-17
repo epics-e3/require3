@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Allow for module-specific build rules (see: sequencer) to be installed and used
   within e3
+* Automatically install LICENSE files with modules
 
 ### Bugfixes
 
