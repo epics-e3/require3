@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Shortened argument for printing version and exit changed from `-v` to `-V`
     * Make running IOC as realtime or with debuggers mutually exclusive
     * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
+* Remove `ARCH_FILTER` support; from now on, only `EXCLUDE_ARCHS` is used.
 
 ## [5.0.0]
 

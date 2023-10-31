@@ -48,8 +48,9 @@
 # HEADERS
 #    Header files to install (e.g. to be included by other drivers)
 #    If not defined, all headers are for local use only.
-# ARCH_FILTER
-#    Sub set of architectures to build for, e.g. %-ppc604
+# EXCLUDE_ARCH
+#    Sub set of architectures to exclude for, e.g. ppc604; note that these will be wildcarded
+#    as %ppc604 and ppc604%.
 
 # Get the location of this file.
 MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
@@ -217,10 +218,10 @@ LICENSES = $(shell find -not -path '*/.*' -type f -iname LICENSE)
 LICENSES += $(shell find -not -path '*/.*' -type f -iname Copyright)
 export LICENSES
 
-# Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
+# Filter architectures to build using EXCLUDE_ARCHS.
 ALL_ARCHS = ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
-BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),\
-        $(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${ALL_ARCHS}),${ALL_ARCHS})))
+BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),\
+              $(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),${ALL_ARCHS}))
 
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
@@ -254,7 +255,6 @@ debug::
 	@echo "PRJ = ${PRJ}"
 	@echo "EPICS_BASE = ${EPICS_BASE}"
 	@echo "BUILD_ARCHS = ${BUILD_ARCHS}"
-	@echo "ARCH_FILTER = ${ARCH_FILTER}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "EPICS_MODULES = ${EPICS_MODULES}"
@@ -277,7 +277,7 @@ db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.template,%.db,$
 db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%.db,$$(SUBS))))
 
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
-# and ARCH_FILTER, which are defined _after_ driver.makefile.
+# which is defined _after_ driver.makefile.
 $(foreach target,install build debug,$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
 
 # The licenses should be installed after everything
