@@ -243,6 +243,8 @@ export SRCS_Linux
 $(RECURSE_TARGETS)::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
+build db_internal:: $(COMMON_DIR)
+
 debug::
 	@echo "===================== Pass 1 ====================="
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
@@ -258,7 +260,7 @@ debug::
 # Create e.g. build-$(T_A) rules for each architecture, so that we can just do
 #   build: build-arch1 build-arch2
 define target_rule
-$1-%: | $(COMMON_DIR)
+$1-%:
 	$${MAKE} -f $${USERMAKEFILE} T_A=$$* $1
 endef
 $(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
