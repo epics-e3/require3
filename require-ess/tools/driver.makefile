@@ -61,7 +61,7 @@ USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_L
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
 # a single pass.
-RECURSE_TARGETS = install build debug
+RECURSE_TARGETS = install build debug db_internal
 
 ##---## In conda, We only use one version of EPICS base when compiling modules.
 ##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
@@ -137,6 +137,12 @@ define uniq
   $(eval seen :=) \
   $(foreach _,$1,$(if $(filter $_,${seen}),,$(eval seen += $_))) \
   ${seen}
+endef
+
+# This is used to ensure that relative/absolute paths in e.g. USR_DBFLAGS are
+# correct, relative to the build directory.
+define fix_relative_paths
+$(foreach t,$(patsubst -I%,-I %,$1),$(if $(filter -I,$t),$t,$(if $(filter /%,$t),$t,../$t)))
 endef
 
 # Some TOP and EPICS_BASE tweeking necessary to work around release check in 3.14.10+.
@@ -234,25 +240,6 @@ BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),\
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
 
-# Perform default database expansion of .substitions/.templates into $(COMMON_DIR)
-db_internal: $(COMMON_DIR)
-
--include $(COMMON_DIR)/*.db.d
-
-VPATH += $(dir $(TMPS))
-VPATH += $(dir $(SUBS))
-
-$(COMMON_DIR)/%.db: %.substitutions
-	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
-	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
-	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^
-
-$(COMMON_DIR)/%.db: %.template
-	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
-	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
-	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^
-
-
 $(RECURSE_TARGETS)::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
@@ -277,12 +264,6 @@ endef
 $(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 
 .SECONDEXPANSION:
-
-# This has to fit under .SECONDEXPANSION in order to catch TMPS and SUBS, which are typically defined
-# _after_ driver.makefile is included.
-db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.template,%.db,$$(TMPS))))
-
-db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%.db,$$(SUBS))))
 
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
 # which is defined _after_ driver.makefile.
@@ -348,6 +329,10 @@ export USR_LIBOBJS
 
 BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
 export BINS
+
+export USR_DBFLAGS
+export TMPS
+export SUBS
 
 else # in O.*
 ## RUN 3
@@ -467,6 +452,8 @@ build: MODULEINFOS
 build: ${MODULEDBD}
 build: ${DEPFILE}
 
+db_internal:
+
 COMMON_INC = ${RECORDS:%=${COMMON_DIR}/%.h}
 
 # Include default EPICS Makefiles (version dependent).
@@ -481,6 +468,26 @@ ifeq (,$(findstring debug,${MAKECMDGOALS}))
     include $(MODULE_RULES)
   endif
 endif
+
+DBDEPENDS_FILES = $(wildcard $(COMMON_DIR)/*.db.d)
+ifneq (,$(DBDEPENDS_FILES))
+-include $(DBDEPENDS_FILES)
+endif
+
+USR_DBFLAGS := $(call fix_relative_paths,$(USR_DBFLAGS))
+
+define SUBS_EXPAND
+db_internal: $(COMMON_DIR)/$(notdir $(basename $2).db)
+
+# Note that this rule overrides the one from RULES.Db from EPICS_BASE
+$(COMMON_DIR)/$(notdir $(basename $2).db): $(if $(filter /%,$2),$2,../$2)
+	@printf "Inflating database ... %44s >>> %40s \n" "$$<" "$$@"
+	$(MSI) -D $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$< > $(COMMON_DIR)/$$(notdir $$(basename $2).db).d
+	$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$<
+endef
+
+$(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
+$(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
