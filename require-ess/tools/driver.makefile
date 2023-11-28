@@ -57,6 +57,11 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 # Get the name of the Makefile that included this file.
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
+# These are the targets that we will pass through to the next stages of require's
+# recursive build process. For each of these targets we will perform all three
+# of the build runs listed above; for others (e.g. `make clean`) we only perform
+# a single pass.
+RECURSE_TARGETS = install build debug
 
 ##---## In conda, We only use one version of EPICS base when compiling modules.
 ##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
@@ -248,7 +253,7 @@ $(COMMON_DIR)/%.db: %.template
 	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^
 
 
-install build debug::
+$(RECURSE_TARGETS)::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
 debug::
@@ -269,7 +274,7 @@ define target_rule
 $1-%: | $(COMMON_DIR)
 	$${MAKE} -f $${USERMAKEFILE} T_A=$$* $1
 endef
-$(foreach target,install build debug,$(eval $(call target_rule,$(target))))
+$(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 
 .SECONDEXPANSION:
 
@@ -281,7 +286,7 @@ db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%
 
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
 # which is defined _after_ driver.makefile.
-$(foreach target,install build debug,$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+$(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
 
 # The licenses should be installed after everything
 define license_install =
@@ -332,7 +337,7 @@ else
 install:: build
 	$(if $(wildcard ${MODULE_LOCATION}/lib/${T_A}),$(error ${MODULE_LOCATION}/lib/${T_A} already exists. If you really want to overwrite then uninstall first.))
 
-install build debug:: O.${EPICSVERSION}_${T_A}
+$(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
 endif
