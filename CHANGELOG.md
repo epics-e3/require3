@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Other changes
+
+* Rewrite `iocsh` converting it from being a shell script to a python (3.6) script
+  * Remove support for file extensions: `.so`, `.dbd`, `.db`, `.substitutions`, `.template`, `.iocsh`
+  * Remove support for `nice`
+  * Remove support for sequencer programs
+  * Remove optional argument passing to `gdb`
+  * Change the IOC shell to use both stdout and stderr (previously only stdout)
+  * Change default prompt
+  * Change fallback IOC-name (used when `IOCNAME` is not set)
+  * Multiple argument changes; e.g.
+    * Shortened argument for printing version and exit changed from `-v` to `-V`
+    * Make running IOC as realtime or with debuggers mutually exclusive
+    * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
+
 ## [5.0.0]
 
 ### New Features
