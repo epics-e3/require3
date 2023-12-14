@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bugfixes
 
 * Fixed an issue where .template and .substitutions files with the same name would build incorrectly
+* Removed a number of memory leaks found by valgrind
 
 ### Other changes
 
@@ -30,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Shortened argument for printing version and exit changed from `-v` to `-V`
     * Make running IOC as realtime or with debuggers mutually exclusive
     * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
+* Replaced `tclx` script to expand .dbd files with a python script
+* Removed ability to pass `args` to require (which have not been used within e3)
+* Removed `require module,ifexists` option
+* Stop require from looking in legacy locations for various files
+* Rewrite internal linked list to have better memory safety
 * Remove `ARCH_FILTER` support; from now on, only `EXCLUDE_ARCHS` is used.
 
 ## [5.0.0]
