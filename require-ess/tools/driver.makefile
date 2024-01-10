@@ -479,11 +479,9 @@ MODULEINFOS:
 	@echo ${LIBVERSION} > LIBVERSION
 
 # Build one module dbd file by expanding all source dbd files.
-# We can't use dbExpand (from the default EPICS make rules)
-# because it has too strict checks to be used for a loadable module.
 ${MODULEDBD}: ${DBDFILES}
 	@echo "Expanding $@"
-	${MAKEHOME}expandDBD.tcl -$(basename ${EPICSVERSION}) ${DBDEXPANDPATH} $^ > $@
+	${PERL} ${EPICS_BASE_HOST_BIN}/dbdExpand.pl -A ${DBDEXPANDPATH} -o $@ $^
 
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
