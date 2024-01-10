@@ -172,11 +172,11 @@ DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Recor
 DBD_SRCS += ${DBDS_${EPICSVERSION}}
 export DBD_SRCS
 
-#record dbd files given in DBDS
-RECORDS1 = $(patsubst %Record.dbd, %, $(filter-out dev%, $(filter %Record.dbd, $(notdir ${DBD_SRCS}))))
-#record dbd files included by files given in DBDS
-RECORDS2 = $(filter-out dev%, $(shell ${MAKEHOME}/expandDBD.tcl -r $(addprefix -I, $(sort $(dir ${DBD_SRCS}))) $(realpath ${DBDS})))
-RECORDS = $(sort ${RECORDS1} ${RECORDS2})
+# Read dbd files from source files. Note that this assumes that any xxxRecord.(c|cpp|...) has
+# a corresponding xxxRecord.dbd, which is used to generate xxxRecord.h; this is standard usage
+# in EPICS. However, if such a .dbd file does not exist, then the build will fail due to the
+# "missing" header file.
+RECORDS = $(filter %Record,$(basename $(notdir $(SRCS))))
 export RECORDS
 
 MENUS = $(patsubst %.dbd,%.h,$(wildcard menu*.dbd))
@@ -190,7 +190,8 @@ DBDINSTALLS += $(MENUS)
 DBDINSTALLS += $(BPTS)
 export DBDINSTALLS
 
-HDRS = ${HEADERS} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
+HDRS = ${HEADERS}
+HDRS += $(RECORDS:%=${COMMON_DIR}/%.h)
 HDRS += ${HEADERS_${EPICSVERSION}}
 export HDRS
 
@@ -433,8 +434,9 @@ debug::
 
 build: MODULEINFOS
 build: ${MODULEDBD}
-build: $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
 build: ${DEPFILE}
+
+COMMON_INC = ${RECORDS:%=${COMMON_DIR}/%.h}
 
 # Include default EPICS Makefiles (version dependent).
 # Avoid library installation when doing 'make build'.
