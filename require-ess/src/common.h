@@ -4,10 +4,11 @@
 
 extern int requireDebug;
 
-#define debug(...) \
-  if (requireDebug) printf(__VA_ARGS__)
+#define debug(...)                                                             \
+  if (requireDebug)                                                            \
+  printf(__VA_ARGS__)
 
 char *realpathSeparator(const char *location);
 int putenvprintf(const char *format, ...);
 void pathAdd(const char *varname, const char *dirname);
-#endif  /*__COMMON_H_*/
+#endif /*__COMMON_H_*/

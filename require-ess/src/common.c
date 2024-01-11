@@ -1,7 +1,7 @@
 #include <dbAccess.h>
+#include <errlog.h>
 #include <errno.h>
 #include <error.h>
-#include <errlog.h>
 #include <limits.h>
 #include <osiFileName.h>
 #include <stdarg.h>
@@ -22,10 +22,10 @@ char *realpathSeparator(const char *location) {
   size = strnlen(buffer, PATH_MAX);
   /* linux realpath removes trailing slash */
   if (buffer[size - 1] != OSI_PATH_SEPARATOR[0]) {
-    char* tmp = realloc(buffer, size + sizeof(OSI_PATH_SEPARATOR));
-    if (!tmp){
-        free(buffer);
-        return NULL;
+    char *tmp = realloc(buffer, size + sizeof(OSI_PATH_SEPARATOR));
+    if (!tmp) {
+      free(buffer);
+      return NULL;
     }
     buffer = tmp;
     strcpy(buffer + size, OSI_PATH_SEPARATOR);
@@ -39,7 +39,8 @@ int putenvprintf(const char *format, ...) {
   char *val = NULL;
   int status = 0;
 
-  if (!format) return -1;
+  if (!format)
+    return -1;
   va_start(ap, format);
   if (vasprintf(&var, format, ap) < 0) {
     errlogPrintf("require putenvprintf %s", strerror(errno));
@@ -92,7 +93,8 @@ void pathAdd(const char *varname, const char *dirname) {
     while ((p = strstr(p, dirname)) != NULL) {
       if ((p == old_path || *(p - 1) == OSI_PATH_LIST_SEPARATOR[0]) &&
           (p[len] == 0 || p[len] == OSI_PATH_LIST_SEPARATOR[0])) {
-        if (p == old_path) break; /* already at front, nothing to do */
+        if (p == old_path)
+          break; /* already at front, nothing to do */
         memmove(old_path + len + 1, old_path, p - old_path - 1);
         strcpy(old_path, dirname);
         old_path[len] = OSI_PATH_LIST_SEPARATOR[0];

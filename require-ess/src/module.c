@@ -1,6 +1,6 @@
 #include <dbAccess.h>
-#include <error.h>
 #include <errlog.h>
+#include <error.h>
 #include <limits.h>
 #include <osiFileName.h>
 #include <stdio.h>
@@ -12,7 +12,7 @@
 
 #define MAX_MODULE_SIZE 256
 
-unsigned long int bufferSize=0;
+unsigned long int bufferSize = 0;
 
 const char *getLibVersion(struct linkedList *linkedlist, const char *libname) {
   struct module *m = NULL;
@@ -37,52 +37,59 @@ const char *getLibLocation(struct linkedList *linkedlist, const char *libname) {
 int isModuleLoaded(struct linkedList *linkedlist, const char *libname) {
   struct module *m = NULL;
   for (m = linkedlist->head; m; m = m->next) {
-    if (strcmp(m->name, libname) == 0) return TRUE;
+    if (strcmp(m->name, libname) == 0)
+      return TRUE;
   }
   return FALSE;
 }
 
-int registerModule(struct linkedList *linkedlist, const char *moduleName, const char *version,
-                    const char *location) {
+int registerModule(struct linkedList *linkedlist, const char *moduleName,
+                   const char *version, const char *location) {
   char *absLocation = NULL;
   char *absLocationRequire = NULL;
   char *argstring = NULL;
   const char *mylocation = NULL;
 
   /* require should be called only before iocInit. */
-  if (interruptAccept) return 0;
+  if (interruptAccept)
+    return 0;
 
   debug("require: registerModule(%s,%s,%s)\n", moduleName, version, location);
 
-  if (!moduleName) return -1;
-  if (!version) version = "";
+  if (!moduleName)
+    return -1;
+  if (!version)
+    version = "";
 
   if (location) {
     absLocation = realpathSeparator(location);
   }
 
   struct module *module = NULL;
-  if (!(module = (struct module*)calloc(sizeof(struct module), 1))) {
+  if (!(module = (struct module *)calloc(sizeof(struct module), 1))) {
     goto out_of_memory;
   }
 
   /* Check if string is well formated, there is a \0 in the next MAX_MODULE_SIZE
      bytes.  */
-  int nameSize = strnlen(moduleName, MAX_MODULE_SIZE)+1;
-  if(nameSize > MAX_MODULE_SIZE) return -1;
-  if (!(module->name = calloc(nameSize, sizeof(char)))){
+  int nameSize = strnlen(moduleName, MAX_MODULE_SIZE) + 1;
+  if (nameSize > MAX_MODULE_SIZE)
+    return -1;
+  if (!(module->name = calloc(nameSize, sizeof(char)))) {
     goto out_of_memory;
   }
   strcpy(module->name, moduleName);
 
-  int versionSize = strnlen(version, MAX_MODULE_SIZE)+1;
-  if(versionSize > MAX_MODULE_SIZE) return -1;
-  if (!(module->version = calloc(versionSize, sizeof(char)))){
+  int versionSize = strnlen(version, MAX_MODULE_SIZE) + 1;
+  if (versionSize > MAX_MODULE_SIZE)
+    return -1;
+  if (!(module->version = calloc(versionSize, sizeof(char)))) {
     goto out_of_memory;
   }
   strcpy(module->version, version);
 
-  if (!(module->path = calloc(strnlen(absLocation, PATH_MAX)+1, sizeof(char)))){
+  if (!(module->path =
+            calloc(strnlen(absLocation, PATH_MAX) + 1, sizeof(char)))) {
     goto out_of_memory;
   }
   strcpy(module->path, absLocation ? absLocation : "");
@@ -93,7 +100,7 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName, const 
    * function.  The size here will be calculated based on the string that is
    * being written in fillModuleListRecord.  So the magic number here is related
    * to that string format.*/
-  bufferSize += nameSize+versionSize+2;
+  bufferSize += nameSize + versionSize + 2;
   if (linkedlist->size == 0) {
     linkedlist->head = module;
   } else {
@@ -111,7 +118,8 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName, const 
 
   /* create a record with the version string */
   mylocation = getenv("require_DIR");
-  if (mylocation == NULL) return 0;
+  if (mylocation == NULL)
+    return 0;
   if (asprintf(&absLocationRequire,
                "%s" OSI_PATH_SEPARATOR "db" OSI_PATH_SEPARATOR
                "moduleversion.template",
@@ -130,7 +138,8 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName, const 
   if (asprintf(&argstring,
                "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
                "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
-               getenv("REQUIRE_IOC"), module->name, module->version, linkedlist->size, bufferSize) < 0){
+               getenv("REQUIRE_IOC"), module->name, module->version,
+               linkedlist->size, bufferSize) < 0) {
     errlogPrintf("Error asprintf failed\n");
     return 0;
   }

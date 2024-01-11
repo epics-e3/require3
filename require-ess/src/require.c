@@ -5,8 +5,8 @@
 /* for vasprintf and dl_iterate_phdr */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#endif  // _GNU_SOURCE
-#endif  // __unix
+#endif // _GNU_SOURCE
+#endif // __unix
 
 /* for 64 bit (NFS) file systems */
 #define _FILE_OFFSET_BITS 64
@@ -19,8 +19,8 @@
 #include <epicsExport.h>
 #include <epicsStdio.h>
 #include <epicsVersion.h>
-#include <errno.h>
 #include <errlog.h>
+#include <errno.h>
 #include <initHooks.h>
 #include <iocsh.h>
 #include <osiFileName.h>
@@ -41,28 +41,28 @@ int requireDebug;
 #ifndef OS_CLASS
 #if defined(__linux) || defined(linux)
 #define OS_CLASS "Linux"
-#endif  // __linux
+#endif // __linux
 
 #ifdef SOLARIS
 #define OS_CLASS "solaris"
-#endif  // SOLARIS
+#endif // SOLARIS
 
 #ifdef __rtems__
 #define OS_CLASS "RTEMS"
-#endif  // __rtems__
+#endif // __rtems__
 
 #ifdef freebsd
 #define OS_CLASS "freebsd"
-#endif  // freebsd
+#endif // freebsd
 
 #ifdef darwin
 #define OS_CLASS "Darwin"
-#endif  // darwin
+#endif // darwin
 
 #ifdef _AIX32
 #define OS_CLASS "AIX"
-#endif  // _AIX32
-#endif  // OS_CLASS
+#endif // _AIX32
+#endif // OS_CLASS
 
 #else
 #error Only support Unix based distros
@@ -81,17 +81,19 @@ int requireDebug;
 #define IF_OPEN_DIR(f) if ((dir = opendir(f)))
 #define DIR_ENTRY struct dirent *
 #define START_DIR_LOOP while ((errno = 0, direntry = readdir(dir)) != NULL)
-#define END_DIR_LOOP                                              \
-  if (!direntry && errno)                                         \
-    errlogPrintf("error reading directory %s: %s\n", filename, \
-            strerror(errno));                                     \
-  if (dir) closedir(dir);
+#define END_DIR_LOOP                                                           \
+  if (!direntry && errno)                                                      \
+    errlogPrintf("error reading directory %s: %s\n", filename,                 \
+                 strerror(errno));                                             \
+  if (dir)                                                                     \
+    closedir(dir);
 #ifdef _DIRENT_HAVE_D_TYPE
-#define SKIP_NON_DIR(e) \
-  if (e->d_type != DT_DIR && e->d_type != DT_UNKNOWN) continue;
-#else  // _DIRENT_HAVE_D_TYPE
+#define SKIP_NON_DIR(e)                                                        \
+  if (e->d_type != DT_DIR && e->d_type != DT_UNKNOWN)                          \
+    continue;
+#else // _DIRENT_HAVE_D_TYPE
 #define SKIP_NON_DIR(e)
-#endif  // _DIRENT_HAVE_D_TYPE
+#endif // _DIRENT_HAVE_D_TYPE
 #define FILENAME(e) e->d_name
 
 #define LIBDIR "lib" OSI_PATH_SEPARATOR
@@ -103,7 +105,7 @@ int requireDebug;
 
 #ifndef OS_CLASS
 #error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
-#endif  // OS_CLASS
+#endif // OS_CLASS
 
 const char osClass[] = OS_CLASS;
 
@@ -175,12 +177,12 @@ static int setupDbPath(const char *module, const char *dbdir) {
 static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
   char recordname[PVNAME_STRINGSZ] = {0};
 
-  sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ-1) - 1),
+  sprintf(recordname, "%.*s%s",
+          (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ - 1) - 1),
           getenv("REQUIRE_IOC"), namepart);
 
   if (dbNameToAddr(recordname, paddr) != 0) {
-    errlogPrintf("require:getRecordHandle : record %s not found\n",
-            recordname);
+    errlogPrintf("require:getRecordHandle : record %s not found\n", recordname);
     return -1;
   }
   if (paddr->field_type != type) {
@@ -219,11 +221,14 @@ static void fillModuleListRecord(initHookState state) {
   getRecordHandle(":Versions", DBF_STRING, &versions);
   getRecordHandle(":ModuleVersions", DBF_CHAR, &modver);
 
-  bufferModules = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
-  bufferVersions = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
-  bufferModver = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
+  bufferModules =
+      (char *)calloc(MAX_STRING_SIZE * loadedModules.size, sizeof(char));
+  bufferVersions =
+      (char *)calloc(MAX_STRING_SIZE * loadedModules.size, sizeof(char));
+  bufferModver =
+      (char *)calloc(MAX_STRING_SIZE * loadedModules.size, sizeof(char));
 
-  for (m = loadedModules.head, i = 0; m != NULL ; m = m->next, i++){
+  for (m = loadedModules.head, i = 0; m != NULL; m = m->next, i++) {
     debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
           MAX_STRING_SIZE - 1, m->name);
     sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
@@ -232,34 +237,33 @@ static void fillModuleListRecord(initHookState state) {
           MAX_STRING_SIZE - 1, m->version);
     sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
             MAX_STRING_SIZE - 1, m->version);
-    debug("require: %s+=\"%s %s\"\n", modver.precord->name,
-          m->name, m->version);
-    c += sprintf((char *)(bufferModver) + c, "%s %s\n",
-                 m->name, m->version);
+    debug("require: %s+=\"%s %s\"\n", modver.precord->name, m->name,
+          m->version);
+    c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
   }
 
-  if (dbPut(&modules, DBF_STRING, bufferModules, loadedModules.size) != 0){
+  if (dbPut(&modules, DBF_STRING, bufferModules, loadedModules.size) != 0) {
     errlogPrintf("require: Error to put Modules\n");
   }
-  if (dbPut(&versions, DBF_STRING, bufferVersions, loadedModules.size) != 0){
+  if (dbPut(&versions, DBF_STRING, bufferVersions, loadedModules.size) != 0) {
     errlogPrintf("require: Error to put Versions\n");
   }
-  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0){
+  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
     errlogPrintf("require: Error to put ModuleVersions\n");
   }
 }
 
-static int registerRequire(){
+static int registerRequire() {
   char *requireLocation = NULL;
   char *requireVersion = NULL;
 
   requireLocation = getenv(E3_REQUIRE_LOCATION);
-  if (!requireLocation){
+  if (!requireLocation) {
     errlogPrintf("require: Failed to get " E3_REQUIRE_LOCATION "\n");
     return -1;
   }
   requireVersion = getenv(E3_REQUIRE_VERSION);
-  if (!requireVersion){
+  if (!requireVersion) {
     errlogPrintf("require: Failed to get " E3_REQUIRE_VERSION "\n");
     return -1;
   }
@@ -280,14 +284,14 @@ int libversionShow(const char *outfile) {
     }
   }
   for (m = loadedModules.head; m; m = m->next) {
-    fprintf(out, "%s-%20s %s\n", m->name,
-            m->version, m->path);
+    fprintf(out, "%s-%20s %s\n", m->name, m->version, m->path);
   }
   if (fflush(out) < 0 && outfile) {
     errlogPrintf("can't write to %s: %s\n", outfile, strerror(errno));
     return -1;
   }
-  if (outfile) fclose(out);
+  if (outfile)
+    fclose(out);
   return 0;
 }
 
@@ -353,30 +357,27 @@ static int compareVersions(const char *found, const char *request,
 
   // TODO: maybe don't do this. This is only in the case that
   // we have found an installed version with no revision number.
-  if (already_matched && sv_request->revision == -1) sv_request->revision = 0;
+  if (already_matched && sv_request->revision == -1)
+    sv_request->revision = 0;
 
   // test version, look for exact.
   if (strlen(sv_request->test_str) > 0) {
     if (strcmp(sv_found->test_str, sv_request->test_str) == 0) {
-      debug(
-          "require: compareVersions: Test version requested and found, "
-          "matches\n");
+      debug("require: compareVersions: Test version requested and found, "
+            "matches\n");
       match = MATCH;
     } else if (strlen(sv_found->test_str) > 0) {
-      debug(
-          "require: compareVersions: Test versions requested and found, no "
-          "match\n");
+      debug("require: compareVersions: Test versions requested and found, no "
+            "match\n");
       match = MISMATCH;
     } else {
-      debug(
-          "require: compareVersions: found numeric version, higher than "
-          "test\n");
+      debug("require: compareVersions: found numeric version, higher than "
+            "test\n");
       match = HIGHER;
     }
   } else if (strlen(sv_found->test_str) > 0) {
-    debug(
-        "require: compareVersions: Numeric version requested, test version "
-        "found\n");
+    debug("require: compareVersions: Numeric version requested, test version "
+          "found\n");
     match = MISMATCH;
   } else {
     match = compareNumericVersion(sv_found, sv_request);
@@ -386,9 +387,8 @@ static int compareVersions(const char *found, const char *request,
   if (match == MATCH) {
     if (sv_request->revision == -1) {
       if (already_matched) {
-        debug(
-            "require: compareVersions: No revision number for already found "
-            "version. Returning HIGHER\n");
+        debug("require: compareVersions: No revision number for already found "
+              "version. Returning HIGHER\n");
         match = HIGHER;
       } else {
         debug(
@@ -435,7 +435,8 @@ int require(const char *module, const char *version) {
     return -1;
   }
 
-  if (version && version[0] == 0) version = NULL;
+  if (version && version[0] == 0)
+    version = NULL;
 
   if (version && strcmp(version, "none") == 0) {
     debug("require: skip version=none\n");
@@ -444,9 +445,12 @@ int require(const char *module, const char *version) {
 
   status = require_priv(module, version);
 
-  if (status == 0) return 0;
-  if (status != -1) perror("require");
-  if (interruptAccept) return status;
+  if (status == 0)
+    return 0;
+  if (status != -1)
+    perror("require");
+  if (interruptAccept)
+    return status;
 
   /* require failed in startup script before iocInit */
   errlogPrintf("Aborting startup script\n");
@@ -461,46 +465,46 @@ static off_t fileSize(const char *filename) {
     return -1;
   }
   switch (filestat.st_mode & S_IFMT) {
-    case S_IFREG:
-      debug("require: file %s exists, size %lld bytes\n", filename,
-            (unsigned long long)filestat.st_size);
-      return filestat.st_size;
-    case S_IFDIR:
-      debug("require: directory %s exists\n", filename);
-      return 0;
+  case S_IFREG:
+    debug("require: file %s exists, size %lld bytes\n", filename,
+          (unsigned long long)filestat.st_size);
+    return filestat.st_size;
+  case S_IFDIR:
+    debug("require: directory %s exists\n", filename);
+    return 0;
 #ifdef S_IFBLK
-    case S_IFBLK:
-      debug("require: %s is a block device\n", filename);
-      return -1;
+  case S_IFBLK:
+    debug("require: %s is a block device\n", filename);
+    return -1;
 #endif
 #ifdef S_IFCHR
-    case S_IFCHR:
-      debug("require: %s is a character device\n", filename);
-      return -1;
+  case S_IFCHR:
+    debug("require: %s is a character device\n", filename);
+    return -1;
 #endif
 #ifdef S_IFIFO
-    case S_IFIFO:
-      debug("require: %s is a FIFO/pipe\n", filename);
-      return -1;
+  case S_IFIFO:
+    debug("require: %s is a FIFO/pipe\n", filename);
+    return -1;
 #endif
 #ifdef S_IFSOCK
-    case S_IFSOCK:
-      debug("require: %s is a socket\n", filename);
-      return -1;
+  case S_IFSOCK:
+    debug("require: %s is a socket\n", filename);
+    return -1;
 #endif
-    default:
-      debug("require: %s is an unknown type of special file\n", filename);
-      return -1;
+  default:
+    debug("require: %s is an unknown type of special file\n", filename);
+    return -1;
   }
 }
 #define fileExists(filename) (fileSize(filename) >= 0)
 #define fileNotEmpty(filename) (fileSize(filename) > 0)
-#define TRY_FILE(offs, ...)                                           \
-  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) && \
+#define TRY_FILE(offs, ...)                                                    \
+  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) &&                  \
    fileExists(filename))
 
-#define TRY_NONEMPTY_FILE(offs, ...)                                  \
-  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) && \
+#define TRY_NONEMPTY_FILE(offs, ...)                                           \
+  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) &&                  \
    fileNotEmpty(filename))
 
 static int handleDependencies(const char *module, char *depfilename) {
@@ -515,23 +519,28 @@ static int handleDependencies(const char *module, char *depfilename) {
   while (fgets(buffer, sizeof(buffer) - 1, depfile)) {
     rmodule = buffer;
     /* ignore leading spaces */
-    while (isspace((unsigned char)*rmodule)) rmodule++;
+    while (isspace((unsigned char)*rmodule))
+      rmodule++;
     /* ignore empty lines and comment lines */
-    if (*rmodule == 0 || *rmodule == '#') continue;
+    if (*rmodule == 0 || *rmodule == '#')
+      continue;
     /* rmodule at start of module name */
     rversion = rmodule;
     /* find end of module name */
-    while (*rversion && !isspace((unsigned char)*rversion)) rversion++;
+    while (*rversion && !isspace((unsigned char)*rversion))
+      rversion++;
     /* terminate module name */
     *rversion++ = 0;
     /* ignore spaces */
-    while (isspace((unsigned char)*rversion)) rversion++;
+    while (isspace((unsigned char)*rversion))
+      rversion++;
     /* rversion at start of version */
 
     if (*rversion) {
       end = rversion;
       /* find end of version */
-      while (*end && !isspace((unsigned char)*end)) end++;
+      while (*end && !isspace((unsigned char)*end))
+        end++;
       /* terminate version */
       *end = 0;
     }
@@ -551,8 +560,8 @@ static int handleDependencies(const char *module, char *depfilename) {
  *
  * Sets <filename> to be the path the the underlying module.
  */
-static char* fetch_module_version(char *filename, size_t max_file_len,
-                                const char *module, const char *version) {
+static char *fetch_module_version(char *filename, size_t max_file_len,
+                                  const char *module, const char *version) {
   const char *dirname = NULL;
   const char *driverpath = NULL;
   const char *end = NULL;
@@ -565,7 +574,8 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
   int someArchFound = 0;
 
   driverpath = getenv("EPICS_DRIVER_PATH");
-  if (driverpath == NULL) driverpath = ".";
+  if (driverpath == NULL)
+    driverpath = ".";
   debug("require: searchpath=%s\n", driverpath);
 
   for (dirname = driverpath; dirname != NULL; dirname = end) {
@@ -583,7 +593,8 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
       dirlen = (int)(end++ - dirname);
     else
       dirlen = (int)strnlen(dirname, PATH_MAX);
-    if (dirlen == 0) continue; /* ignore empty driverpath elements */
+    if (dirlen == 0)
+      continue; /* ignore empty driverpath elements */
 
     debug("require: trying %.*s\n", dirlen, dirname);
 
@@ -602,7 +613,8 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
         char *currentFilename = FILENAME(direntry);
 
         SKIP_NON_DIR(direntry)
-        if (currentFilename[0] == '.') continue; /* ignore hidden directories */
+        if (currentFilename[0] == '.')
+          continue; /* ignore hidden directories */
 
         someVersionFound = 1;
 
@@ -611,55 +623,53 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
               currentFilename, version ? version : "");
 
         switch (compareVersions(currentFilename, version, FALSE)) {
-          case MATCH: /* all given numbers match. */
-          {
-            someArchFound = 1;
+        case MATCH: /* all given numbers match. */
+        {
+          someArchFound = 1;
 
-            debug("require: %s %s may match %s\n", module, currentFilename,
-                  version ? version : "");
+          debug("require: %s %s may match %s\n", module, currentFilename,
+                version ? version : "");
 
-            /* Check if it has our EPICS version and architecture. */
-            /* Even if it has no library, at least it has a dep file in the
-             * lib dir */
+          /* Check if it has our EPICS version and architecture. */
+          /* Even if it has no library, at least it has a dep file in the
+           * lib dir */
 
-            /* Step 1 : library file location */
-            /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
-            if (!TRY_FILE(modulediroffs,
-                          "%s" OSI_PATH_SEPARATOR LIBDIR
-                          "%s" OSI_PATH_SEPARATOR,
-                          currentFilename, targetArch)) {
-              /* filename =
-               * "<dirname>/[dirlen]<module>/[modulediroffs]<version>/lib/<targetArch>/"
-               */
-              debug("require: %s %s has no support for %s %s\n", module,
-                    currentFilename, epicsRelease, targetArch);
-              continue;
-            }
+          /* Step 1 : library file location */
+          /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
+          if (!TRY_FILE(modulediroffs,
+                        "%s" OSI_PATH_SEPARATOR LIBDIR "%s" OSI_PATH_SEPARATOR,
+                        currentFilename, targetArch)) {
+            /* filename =
+             * "<dirname>/[dirlen]<module>/[modulediroffs]<version>/lib/<targetArch>/"
+             */
+            debug("require: %s %s has no support for %s %s\n", module,
+                  currentFilename, epicsRelease, targetArch);
+            continue;
+          }
 
-            /* Is it higher than the one we found before? */
-            if (found)
-              debug(
-                  "require: %s %s support for %s %s found, compare against "
+          /* Is it higher than the one we found before? */
+          if (found)
+            debug("require: %s %s support for %s %s found, compare against "
                   "previously found %s\n",
                   module, currentFilename, epicsRelease, targetArch, found);
-            if (!found ||
-                compareVersions(currentFilename, found, TRUE) == HIGHER) {
-              debug("require: %s %s looks promising\n", module,
-                    currentFilename);
-              break;
-            }
-            debug("require: version %s is lower than %s \n", currentFilename,
-                  found);
-            continue;
+          if (!found ||
+              compareVersions(currentFilename, found, TRUE) == HIGHER) {
+            debug("require: %s %s looks promising\n", module, currentFilename);
+            break;
           }
-          default: {
-            debug("require: %s %s does not match %s\n", module, currentFilename,
-                  version);
-            continue;
-          }
+          debug("require: version %s is lower than %s \n", currentFilename,
+                found);
+          continue;
+        }
+        default: {
+          debug("require: %s %s does not match %s\n", module, currentFilename,
+                version);
+          continue;
+        }
         }
         /* we have found something */
-        if (founddir) free(founddir);
+        if (founddir)
+          free(founddir);
         /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]..." */
         if (asprintf(&founddir, "%.*s%s", modulediroffs, filename,
                      currentFilename) < 0)
@@ -686,8 +696,9 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
           module, version ? " version " : "", version ? version : "");
     else
       errlogPrintf("Module %s%s%s not available\n", module,
-              version ? " version " : "", version ? version : "");
-    if (founddir) free(founddir);
+                   version ? " version " : "", version ? version : "");
+    if (founddir)
+      free(founddir);
     return NULL;
   }
 
@@ -696,7 +707,7 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
          found, founddir);
 
   snprintf(filename, max_file_len, "%s" OSI_PATH_SEPARATOR, founddir);
-  versionLength = strlen(found)+1;
+  versionLength = strlen(found) + 1;
   selectedVersion = calloc(versionLength, sizeof(char));
   memcpy(selectedVersion, found, versionLength);
   free(founddir);
@@ -741,7 +752,7 @@ static const char *compare_module_version(char *filename, const char *module,
           version, found);
     if (compareVersions(found, version, FALSE) == MISMATCH) {
       errlogPrintf("Requested %s version %s not available, found only %s.\n",
-              module, version, found);
+                   module, version, found);
       return NULL;
     }
   }
@@ -773,7 +784,8 @@ static int load_module_data(char *filename, const char *module,
     printf("Calling function %s\n", symbolname);
     returnvalue = iocshCmd(symbolname);
     free(symbolname);
-    if (returnvalue) return -1;
+    if (returnvalue)
+      return -1;
   } else {
     /* no dbd file, but that might be OK */
     printf("%s has no dbd file\n", module);
@@ -796,28 +808,29 @@ static int require_priv(const char *module, const char *version) {
   static char *globalTemplates = NULL;
   if (!globalTemplates) {
     char *t = getenv("TEMPLATES");
-    if (t) globalTemplates = strdup(t);
+    if (t)
+      globalTemplates = strdup(t);
   }
 
   debug("require: module=\"%s\" version=\"%s\"\n", module, version);
 
   /* check already loaded verion */
-  loaded = getLibVersion(&loadedModules,module);
+  loaded = getLibVersion(&loadedModules, module);
   if (loaded) {
     /* Library already loaded. Check Version. */
     switch (compareVersions(loaded, version, FALSE)) {
-      case MATCH:
-        printf("Module %s version %s already loaded\n", module, loaded);
-        break;
-      default:
-        printf(
-            "Conflict between requested %s version %s and already loaded "
-            "version %s.\n",
-            module, version, loaded);
-        return -1;
+    case MATCH:
+      printf("Module %s version %s already loaded\n", module, loaded);
+      break;
+    default:
+      printf("Conflict between requested %s version %s and already loaded "
+             "version %s.\n",
+             module, version, loaded);
+      return -1;
     }
     dirname = getLibLocation(&loadedModules, module);
-    if (dirname[0] == 0) return 0;
+    if (dirname[0] == 0)
+      return 0;
     debug("require: library found in %s\n", dirname);
     snprintf(filename, sizeof(filename), "%s%n", dirname, &releasediroffs);
     putenvprintf("MODULE=%s", module);
@@ -828,7 +841,7 @@ static int require_priv(const char *module, const char *version) {
     /* Step 1: Search for module in driverpath */
     selectedVersion =
         fetch_module_version(filename, sizeof(filename), module, version);
-    if (!selectedVersion){
+    if (!selectedVersion) {
       returnvalue = -1;
       goto require_priv_end;
     }
@@ -858,7 +871,8 @@ static int require_priv(const char *module, const char *version) {
 
     /* Step 3: Ensure that we have loaded the correct version */
     debug("require: Check that the loaded and requested versions match\n");
-    found = compare_module_version(filename, module, selectedVersion, libdiroffs);
+    found =
+        compare_module_version(filename, module, selectedVersion, libdiroffs);
     if (!found) {
       returnvalue = -1;
       goto require_priv_end;
@@ -941,7 +955,7 @@ static void requireRegister(void) {
     iocshRegister(&libversionShowDef, libversionShowFunc);
     iocshRegister(&ldDef, ldFunc);
     iocshRegister(&pathAddDef, pathAddFunc);
-    if(registerRequire() != 0){
+    if (registerRequire() != 0) {
       errlogPrintf("require: Could not register require.\n");
     }
 

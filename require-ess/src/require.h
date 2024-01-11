@@ -7,11 +7,11 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif  // __cplusplus
+#endif // __cplusplus
 
 #ifndef __GNUC__
 #define __attribute__(dummy)
-#endif  // __GNUC__
+#endif // __GNUC__
 
 int require(const char *libname, const char *version);
 int libversionShow(const char *outfile);
@@ -21,4 +21,4 @@ void pathAdd(const char *varname, const char *dirname);
 
 #ifdef __cplusplus
 }
-#endif  // __cplusplus
+#endif // __cplusplus

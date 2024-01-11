@@ -7,8 +7,8 @@ typedef struct semver_t {
   int major;
   int minor;
   int patch;
-  int revision;  // can be negative; implies that revision has not been
-                 // specified
+  int revision; // can be negative; implies that revision has not been
+                // specified
   char *test_str;
 } semver_t;
 
