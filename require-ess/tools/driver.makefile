@@ -165,6 +165,7 @@ USR_CPPFLAGS+=-DUSE_TYPED_RSET
 endif
 
 SHRLIB_VERSION=
+# Avoid linking everything with libreadline.so
 COMMANDLINE_LIBRARY =
 
 OBJ=.o
