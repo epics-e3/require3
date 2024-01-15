@@ -1,5 +1,6 @@
 #include <dbAccess.h>
 #include <error.h>
+#include <errlog.h>
 #include <limits.h>
 #include <osiFileName.h>
 #include <stdio.h>
@@ -130,7 +131,7 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName, const 
                "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
                "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
                getenv("REQUIRE_IOC"), module->name, module->version, linkedlist->size, bufferSize) < 0){
-    fprintf(stderr, "Error asprintf failed\n");
+    errlogPrintf("Error asprintf failed\n");
     return 0;
   }
   printf("Loading module info records for %s\n", module->name);
@@ -140,6 +141,6 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName, const 
   return 0;
 
 out_of_memory:
-  fprintf(stderr, "require: out of memory\n");
+  errlogPrintf("require: out of memory\n");
   return -1;
 }

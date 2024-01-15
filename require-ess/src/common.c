@@ -1,6 +1,7 @@
 #include <dbAccess.h>
 #include <errno.h>
 #include <error.h>
+#include <errlog.h>
 #include <limits.h>
 #include <osiFileName.h>
 #include <stdarg.h>
@@ -15,7 +16,7 @@ char *realpathSeparator(const char *location) {
   char *buffer = realpath(location, NULL);
   if (!buffer) {
     debug("require: realpath(%s) failed\n", location);
-    perror("require:");
+    errlogPrintf("require: %s", strerror(errno));
     return NULL;
   }
   size = strnlen(buffer, PATH_MAX);
@@ -41,7 +42,7 @@ int putenvprintf(const char *format, ...) {
   if (!format) return -1;
   va_start(ap, format);
   if (vasprintf(&var, format, ap) < 0) {
-    perror("require putenvprintf");
+    errlogPrintf("require putenvprintf %s", strerror(errno));
     return errno;
   }
   va_end(ap);
@@ -55,7 +56,7 @@ int putenvprintf(const char *format, ...) {
   } else {
     *val++ = 0;
     if (setenv(var, val, 1) != 0) {
-      perror("require putenvprintf: setenv failed");
+      errlogPrintf("require putenvprintf: setenv failed %s", strerror(errno));
       status = errno;
     }
   }
@@ -67,11 +68,10 @@ void pathAdd(const char *varname, const char *dirname) {
   char *old_path = NULL;
 
   if (!varname || !dirname) {
-    fprintf(stderr, "usage: pathAdd \"ENVIRONMENT_VARIABLE\",\"directory\"\n");
-    fprintf(stderr,
-            "       Adds or moves the directory to the front of the "
-            "ENVIRONMENT_VARIABLE\n");
-    fprintf(stderr, "       but after a leading \".\".\n");
+    errlogPrintf("usage: pathAdd \"ENVIRONMENT_VARIABLE\",\"directory\"\n");
+    errlogPrintf("       Adds or moves the directory to the front of the "
+                 "ENVIRONMENT_VARIABLE\n");
+    errlogPrintf("       but after a leading \".\".\n");
     return;
   }
 

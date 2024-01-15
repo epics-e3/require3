@@ -20,6 +20,7 @@
 #include <epicsStdio.h>
 #include <epicsVersion.h>
 #include <errno.h>
+#include <errlog.h>
 #include <initHooks.h>
 #include <iocsh.h>
 #include <osiFileName.h>
@@ -82,7 +83,7 @@ int requireDebug;
 #define START_DIR_LOOP while ((errno = 0, direntry = readdir(dir)) != NULL)
 #define END_DIR_LOOP                                              \
   if (!direntry && errno)                                         \
-    fprintf(stderr, "error reading directory %s: %s\n", filename, \
+    errlogPrintf("error reading directory %s: %s\n", filename, \
             strerror(errno));                                     \
   if (dir) closedir(dir);
 #ifdef _DIRENT_HAVE_D_TYPE
@@ -96,6 +97,9 @@ int requireDebug;
 #define LIBDIR "lib" OSI_PATH_SEPARATOR
 #define TEMPLATEDIR "db"
 #define LIBRELEASE "LibRelease"
+
+#define E3_REQUIRE_LOCATION "E3_REQUIRE_LOCATION"
+#define E3_REQUIRE_VERSION "E3_REQUIRE_VERSION"
 
 #ifndef OS_CLASS
 #error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
@@ -129,18 +133,17 @@ static HMODULE loadlib(const char *libname) {
   HMODULE libhandle = NULL;
 
   if (libname == NULL) {
-    fprintf(stderr, "missing library name\n");
+    errlogPrintf("missing library name\n");
     return NULL;
   }
 
   if ((libhandle = dlopen(libname, RTLD_NOW | RTLD_GLOBAL)) == NULL) {
-    fprintf(stderr, "Loading %s library failed: %s\n", libname, dlerror());
+    errlogPrintf("Loading %s library failed: %s\n", libname, dlerror());
   }
   return libhandle;
 }
 
 struct linkedList loadedModules = {0};
-static unsigned long moduleCount = 0;
 
 static int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
@@ -169,45 +172,30 @@ static int setupDbPath(const char *module, const char *dbdir) {
   return 0;
 }
 
-static int getRecordHandle(const char *namepart, short type, long minsize,
-                           DBADDR *paddr) {
+static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
   char recordname[PVNAME_STRINGSZ] = {0};
-  long dummy = 0L;
-  long offset = 0L;
 
   sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ-1) - 1),
           getenv("REQUIRE_IOC"), namepart);
 
   if (dbNameToAddr(recordname, paddr) != 0) {
-    fprintf(stderr, "require:getRecordHandle : record %s not found\n",
+    errlogPrintf("require:getRecordHandle : record %s not found\n",
             recordname);
     return -1;
   }
   if (paddr->field_type != type) {
-    fprintf(
-        stderr,
+    errlogPrintf(
         "require:getRecordHandle : record %s has wrong type %s instead of %s\n",
         recordname, pamapdbfType[paddr->field_type].strvalue,
         pamapdbfType[type].strvalue);
     return -1;
   }
-  if (paddr->no_elements < minsize) {
-    fprintf(stderr,
-            "require:getRecordHandle : record %s has not enough elements: %lu "
-            "instead of %lu\n",
-            recordname, paddr->no_elements, minsize);
-    return -1;
-  }
   if (paddr->pfield == NULL) {
-    fprintf(
-        stderr,
+    errlogPrintf(
         "require:getRecordHandle : record %s has not yet allocated memory\n",
         recordname);
     return -1;
   }
-
-  /* update array information */
-  dbGetRset(paddr)->get_array_info(paddr, &dummy, &offset);
 
   return 0;
 }
@@ -217,115 +205,67 @@ We can fill the records only after they have been initialized, at
 initHookAfterFinishDevSup. But use double indirection here because in 3.13 we
 must wait until initHooks is loaded before we can register the hook.
 */
-
 static void fillModuleListRecord(initHookState state) {
-  /* MODULES record exists and has allocated memory */
-  if (state == initHookAfterFinishDevSup) {
-    DBADDR modules = {0}, versions = {0}, modver = {0};
-    int have_modules = 0, have_versions = 0, have_modver = 0;
-    struct module *m = NULL;
-    int i = 0;
-    long c = 0;
+  if (state != initHookAfterFinishDevSup)
+    return;
 
-    debug("require: fillModuleListRecord\n");
+  struct dbAddr modules = {0}, versions = {0}, modver = {0};
+  char *bufferModules, *bufferVersions, *bufferModver;
+  struct module *m = NULL;
+  int i = 0;
+  int c = 0;
 
-    have_modules =
-        (getRecordHandle(":Modules", DBF_STRING, moduleCount, &modules) == 0);
-    have_versions =
-        (getRecordHandle(":Versions", DBF_STRING, moduleCount, &versions) == 0);
+  getRecordHandle(":Modules", DBF_STRING, &modules);
+  getRecordHandle(":Versions", DBF_STRING, &versions);
+  getRecordHandle(":ModuleVersions", DBF_CHAR, &modver);
 
-    have_modver = (getRecordHandle(":ModuleVersions", DBF_CHAR,
-                                   0, &modver) == 0);
+  bufferModules = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
+  bufferVersions = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
+  bufferModver = (char *)calloc(MAX_STRING_SIZE*loadedModules.size, sizeof(char));
 
-    for (m = loadedModules.head, i = 0; m; m = m->next, i++) {
-      if (have_modules) {
-        debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
-              MAX_STRING_SIZE - 1, m->name);
-        sprintf((char *)(modules.pfield) + i * MAX_STRING_SIZE, "%.*s",
-                MAX_STRING_SIZE - 1, m->name);
-      }
-      if (have_versions) {
-        debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
-              MAX_STRING_SIZE - 1, m->version);
-        sprintf((char *)(versions.pfield) + i * MAX_STRING_SIZE, "%.*s",
-                MAX_STRING_SIZE - 1, m->version);
-      }
-      if (have_modver) {
-        debug("require: %s+=\"%s %s\"\n", modver.precord->name,
-              m->name, m->version);
-        c += sprintf((char *)(modver.pfield) + c, "%s %s\n",
-                     m->name, m->version);
-      }
-    }
-    if (have_modules) dbGetRset(&modules)->put_array_info(&modules, i);
-    if (have_versions) dbGetRset(&versions)->put_array_info(&versions, i);
-    if (have_modver) dbGetRset(&modver)->put_array_info(&modver, c + 1);
+  for (m = loadedModules.head, i = 0; m != NULL ; m = m->next, i++){
+    debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
+          MAX_STRING_SIZE - 1, m->name);
+    sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, m->name);
+    debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
+          MAX_STRING_SIZE - 1, m->version);
+    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, m->version);
+    debug("require: %s+=\"%s %s\"\n", modver.precord->name,
+          m->name, m->version);
+    c += sprintf((char *)(bufferModver) + c, "%s %s\n",
+                 m->name, m->version);
+  }
+
+  if (dbPut(&modules, DBF_STRING, bufferModules, loadedModules.size) != 0){
+    errlogPrintf("require: Error to put Modules\n");
+  }
+  if (dbPut(&versions, DBF_STRING, bufferVersions, loadedModules.size) != 0){
+    errlogPrintf("require: Error to put Versions\n");
+  }
+  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0){
+    errlogPrintf("require: Error to put ModuleVersions\n");
   }
 }
 
-#if defined(__linux)
-/* This is the Linux link.h, not the EPICS link.h ! */
-#include <link.h>
+static int registerRequire(){
+  char *requireLocation = NULL;
+  char *requireVersion = NULL;
 
-static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
-                          size_t size, /* size of info structure */
-                          void *data   /* user-supplied arg */
-) {
-  void *handle = NULL;
-  char *location = NULL;
-  char *p = NULL;
-  char *version = NULL;
-  char *symname = NULL;
-  /* get space for library path + "LibRelease" */
-  char name[PATH_MAX + (sizeof(LIBRELEASE)/sizeof(char))] = {0};
-
-  struct linkedList *linkedlist = (struct linkedList*)data;
-  if (size < sizeof(struct dl_phdr_info))
-    return 0; /* wrong version of struct dl_phdr_info */
-
-  /* find a symbol with a name like "_<module>LibRelease"
-     where <module> is from the library name "<location>/lib<module>.so" */
-
-  /* no library name */
-  if (info->dlpi_name == NULL || info->dlpi_name[0] == 0) return 0;
-  /* get a modifiable copy of the library name */
-  strcpy(name, info->dlpi_name);
-  /* re-open already loaded library */
-  handle = dlopen(info->dlpi_name, RTLD_LAZY);
-  /* find file name part in "<location>/lib<module>.so" */
-  p = strrchr(name, '/');
-  if (p) {
-    location = name;
-    *++p = 0;
-  } else {
-    /* terminate "<location>/" (if exists) */
-    p = name;
+  requireLocation = getenv(E3_REQUIRE_LOCATION);
+  if (!requireLocation){
+    errlogPrintf("require: Failed to get " E3_REQUIRE_LOCATION "\n");
+    return -1;
   }
-  *(symname = p + 2) = '_';                     /* replace "lib" with "_" */
-  p = strchr(symname, '.');                     /* find ".so" extension */
-  if (p == NULL) p = symname + strnlen(symname, PATH_MAX); /* no file extension ? */
-  strcpy(p, LIBRELEASE);          /* append "LibRelease" to module name */
-  version = dlsym(handle, symname); /* find symbol "_<module>LibRelease" */
-  if (version) {
-    *p = 0;
-    symname++; /* get "<module>" from "_<module>LibRelease" */
-    if ((p = strstr(name, "/" LIBDIR)) != NULL)
-      p[1] = 0; /* cut "<location>" before LIBDIR */
-    if (getLibVersion(linkedlist, symname) == NULL)
-      registerModule(linkedlist, symname, version, location);
+  requireVersion = getenv(E3_REQUIRE_VERSION);
+  if (!requireVersion){
+    errlogPrintf("require: Failed to get " E3_REQUIRE_VERSION "\n");
+    return -1;
   }
-  dlclose(handle);
+  registerModule(&loadedModules, "require", requireVersion, requireLocation);
   return 0;
 }
-
-static void registerExternalModules() {
-  /* iterate over all loaded libraries */
-  dl_iterate_phdr(findLibRelease, (void *)&loadedModules);
-}
-
-#else
-static void registerExternalModules() { ; }
-#endif
 
 int libversionShow(const char *outfile) {
   struct module *m = NULL;
@@ -335,7 +275,7 @@ int libversionShow(const char *outfile) {
   if (outfile) {
     out = fopen(outfile, "w");
     if (out == NULL) {
-      fprintf(stderr, "can't open %s: %s\n", outfile, strerror(errno));
+      errlogPrintf("can't open %s: %s\n", outfile, strerror(errno));
       return -1;
     }
   }
@@ -344,7 +284,7 @@ int libversionShow(const char *outfile) {
             m->version, m->path);
   }
   if (fflush(out) < 0 && outfile) {
-    fprintf(stderr, "can't write to %s: %s\n", outfile, strerror(errno));
+    errlogPrintf("can't write to %s: %s\n", outfile, strerror(errno));
     return -1;
   }
   if (outfile) fclose(out);
@@ -491,7 +431,7 @@ int require(const char *module, const char *version) {
   }
 
   if (interruptAccept) {
-    fprintf(stderr, "Error! Modules can only be loaded before iocIint!\n");
+    errlogPrintf("Error! Modules can only be loaded before iocIint!\n");
     return -1;
   }
 
@@ -509,7 +449,7 @@ int require(const char *module, const char *version) {
   if (interruptAccept) return status;
 
   /* require failed in startup script before iocInit */
-  fprintf(stderr, "Aborting startup script\n");
+  errlogPrintf("Aborting startup script\n");
   epicsExit(1);
   return status;
 }
@@ -736,18 +676,16 @@ static char* fetch_module_version(char *filename, size_t max_file_len,
 
   if (!found) {
     if (someArchFound)
-      fprintf(stderr,
-              "Module %s%s%s not available for %s\n(but maybe for other "
-              "EPICS versions or architectures)\n",
-              module, version ? " version " : "", version ? version : "",
-              targetArch);
+      errlogPrintf("Module %s%s%s not available for %s\n(but maybe for other "
+                   "EPICS versions or architectures)\n",
+                   module, version ? " version " : "", version ? version : "",
+                   targetArch);
     else if (someVersionFound)
-      fprintf(
-          stderr,
+      errlogPrintf(
           "Module %s%s%s not available (but other versions are available)\n",
           module, version ? " version " : "", version ? version : "");
     else
-      fprintf(stderr, "Module %s%s%s not available\n", module,
+      errlogPrintf("Module %s%s%s not available\n", module,
               version ? " version " : "", version ? version : "");
     if (founddir) free(founddir);
     return NULL;
@@ -780,7 +718,7 @@ static const char *compare_module_version(char *filename, const char *module,
      "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)?"
    */
   if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX EXT, module))) {
-    printf("Module %s has no library\n", module);
+    errlogPrintf("Module %s has no library\n", module);
     found = version;
   } else {
     printf("Loading library %s\n", filename);
@@ -802,7 +740,7 @@ static const char *compare_module_version(char *filename, const char *module,
     debug("require: compare requested version %s with loaded version %s\n",
           version, found);
     if (compareVersions(found, version, FALSE) == MISMATCH) {
-      fprintf(stderr, "Requested %s version %s not available, found only %s.\n",
+      errlogPrintf("Requested %s version %s not available, found only %s.\n",
               module, version, found);
       return NULL;
     }
@@ -823,7 +761,7 @@ static int load_module_data(char *filename, const char *module,
                         module)) {
     printf("Loading dbd file %s\n", filename);
     if (dbLoadDatabase(filename, NULL, NULL) != 0) {
-      fprintf(stderr, "Error loading %s\n", filename);
+      errlogPrintf("Error loading %s\n", filename);
       return -1;
     }
 
@@ -905,7 +843,7 @@ static int require_priv(const char *module, const char *version) {
       /* filename =
          "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
        */
-      fprintf(stderr, "Dependency file %s not found\n", filename);
+      errlogPrintf("Dependency file %s not found\n", filename);
     } else {
       /* filename =
        * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
@@ -1003,7 +941,9 @@ static void requireRegister(void) {
     iocshRegister(&libversionShowDef, libversionShowFunc);
     iocshRegister(&ldDef, ldFunc);
     iocshRegister(&pathAddDef, pathAddFunc);
-    registerExternalModules();
+    if(registerRequire() != 0){
+      errlogPrintf("require: Could not register require.\n");
+    }
 
     set_require_env();
     initHookRegister(fillModuleListRecord);

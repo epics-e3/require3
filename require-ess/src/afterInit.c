@@ -6,6 +6,10 @@
 #endif
 
 #include <dbAccess.h>
+#include <epicsExport.h>
+#include <epicsStdio.h>
+#include <errno.h>
+#include <errlog.h>
 #include <initHooks.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +17,6 @@
 
 #include <iocsh.h>
 DBCORE_API int epicsStdCall iocshCmd(const char *cmd);
-#include <epicsExport.h>
 
 struct cmditem
 {
@@ -64,12 +67,12 @@ static struct cmditem *newItem(char *cmd, int type)
     struct cmditem *item;
     if (!cmd)
     {
-        fprintf(stderr, "usage: afterInit command, args...\n");
+        errlogPrintf("usage: afterInit command, args...\n");
         return NULL;
     }
     if (interruptAccept)
     {
-        fprintf(stderr, "afterInit can only be used before iocInit\n");
+        errlogPrintf("afterInit can only be used before iocInit\n");
         return NULL;
     }
     if (first_time)
@@ -80,7 +83,7 @@ static struct cmditem *newItem(char *cmd, int type)
     item = malloc(sizeof(struct cmditem));
     if (item == NULL)
     {
-        perror("afterInit");
+        errlogPrintf("afterInit %s", strerror(errno));
         return NULL;
     }
     item->type = type;
