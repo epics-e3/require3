@@ -29,6 +29,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "common.h"
+#include "module.h"
 #include "version.h"
 
 int requireDebug;
@@ -93,13 +95,11 @@ int requireDebug;
 
 #define LIBDIR "lib" OSI_PATH_SEPARATOR
 #define TEMPLATEDIR "db"
+#define LIBRELEASE "LibRelease"
 
 #ifndef OS_CLASS
 #error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
 #endif  // OS_CLASS
-
-#define debug(...) \
-  if (requireDebug) printf(__VA_ARGS__)
 
 const char osClass[] = OS_CLASS;
 
@@ -139,109 +139,8 @@ static HMODULE loadlib(const char *libname) {
   return libhandle;
 }
 
-typedef struct moduleitem {
-  struct moduleitem *next;
-  char content[0];
-} moduleitem;
-
-static moduleitem *loadedModules = NULL;
+struct linkedList loadedModules = {0};
 static unsigned long moduleCount = 0;
-static unsigned long moduleListBufferSize = 1;
-static unsigned long maxModuleNameLength = 0;
-
-int putenvprintf(const char *format, ...) {
-  va_list ap;
-  char *var = NULL;
-  char *val = NULL;
-  int status = 0;
-
-  if (!format) return -1;
-  va_start(ap, format);
-  if (vasprintf(&var, format, ap) < 0) {
-    perror("require putenvprintf");
-    return errno;
-  }
-  va_end(ap);
-
-  debug("require: putenv(\"%s\")\n", var);
-
-  val = strchr(var, '=');
-  if (!val) {
-    fprintf(stderr, "putenvprintf: string contains no =: %s\n", var);
-    status = -1;
-  } else {
-    *val++ = 0;
-    if (setenv(var, val, 1) != 0) {
-      perror("require putenvprintf: setenv failed");
-      status = errno;
-    }
-  }
-  free(var);
-  return status;
-}
-
-void pathAdd(const char *varname, const char *dirname) {
-  char *old_path = NULL;
-
-  if (!varname || !dirname) {
-    fprintf(stderr, "usage: pathAdd \"ENVIRONMENT_VARIABLE\",\"directory\"\n");
-    fprintf(stderr,
-            "       Adds or moves the directory to the front of the "
-            "ENVIRONMENT_VARIABLE\n");
-    fprintf(stderr, "       but after a leading \".\".\n");
-    return;
-  }
-
-  /* add directory to front */
-  old_path = getenv(varname);
-  if (old_path == NULL) {
-    putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
-  } else {
-    size_t len = strlen(dirname);
-    char *p = NULL;
-
-    /* skip over "." at the beginning */
-    if (old_path[0] == '.' && old_path[1] == OSI_PATH_LIST_SEPARATOR[0])
-      old_path += 2;
-
-    /* If directory is already in path, move it to front */
-    p = old_path;
-    while ((p = strstr(p, dirname)) != NULL) {
-      if ((p == old_path || *(p - 1) == OSI_PATH_LIST_SEPARATOR[0]) &&
-          (p[len] == 0 || p[len] == OSI_PATH_LIST_SEPARATOR[0])) {
-        if (p == old_path) break; /* already at front, nothing to do */
-        memmove(old_path + len + 1, old_path, p - old_path - 1);
-        strcpy(old_path, dirname);
-        old_path[len] = OSI_PATH_LIST_SEPARATOR[0];
-        debug("require: modified %s=%s\n", varname, old_path);
-        break;
-      }
-      p += len;
-    }
-    if (p == NULL) /* add new directory to the front (after "." )*/
-      putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s" OSI_PATH_LIST_SEPARATOR
-                   "%s",
-                   varname, dirname, old_path);
-  }
-}
-
-char *realpathSeparator(const char *location) {
-  size_t ll = 0;
-  char *buffer = malloc(PATH_MAX + strlen(OSI_PATH_SEPARATOR));
-  buffer = realpath(location, buffer);
-  if (!buffer) {
-    debug("require: realpath(%s) failed\n", location);
-    return NULL;
-  }
-  ll = strlen(buffer);
-  /* linux realpath removes trailing slash */
-  if (buffer[ll - strlen(OSI_PATH_SEPARATOR)] != OSI_PATH_SEPARATOR[0]) {
-    strcpy(buffer + ll + 1 - strlen(OSI_PATH_SEPARATOR), OSI_PATH_SEPARATOR);
-  }
-  return buffer;
-}
-
-int isModuleLoaded(const char *libname);
 
 static int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
@@ -262,7 +161,7 @@ static int setupDbPath(const char *module, const char *dbdir) {
 
   putenvprintf("%s_DB=%s", module, absdir);
   putenvprintf("TEMPLATES=%s", absdir);
-  if (isModuleLoaded("stream")) {
+  if (isModuleLoaded(&loadedModules, "stream")) {
     pathAdd("STREAM_PROTOCOL_PATH", absdir);
   }
   pathAdd("EPICS_DB_INCLUDE_PATH", absdir);
@@ -276,7 +175,7 @@ static int getRecordHandle(const char *namepart, short type, long minsize,
   long dummy = 0L;
   long offset = 0L;
 
-  sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strlen(namepart) - 1),
+  sprintf(recordname, "%.*s%s", (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ-1) - 1),
           getenv("REQUIRE_IOC"), namepart);
 
   if (dbNameToAddr(recordname, paddr) != 0) {
@@ -324,7 +223,7 @@ static void fillModuleListRecord(initHookState state) {
   if (state == initHookAfterFinishDevSup) {
     DBADDR modules = {0}, versions = {0}, modver = {0};
     int have_modules = 0, have_versions = 0, have_modver = 0;
-    moduleitem *m = NULL;
+    struct module *m = NULL;
     int i = 0;
     long c = 0;
 
@@ -335,114 +234,33 @@ static void fillModuleListRecord(initHookState state) {
     have_versions =
         (getRecordHandle(":Versions", DBF_STRING, moduleCount, &versions) == 0);
 
-    moduleListBufferSize += moduleCount * maxModuleNameLength;
     have_modver = (getRecordHandle(":ModuleVersions", DBF_CHAR,
-                                   moduleListBufferSize, &modver) == 0);
+                                   0, &modver) == 0);
 
-    for (m = loadedModules, i = 0; m; m = m->next, i++) {
-      size_t lm = strlen(m->content) + 1;
+    for (m = loadedModules.head, i = 0; m; m = m->next, i++) {
       if (have_modules) {
         debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
-              MAX_STRING_SIZE - 1, m->content);
+              MAX_STRING_SIZE - 1, m->name);
         sprintf((char *)(modules.pfield) + i * MAX_STRING_SIZE, "%.*s",
-                MAX_STRING_SIZE - 1, m->content);
+                MAX_STRING_SIZE - 1, m->name);
       }
       if (have_versions) {
         debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
-              MAX_STRING_SIZE - 1, m->content + lm);
+              MAX_STRING_SIZE - 1, m->version);
         sprintf((char *)(versions.pfield) + i * MAX_STRING_SIZE, "%.*s",
-                MAX_STRING_SIZE - 1, m->content + lm);
+                MAX_STRING_SIZE - 1, m->version);
       }
       if (have_modver) {
-        debug("require: %s+=\"%-*s%s\"\n", modver.precord->name,
-              (int)maxModuleNameLength, m->content, m->content + lm);
-        c += sprintf((char *)(modver.pfield) + c, "%-*s%s\n",
-                     (int)maxModuleNameLength, m->content, m->content + lm);
+        debug("require: %s+=\"%s %s\"\n", modver.precord->name,
+              m->name, m->version);
+        c += sprintf((char *)(modver.pfield) + c, "%s %s\n",
+                     m->name, m->version);
       }
     }
     if (have_modules) dbGetRset(&modules)->put_array_info(&modules, i);
     if (have_versions) dbGetRset(&versions)->put_array_info(&versions, i);
     if (have_modver) dbGetRset(&modver)->put_array_info(&modver, c + 1);
   }
-}
-
-void registerModule(const char *module, const char *version,
-                    const char *location) {
-  moduleitem *m = NULL, **pm = NULL;
-  size_t lm = strlen(module) + 1;
-  size_t lv = (version ? strlen(version) : 0) + 1;
-  size_t ll = 1;
-  char *absLocation = NULL;
-  char *absLocationRequire = NULL;
-  char *argstring = NULL;
-  const char *mylocation = NULL;
-
-  debug("require: registerModule(%s,%s,%s)\n", module, version, location);
-
-  if (!version) version = "";
-
-  if (location) {
-    absLocation = realpathSeparator(location);
-    ll = strlen(absLocation) + 1;
-  }
-  m = (moduleitem *)malloc(sizeof(moduleitem) + lm + lv + ll);
-  if (m == NULL) {
-    fprintf(stderr, "require: out of memory\n");
-    return;
-  }
-
-  m->next = NULL;
-
-  strcpy(m->content, module);
-  strcpy(m->content + lm, version);
-  strcpy(m->content + lm + lv, absLocation ? absLocation : "");
-
-  free(absLocation);
-  for (pm = &loadedModules; *pm != NULL; pm = &(*pm)->next) {
-  }
-  *pm = m;
-  if (lm > maxModuleNameLength) maxModuleNameLength = lm;
-  moduleListBufferSize += lv;
-  moduleCount++;
-
-  putenvprintf("MODULE=%s", module);
-  putenvprintf("%s_VERSION=%s", module, version);
-  if (location) {
-    putenvprintf("%s_DIR=%s", module, m->content + lm + lv);
-    pathAdd("SCRIPT_PATH", m->content + lm + lv);
-  }
-
-  /* only do registration register stuff at init */
-  if (interruptAccept) return;
-
-  /* create a record with the version string */
-  mylocation = getenv("require_DIR");
-  if (mylocation == NULL) return;
-  if (asprintf(&absLocationRequire,
-               "%s" OSI_PATH_SEPARATOR "db" OSI_PATH_SEPARATOR
-               "moduleversion.template",
-               mylocation) < 0)
-    return;
-  /*
-     Require DB has the following four PVs:
-     - $(REQUIRE_IOC):$(MODULE)Version
-     - $(REQUIRE_IOC):ModuleVersions
-     - $(REQUIRE_IOC):Versions
-     - $(REQUIRE_IOC):Modules
-     We reserved 30 chars for :$(MODULE)Version, so MODULE has the maximum 24
-     chars. And we've reserved for 30 chars for $(REQUIRE_IOC). So, the whole PV
-     and record name in moduleversion.template has 59 + 1.
-   */
-  if (asprintf(&argstring,
-               "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
-               "MODULE_COUNT=%lu, BUFFER_SIZE=%lu",
-               getenv("REQUIRE_IOC"), module, version, moduleCount,
-               moduleListBufferSize + maxModuleNameLength * moduleCount) < 0)
-    return;
-  printf("Loading module info records for %s\n", module);
-  dbLoadRecords(absLocationRequire, argstring);
-  free(argstring);
-  free(absLocationRequire);
 }
 
 #if defined(__linux)
@@ -459,9 +277,9 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
   char *version = NULL;
   char *symname = NULL;
   /* get space for library path + "LibRelease" */
-  char name[PATH_MAX + 11] = {0};
+  char name[PATH_MAX + (sizeof(LIBRELEASE)/sizeof(char))] = {0};
 
-  (void)data; /* unused */
+  struct linkedList *linkedlist = (struct linkedList*)data;
   if (size < sizeof(struct dl_phdr_info))
     return 0; /* wrong version of struct dl_phdr_info */
 
@@ -485,16 +303,16 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
   }
   *(symname = p + 2) = '_';                     /* replace "lib" with "_" */
   p = strchr(symname, '.');                     /* find ".so" extension */
-  if (p == NULL) p = symname + strlen(symname); /* no file extension ? */
-  strcpy(p, "LibRelease");          /* append "LibRelease" to module name */
+  if (p == NULL) p = symname + strnlen(symname, PATH_MAX); /* no file extension ? */
+  strcpy(p, LIBRELEASE);          /* append "LibRelease" to module name */
   version = dlsym(handle, symname); /* find symbol "_<module>LibRelease" */
   if (version) {
     *p = 0;
     symname++; /* get "<module>" from "_<module>LibRelease" */
     if ((p = strstr(name, "/" LIBDIR)) != NULL)
       p[1] = 0; /* cut "<location>" before LIBDIR */
-    if (getLibVersion(symname) == NULL)
-      registerModule(symname, version, location);
+    if (getLibVersion(linkedlist, symname) == NULL)
+      registerModule(linkedlist, symname, version, location);
   }
   dlclose(handle);
   return 0;
@@ -502,49 +320,15 @@ static int findLibRelease(struct dl_phdr_info *info, /* shared library info */
 
 static void registerExternalModules() {
   /* iterate over all loaded libraries */
-  dl_iterate_phdr(findLibRelease, NULL);
+  dl_iterate_phdr(findLibRelease, (void *)&loadedModules);
 }
 
 #else
 static void registerExternalModules() { ; }
 #endif
 
-const char *getLibVersion(const char *libname) {
-  moduleitem *m = NULL;
-
-  for (m = loadedModules; m; m = m->next) {
-    if (strcmp(m->content, libname) == 0) {
-      return m->content + strlen(m->content) + 1;
-    }
-  }
-  return NULL;
-}
-
-const char *getLibLocation(const char *libname) {
-  moduleitem *m = NULL;
-  char *v = NULL;
-
-  for (m = loadedModules; m; m = m->next) {
-    if (strcmp(m->content, libname) == 0) {
-      v = m->content + strlen(m->content) + 1;
-      return v + strlen(v) + 1;
-    }
-  }
-  return NULL;
-}
-
-int isModuleLoaded(const char *libname) {
-  moduleitem *m = NULL;
-
-  for (m = loadedModules; m; m = m->next) {
-    if (strcmp(m->content, libname) == 0) return TRUE;
-  }
-  return FALSE;
-}
-
 int libversionShow(const char *outfile) {
-  moduleitem *m = NULL;
-  size_t lm = 0, lv = 0;
+  struct module *m = NULL;
 
   FILE *out = epicsGetStdout();
 
@@ -555,11 +339,9 @@ int libversionShow(const char *outfile) {
       return -1;
     }
   }
-  for (m = loadedModules; m; m = m->next) {
-    lm = strlen(m->content) + 1;
-    lv = strlen(m->content + lm) + 1;
-    fprintf(out, "%-*s%-20s %s\n", (int)maxModuleNameLength, m->content,
-            m->content + lm, m->content + lm + lv);
+  for (m = loadedModules.head; m; m = m->next) {
+    fprintf(out, "%s-%20s %s\n", m->name,
+            m->version, m->path);
   }
   if (fflush(out) < 0 && outfile) {
     fprintf(stderr, "can't write to %s: %s\n", outfile, strerror(errno));
@@ -774,11 +556,11 @@ static off_t fileSize(const char *filename) {
 #define fileExists(filename) (fileSize(filename) >= 0)
 #define fileNotEmpty(filename) (fileSize(filename) > 0)
 #define TRY_FILE(offs, ...)                                           \
-  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
+  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) && \
    fileExists(filename))
 
 #define TRY_NONEMPTY_FILE(offs, ...)                                  \
-  (snprintf(filename + offs, sizeof(filename) - offs, __VA_ARGS__) && \
+  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) && \
    fileNotEmpty(filename))
 
 static int handleDependencies(const char *module, char *depfilename) {
@@ -829,12 +611,14 @@ static int handleDependencies(const char *module, char *depfilename) {
  *
  * Sets <filename> to be the path the the underlying module.
  */
-static int fetch_module_version(char *filename, size_t max_file_len,
+static char* fetch_module_version(char *filename, size_t max_file_len,
                                 const char *module, const char *version) {
   const char *dirname = NULL;
   const char *driverpath = NULL;
   const char *end = NULL;
   const char *found = NULL;
+  int versionLength = 0;
+  char *selectedVersion = NULL;
   char *founddir = NULL;
 
   int someVersionFound = 0;
@@ -858,7 +642,7 @@ static int fetch_module_version(char *filename, size_t max_file_len,
     if (end)
       dirlen = (int)(end++ - dirname);
     else
-      dirlen = (int)strlen(dirname);
+      dirlen = (int)strnlen(dirname, PATH_MAX);
     if (dirlen == 0) continue; /* ignore empty driverpath elements */
 
     debug("require: trying %.*s\n", dirlen, dirname);
@@ -935,11 +719,11 @@ static int fetch_module_version(char *filename, size_t max_file_len,
           }
         }
         /* we have found something */
-        free(founddir);
+        if (founddir) free(founddir);
         /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]..." */
         if (asprintf(&founddir, "%.*s%s", modulediroffs, filename,
                      currentFilename) < 0)
-          return errno;
+          return NULL;
         /* founddir = "<dirname>/[dirlen]<module>/[modulediroffs]<version>" */
         found = founddir + modulediroffs; /* version part in the path */
       }
@@ -966,7 +750,7 @@ static int fetch_module_version(char *filename, size_t max_file_len,
       fprintf(stderr, "Module %s%s%s not available\n", module,
               version ? " version " : "", version ? version : "");
     if (founddir) free(founddir);
-    return -1;
+    return NULL;
   }
 
   /* founddir = "<dirname>/[dirlen]<module>/<version>" */
@@ -974,8 +758,11 @@ static int fetch_module_version(char *filename, size_t max_file_len,
          found, founddir);
 
   snprintf(filename, max_file_len, "%s" OSI_PATH_SEPARATOR, founddir);
+  versionLength = strlen(found)+1;
+  selectedVersion = calloc(versionLength, sizeof(char));
+  memcpy(selectedVersion, found, versionLength);
   free(founddir);
-  return 0;
+  return selectedVersion;
 }
 
 /*
@@ -1028,7 +815,7 @@ static const char *compare_module_version(char *filename, const char *module,
  */
 static int load_module_data(char *filename, const char *module,
                             const char *version, int releasediroffs) {
-  int returnvalue = NULL;
+  int returnvalue = 0;
   char *symbolname = NULL;
 
   /* load dbd file */
@@ -1061,6 +848,7 @@ static int require_priv(const char *module, const char *version) {
   const char *loaded = NULL;
   const char *found = NULL;
   const char *dirname = NULL;
+  char *selectedVersion = NULL;
 
   int dirlen = 0;
   int releasediroffs = 0;
@@ -1076,7 +864,7 @@ static int require_priv(const char *module, const char *version) {
   debug("require: module=\"%s\" version=\"%s\"\n", module, version);
 
   /* check already loaded verion */
-  loaded = getLibVersion(module);
+  loaded = getLibVersion(&loadedModules,module);
   if (loaded) {
     /* Library already loaded. Check Version. */
     switch (compareVersions(loaded, version, FALSE)) {
@@ -1090,7 +878,7 @@ static int require_priv(const char *module, const char *version) {
             module, version, loaded);
         return -1;
     }
-    dirname = getLibLocation(module);
+    dirname = getLibLocation(&loadedModules, module);
     if (dirname[0] == 0) return 0;
     debug("require: library found in %s\n", dirname);
     snprintf(filename, sizeof(filename), "%s%n", dirname, &releasediroffs);
@@ -1100,14 +888,16 @@ static int require_priv(const char *module, const char *version) {
     debug("require: no %s version loaded yet\n", module);
 
     /* Step 1: Search for module in driverpath */
-    returnvalue =
+    selectedVersion =
         fetch_module_version(filename, sizeof(filename), module, version);
-    if (returnvalue) goto require_priv_end;
-
+    if (!selectedVersion){
+      returnvalue = -1;
+      goto require_priv_end;
+    }
     /* Step 2 : Looking for .dep file */
     debug("require: looking for dependency file\n");
 
-    dirlen = strlen(filename);
+    dirlen = strnlen(filename, PATH_MAX);
     if (!TRY_FILE(dirlen,
                   OSI_PATH_SEPARATOR "%n" LIBDIR "%s" OSI_PATH_SEPARATOR
                                      "%n%s.dep",
@@ -1129,8 +919,8 @@ static int require_priv(const char *module, const char *version) {
     libdiroffs += dirlen;
 
     /* Step 3: Ensure that we have loaded the correct version */
-    debug("require: Check that the loaded and requested versions match");
-    found = compare_module_version(filename, module, version, libdiroffs);
+    debug("require: Check that the loaded and requested versions match\n");
+    found = compare_module_version(filename, module, selectedVersion, libdiroffs);
     if (!found) {
       returnvalue = -1;
       goto require_priv_end;
@@ -1138,14 +928,14 @@ static int require_priv(const char *module, const char *version) {
 
     /* Step 4: Load module data */
     debug("require: Load module data\n");
-    returnvalue = load_module_data(filename, module, version, releasediroffs);
+    returnvalue = load_module_data(filename, module, found, releasediroffs);
     if (returnvalue) {
       goto require_priv_end;
     }
 
     /* register module with path */
     filename[releasediroffs] = 0;
-    registerModule(module, found, filename);
+    registerModule(&loadedModules, module, found, filename);
   }
 
   debug("require: looking for template directory\n");
@@ -1162,6 +952,7 @@ static int require_priv(const char *module, const char *version) {
   }
 
 require_priv_end:
+  free(selectedVersion);
   return returnvalue;
 }
 
