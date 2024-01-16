@@ -48,14 +48,20 @@
 # HEADERS
 #    Header files to install (e.g. to be included by other drivers)
 #    If not defined, all headers are for local use only.
-# ARCH_FILTER
-#    Sub set of architectures to build for, e.g. %-ppc604
+# EXCLUDE_ARCH
+#    Sub set of architectures to exclude for, e.g. ppc604; note that these will be wildcarded
+#    as %ppc604 and ppc604%.
 
 # Get the location of this file.
 MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 # Get the name of the Makefile that included this file.
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
+# These are the targets that we will pass through to the next stages of require's
+# recursive build process. For each of these targets we will perform all three
+# of the build runs listed above; for others (e.g. `make clean`) we only perform
+# a single pass.
+RECURSE_TARGETS = install build debug db_internal
 
 ##---## In conda, We only use one version of EPICS base when compiling modules.
 ##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
@@ -133,6 +139,12 @@ define uniq
   ${seen}
 endef
 
+# This is used to ensure that relative/absolute paths in e.g. USR_DBFLAGS are
+# correct, relative to the build directory.
+define fix_relative_paths
+$(foreach t,$(patsubst -I%,-I %,$1),$(if $(filter -I,$t),$t,$(if $(filter /%,$t),$t,../$t)))
+endef
+
 # Some TOP and EPICS_BASE tweeking necessary to work around release check in 3.14.10+.
 EB:=${EPICS_BASE}
 TOP:=${EPICS_BASE}
@@ -145,11 +157,15 @@ ${CONFIG}/CONFIG:
 # Variables that need to override data from ${CONFIG}/CONFIG
 BASE_CPPFLAGS=
 
+# This is (at the moment) only used for a single module. If LEGACY_RSET is defined then
+# we use the _old_ untyped `struct rset` definitions for record device support. Otherwise,
+# we use the updated `struct typed_rset` ones. This helps remove some compiler warnings.
 ifndef LEGACY_RSET
 USR_CPPFLAGS+=-DUSE_TYPED_RSET
 endif
 
 SHRLIB_VERSION=
+# Avoid linking everything with libreadline.so
 COMMANDLINE_LIBRARY =
 
 OBJ=.o
@@ -172,11 +188,11 @@ DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Recor
 DBD_SRCS += ${DBDS_${EPICSVERSION}}
 export DBD_SRCS
 
-#record dbd files given in DBDS
-RECORDS1 = $(patsubst %Record.dbd, %, $(filter-out dev%, $(filter %Record.dbd, $(notdir ${DBD_SRCS}))))
-#record dbd files included by files given in DBDS
-RECORDS2 = $(filter-out dev%, $(shell ${MAKEHOME}/expandDBD.tcl -r $(addprefix -I, $(sort $(dir ${DBD_SRCS}))) $(realpath ${DBDS})))
-RECORDS = $(sort ${RECORDS1} ${RECORDS2})
+# Read dbd files from source files. Note that this assumes that any xxxRecord.(c|cpp|...) has
+# a corresponding xxxRecord.dbd, which is used to generate xxxRecord.h; this is standard usage
+# in EPICS. However, if such a .dbd file does not exist, then the build will fail due to the
+# "missing" header file.
+RECORDS = $(filter %Record,$(basename $(notdir $(SRCS))))
 export RECORDS
 
 MENUS = $(patsubst %.dbd,%.h,$(wildcard menu*.dbd))
@@ -190,7 +206,8 @@ DBDINSTALLS += $(MENUS)
 DBDINSTALLS += $(BPTS)
 export DBDINSTALLS
 
-HDRS = ${HEADERS} $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
+HDRS = ${HEADERS}
+HDRS += $(RECORDS:%=${COMMON_DIR}/%.h)
 HDRS += ${HEADERS_${EPICSVERSION}}
 export HDRS
 
@@ -202,39 +219,32 @@ TEMPLS += ${TEMPLATES_${EPICSVERSION}}
 TEMPLS += $(wildcard $(COMMON_DIR)/*.db)
 export TEMPLS
 
+CFGS = ${CONFIGS}
+CFGS += ${CONFIGS_${EPICSVERSION}}
+export CFGS
+
 SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
-# Filter architectures to build using EXCLUDE_ARCHS and ARCH_FILTER.
+INSTALL_LICENSE = ${MODULE_LOCATION}/doc
+# Find all license files to distribute with binaries
+LICENSES = $(shell find -not -path '*/.*' -type f -iname LICENSE)
+LICENSES += $(shell find -not -path '*/.*' -type f -iname Copyright)
+export LICENSES
+
+# Filter architectures to build using EXCLUDE_ARCHS.
 ALL_ARCHS = ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
-BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),$(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),\
-        $(if ${ARCH_FILTER},$(filter ${ARCH_FILTER},${ALL_ARCHS}),${ALL_ARCHS})))
+BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),\
+              $(filter-out $(addsuffix %,${EXCLUDE_ARCHS}),${ALL_ARCHS}))
 
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
 
-# Perform default database expansion of .substitions/.templates into $(COMMON_DIR)
-db_internal: $(COMMON_DIR)
-
--include $(COMMON_DIR)/*.db.d
-
-VPATH += $(dir $(TMPS))
-VPATH += $(dir $(SUBS))
-
-$(COMMON_DIR)/%.db: %.template
-	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
-	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
-	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) $^
-
-$(COMMON_DIR)/%.db: %.substitutions
-	@printf "Inflating database ... %44s >>> %40s \n" "$^" "$@"
-	$(QUIET)$(MSI) -D $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^ > $(COMMON_DIR)/$(notdir $(basename $@).db).d
-	$(QUIET)$(MSI)    $(USR_DBFLAGS) -o $(COMMON_DIR)/$(notdir $(basename $@).db) -S $^
-
-
-install build debug::
+$(RECURSE_TARGETS)::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
+
+build db_internal:: $(COMMON_DIR)
 
 debug::
 	@echo "===================== Pass 1 ====================="
@@ -243,29 +253,38 @@ debug::
 	@echo "PRJ = ${PRJ}"
 	@echo "EPICS_BASE = ${EPICS_BASE}"
 	@echo "BUILD_ARCHS = ${BUILD_ARCHS}"
-	@echo "ARCH_FILTER = ${ARCH_FILTER}"
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
+	@echo "EPICS_MODULES = ${EPICS_MODULES}"
+	@echo "LICENSES = ${LICENSES}"
 
 # Create e.g. build-$(T_A) rules for each architecture, so that we can just do
 #   build: build-arch1 build-arch2
 define target_rule
-$1-%: | $(COMMON_DIR)
+$1-%:
 	$${MAKE} -f $${USERMAKEFILE} T_A=$$* $1
 endef
-$(foreach target,install build debug,$(eval $(call target_rule,$(target))))
+$(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 
 .SECONDEXPANSION:
 
-# This has to fit under .SECONDEXPANSION in order to catch TMPS and SUBS, which are typically defined
-# _after_ driver.makefile is included.
-db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.template,%.db,$$(TMPS))))
-
-db_internal: $$(addprefix $(COMMON_DIR)/,$$(notdir $$(patsubst %.substitutions,%.db,$$(SUBS))))
-
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
-# and ARCH_FILTER, which are defined _after_ driver.makefile.
-$(foreach target,install build debug,$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+# which is defined _after_ driver.makefile.
+$(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+
+# The licenses should be installed after everything
+define license_install =
+$1: $2
+	@echo "Installing license file $$^"
+	$$(INSTALL) -d -m444 $$^ $$(@D)
+
+install:: $1
+
+endef
+# Creates a target for every license file to be installed.  Some modules have
+# more than one license file that needs distribution.  For them we add the
+# previous directory so we have them separate by projects inside /doc.
+$(foreach d, $(LICENSES), $(eval $(call license_install, $(INSTALL_LICENSE)/$(filter-out ., $(lastword $(subst /, , $(dir $(d))))/$(notdir $(d))), $(d))))
 
 else # T_A
 
@@ -302,7 +321,7 @@ else
 install:: build
 	$(if $(wildcard ${MODULE_LOCATION}/lib/${T_A}),$(error ${MODULE_LOCATION}/lib/${T_A} already exists. If you really want to overwrite then uninstall first.))
 
-install build debug:: O.${EPICSVERSION}_${T_A}
+$(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
 endif
@@ -314,7 +333,9 @@ export USR_LIBOBJS
 BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
 export BINS
 
-export CFG
+export USR_DBFLAGS
+export TMPS
+export SUBS
 
 else # in O.*
 ## RUN 3
@@ -346,7 +367,7 @@ INSTALL_LIB     = ${INSTALL_REV}/lib/$(T_A)
 INSTALL_INCLUDE = ${INSTALL_REV}/include
 INSTALL_DBD     = ${INSTALL_REV}/dbd
 INSTALL_DB      = ${INSTALL_REV}/db
-INSTALL_CFG     = ${INSTALL_REV}/cfg
+INSTALL_CONFIG  = ${INSTALL_REV}/cfg
 INSTALL_DOC     = ${MODULE_LOCATION}/doc
 INSTALL_SCR     = ${INSTALL_REV}
 
@@ -393,12 +414,6 @@ DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
 # Create dbd file for GPIB code.
 DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
 
-# snc location
-SNCALL=$(shell ls  -dv $(EPICS_MODULES)/sequencer/$(sequencer_VERSION)/bin/$(EPICS_HOST_ARCH) 2> /dev/null)
-SNC=$(lastword $(SNCALL))/snc
-
-
-
 ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
 endif
@@ -407,6 +422,9 @@ endif
 ifneq ($(MODULELIB),)
 LIBOBJS += $(addsuffix $(OBJ),$(basename ${VERSIONFILE}))
 endif # MODULELIB
+
+MODULE_RULES = ${CFGS:%=../%}
+MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
 
 debug::
 	@echo "===================== Pass 3: Build directory ====================="
@@ -422,6 +440,7 @@ debug::
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}"
 	@echo "SRCS = ${SRCS}"
 	@echo "REQ = ${REQ}"
+	@echo "CFGS = ${CFGS}"
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
 	@echo "DBDS_${OS_CLASS} = ${DBDS_${OS_CLASS}}"
@@ -430,11 +449,15 @@ debug::
 	@echo "TEMPLS = ${TEMPLS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "MODULE_LOCATION = ${MODULE_LOCATION}"
+	@echo "MODULE_RULES = ${MODULE_RULES}"
 
 build: MODULEINFOS
 build: ${MODULEDBD}
-build: $(addprefix ${COMMON_DIR}/,$(addsuffix Record.h,${RECORDS}))
 build: ${DEPFILE}
+
+db_internal:
+
+COMMON_INC = ${RECORDS:%=${COMMON_DIR}/%.h}
 
 # Include default EPICS Makefiles (version dependent).
 # Avoid library installation when doing 'make build'.
@@ -443,8 +466,31 @@ INSTALL_LOADABLE_SHRLIBS=
 # We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
 # mode. Including this causes all of the source files to be compiled!
 ifeq (,$(findstring debug,${MAKECMDGOALS}))
-include ${BASERULES}
+  include ${BASERULES}
+  ifneq ($(strip $(MODULE_RULES)),)
+    include $(MODULE_RULES)
+  endif
 endif
+
+DBDEPENDS_FILES = $(wildcard $(COMMON_DIR)/*.db.d)
+ifneq (,$(DBDEPENDS_FILES))
+-include $(DBDEPENDS_FILES)
+endif
+
+USR_DBFLAGS := $(call fix_relative_paths,$(USR_DBFLAGS))
+
+define SUBS_EXPAND
+db_internal: $(COMMON_DIR)/$(notdir $(basename $2).db)
+
+# Note that this rule overrides the one from RULES.Db from EPICS_BASE
+$(COMMON_DIR)/$(notdir $(basename $2).db): $(if $(filter /%,$2),$2,../$2)
+	@printf "Inflating database ... %44s >>> %40s \n" "$$<" "$$@"
+	$(MSI) -D $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$< > $(COMMON_DIR)/$$(notdir $$(basename $2).db).d
+	$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$<
+endef
+
+$(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
+$(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
@@ -454,7 +500,7 @@ RELEASE_INCLUDES += -I${EPICS_BASE}/include/compiler/${CMPLR_CLASS}
 RELEASE_INCLUDES += -I${EPICS_BASE}/include/os/${OS_CLASS}
 
 # Find all sources and set vpath accordingly.
-$(foreach file, ${SRCS} ${TEMPLS} ${DBDINSTALLS} ${SCR}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
+$(foreach file, ${SRCS} ${TEMPLS} ${DBDINSTALLS} ${SCR} ${CFGS}, $(eval vpath $(notdir ${file}) ../$(dir ${file})))
 
 # Do not treat %.dbd the same way because it creates a circular dependency
 # if a source dbd has the same name as the project dbd. Have to clear %.dbd and not use ../ path.
@@ -477,11 +523,9 @@ MODULEINFOS:
 	@echo ${LIBVERSION} > LIBVERSION
 
 # Build one module dbd file by expanding all source dbd files.
-# We can't use dbExpand (from the default EPICS make rules)
-# because it has too strict checks to be used for a loadable module.
 ${MODULEDBD}: ${DBDFILES}
 	@echo "Expanding $@"
-	${MAKEHOME}expandDBD.tcl -$(basename ${EPICSVERSION}) ${DBDEXPANDPATH} $^ > $@
+	${PERL} ${EPICS_BASE_HOST_BIN}/dbdExpand.pl -A ${DBDEXPANDPATH} -o $@ $^
 
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
@@ -496,7 +540,7 @@ endif
 INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
 INSTALL_SCRS = $(addprefix ${INSTALL_SCR}/,$(notdir ${SCR}))
 INSTALL_BINS = $(addprefix ${INSTALL_BIN}/,$(notdir ${BINS}))
-INSTALL_CFGS = $(CFG:%=${INSTALL_CFG}/%)
+INSTALL_CONFIGS = $(addprefix ${INSTALL_CONFIG}/,$(notdir ${CFGS}))
 
 debug::
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
@@ -510,8 +554,8 @@ debug::
 	@echo "INSTALL_DBS = $(INSTALL_DBS)"
 	@echo "INSTALL_SCR = $(INSTALL_SCR)"
 	@echo "INSTALL_SCRS = $(INSTALL_SCRS)"
-	@echo "INSTALL_CFG = $(INSTALL_CFG)"
-	@echo "INSTALL_CFGS = $(INSTALL_CFGS)"
+	@echo "INSTALL_CONFIG = $(INSTALL_CONFIG)"
+	@echo "INSTALL_CONFIGS = $(INSTALL_CONFIGS)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
 	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
@@ -528,7 +572,7 @@ debug::
 endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
-INSTALLS += ${INSTALL_CFGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_BINS} ${INSTALL_DEPS}
+INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
 
 install: ${INSTALLS}
 
@@ -551,46 +595,13 @@ ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
-${INSTALL_CFGS}: ${CFGS}
+${INSTALL_CONFIGS}: $(notdir ${INSTALL_CONFIGS})
 	@echo "Installing configuration files $^ to $(@D)"
 	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
-
-# Create SNL code from st/stt file.
-# Important to have %.o: %.st and %.o: %.stt rule before %.o: %.c rule!
-
-CPPSNCFLAGS1  = $(filter -D%, ${OP_SYS_CFLAGS})
-CPPSNCFLAGS1 += $(filter-out ${OP_SYS_INCLUDE_CPPFLAGS} ,${CPPFLAGS}) ${CPPSNCFLAGS}
-CPPSNCFLAGS1 += -I $(dir $(SNC))../../include
-SNCFLAGS += -r
-
-%.i: %.st
-	@echo ">> Preprocessing $(<F)"
-	$(CPP) ${CPPSNCFLAGS1} $< > $(*F).i
-
-%.c: %.i
-	@echo ""
-	@echo ">> SNC building process .... "
-	@echo ">> SNC                  : $(SNC)"
-	@echo ">> SNC_VERSION          : $(sequencer_VERSION)"
-	@echo ">> SNC is defined as $(SNC)"
-	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $(*F).i -o $(*F).c
-
-%_snl.dbd: %.c
-	@echo ">> Building $(*F)_snl.dbd"
-	awk -F [\(\)]  '/epicsExportRegistrar/ { print "registrar (" $$2 ")"}' $(*F).c > $(*F)_snl.dbd
-
-%.c: %.stt
-	@echo ""
-	@echo ">> SNC building process .... "
-	@echo ">> SNC                  : $(SNC)"
-	@echo ">> SNC_VERSION          : $(sequencer_VERSION)"
-	@echo ">> SNC is defined as $(SNC)"
-	$(SNC) $(TARGET_SNCFLAGS) $(SNCFLAGS) $< -o $(*F).c
-
 
 # Create GPIB code from *.gt file.
 %.c %.dbd %.list: %.gt

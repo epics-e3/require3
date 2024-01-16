@@ -6,6 +6,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New features
+
+* Allow for module-specific build rules (see: sequencer) to be installed and used
+  within e3
+* Automatically install LICENSE files with modules
+
+### Bugfixes
+
+* Fixed an issue where .template and .substitutions files with the same name would build incorrectly
+* Removed a number of memory leaks found by valgrind
+
+### Other changes
+
+* Rewrite `iocsh` converting it from being a shell script to a python (3.6) script
+  * Remove support for file extensions: `.so`, `.dbd`, `.db`, `.substitutions`, `.template`, `.iocsh`
+  * Remove support for `nice`
+  * Remove support for sequencer programs
+  * Remove optional argument passing to `gdb`
+  * Change the IOC shell to use both stdout and stderr (previously only stdout)
+  * Change default prompt
+  * Change fallback IOC-name (used when `IOCNAME` is not set)
+  * Multiple argument changes; e.g.
+    * Shortened argument for printing version and exit changed from `-v` to `-V`
+    * Make running IOC as realtime or with debuggers mutually exclusive
+    * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
+* Replaced `tclx` script to expand .dbd files with a python script
+* Removed ability to pass `args` to require (which have not been used within e3)
+* Removed `require module,ifexists` option
+* Stop require from looking in legacy locations for various files
+* Rewrite internal linked list to have better memory safety
+* Remove `ARCH_FILTER` support; from now on, only `EXCLUDE_ARCHS` is used.
+
 ## [5.0.0]
 
 ### New Features

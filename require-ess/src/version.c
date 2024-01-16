@@ -52,6 +52,7 @@ semver_t *parse_semver(const char *version) {
   }
 
   if (regcomp(&compiled, version_regex, REG_EXTENDED)) {
+    regfree(&compiled);
     return NULL;
   }
 
@@ -67,5 +68,6 @@ semver_t *parse_semver(const char *version) {
       s->version_str[groups[revision_ix].rm_so - 1] = 0;
     }
   }
+  regfree(&compiled);
   return s;
 }

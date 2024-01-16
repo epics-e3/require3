@@ -5,6 +5,10 @@ record(waveform, "$(REQUIRE_IOC):Modules")
     field(NELM, "$(MODULE_COUNT)")
     field(PINI, "YES")
     field(DISP, "1")
+
+    info(Q:group, {
+        "$(REQUIRE_IOC):LoadedModules":{"value.MODS":{+type:"plain",+channel:"VAL"}}
+    })
 }
 
 record (waveform, "$(REQUIRE_IOC):Versions")
@@ -13,6 +17,10 @@ record (waveform, "$(REQUIRE_IOC):Versions")
     field (FTVL, "STRING")
     field (NELM, "$(MODULE_COUNT)")
     field (PINI, "YES")
+
+    info(Q:group, {
+        "$(REQUIRE_IOC):LoadedModules":{"value.VERS":{+type:"plain",+channel:"VAL"}}
+    })
 }
 
 record(waveform, "$(REQUIRE_IOC):ModuleVersions")
@@ -39,4 +47,22 @@ record(stringin,"$(REQUIRE_IOC):BaseVersion")
     field(INP,  "@EPICS_VERSION_FULL")
     field(PINI, "YES")
     field(DISP, "1")
+}
+
+# This record contains labels for the created NTTable, named $(REQUIRE_IOC):LoadedModules.
+record(aai, "$(REQUIRE_IOC):Labels")
+{
+    field(DESC, "Labels for the NTTable")
+    field(FTVL, "STRING")
+    field(NELM, "2")
+    field(INP,  {const:["Module", "Version"]})
+    field(PINI, "YES")
+    field(DISP, "1")
+
+    info(Q:group, {
+        "$(REQUIRE_IOC):LoadedModules":{
+            +id:"epics:nt/NTTable:1.0",
+            "labels":{+type:"plain", +channel:"VAL"}
+        }
+    })
 }
