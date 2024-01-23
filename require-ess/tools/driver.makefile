@@ -272,20 +272,6 @@ $(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 # which is defined _after_ driver.makefile.
 $(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
 
-# The licenses should be installed after everything
-define license_install =
-$1: $2
-	@echo "Installing license file $$^"
-	$$(INSTALL) -d -m444 $$^ $$(@D)
-
-install:: $1
-
-endef
-# Creates a target for every license file to be installed.  Some modules have
-# more than one license file that needs distribution.  For them we add the
-# previous directory so we have them separate by projects inside /doc.
-$(foreach d, $(LICENSES), $(eval $(call license_install, $(INSTALL_LICENSE)/$(filter-out ., $(lastword $(subst /, , $(dir $(d))))/$(notdir $(d))), $(d))))
-
 else # T_A
 
 ifeq ($(filter O.%,$(notdir ${CURDIR})),)
@@ -541,6 +527,7 @@ INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
 INSTALL_SCRS = $(addprefix ${INSTALL_SCR}/,$(notdir ${SCR}))
 INSTALL_BINS = $(addprefix ${INSTALL_BIN}/,$(notdir ${BINS}))
 INSTALL_CONFIGS = $(addprefix ${INSTALL_CONFIG}/,$(notdir ${CFGS}))
+INSTALL_LICENSES = $(addprefix ${INSTALL_DOC}/,${LICENSES})
 
 debug::
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
@@ -558,6 +545,7 @@ debug::
 	@echo "INSTALL_CONFIGS = $(INSTALL_CONFIGS)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
+	@echo "INSTALL_LICENSES = $(INSTALL_LICENSES)"
 	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
 
 define install_subdirs
@@ -572,7 +560,8 @@ debug::
 endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
-INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_META}
+INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} \
+            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_LICENSES}
 
 install: ${INSTALLS}
 
@@ -602,6 +591,13 @@ ${INSTALL_CONFIGS}: $(notdir ${INSTALL_CONFIGS})
 ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
+
+define license_install =
+$1: $2
+	@echo "Installing license file $$^"
+	$$(INSTALL) -d -m444 $$^ $$(@D)
+endef
+$(foreach l,$(LICENSES),$(eval $(call license_install,$(INSTALL_DOC)/$l,../$l)))
 
 # Create GPIB code from *.gt file.
 %.c %.dbd %.list: %.gt
