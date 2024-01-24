@@ -23,7 +23,7 @@ def iocsh(
     cell_path: List[Path],
     no_init: bool,
     realtime: bool,
-    gdb: bool,
+    gdb: str,
     valgrind: str,
     debug: bool,
 ):
@@ -87,8 +87,8 @@ def iocsh(
             tmp_startup_script.name,
         ]
 
-        if gdb:
-            cmd = ["gdb", "--args", cmd]
+        if gdb is not None:
+            cmd = ["gdb"] + gdb.split(" ") + ["--args"] + cmd
         elif valgrind:
             cmd = ["valgrind"] + valgrind.split(" ") + cmd
         elif realtime:
@@ -158,7 +158,9 @@ def generate_parser() -> argparse.ArgumentParser:
     mutex_group_modifiers.add_argument(
         "-dg",
         "--gdb",
-        action="store_true",
+        nargs="?",
+        const="",
+        metavar="ARGUMENT",
         help="run with gdb",
     )
     mutex_group_modifiers.add_argument(
