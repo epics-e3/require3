@@ -75,7 +75,11 @@ def iocsh(
 
         if not no_init:
             # if file isn't passed we shouldn't try to read its' content
-            if not file or re.search(r"^\s*iocInit\b", file.read_text()) is None:
+            if (
+                not file
+                or re.search(r"^\s*iocInit\b", file.read_text(), flags=re.MULTILINE)
+                is None
+            ):
                 tmp_startup_script.add_command("iocInit")
 
         tmp_startup_script.save()
