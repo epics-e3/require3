@@ -26,16 +26,7 @@ struct cmditem {
 void afterInitHook(initHookState state) {
   struct cmditem *item;
 
-  if (state !=
-#ifdef INCinitHooksh
-      /* old: without iocPause etc */
-      initHookAfterInterruptAccept
-#else
-      /* new: with iocPause etc */
-      initHookAfterIocRunning
-#endif
-  )
-    return;
+  if (state != initHookAfterIocRunning) return;
   for (item = cmdlist; item != NULL; item = item->next) {
     printf("%s\n", item->cmd);
     iocshCmd(item->cmd);
@@ -75,12 +66,11 @@ static const iocshFuncDef afterInitDef = {
     }};
 
 static void afterInitFunc(const iocshArgBuf *args) {
-  int i, n;
   struct cmditem *item = newItem(args[0].aval.av[1]);
   if (!item) return;
 
-  n = sprintf(item->cmd, "%.255s", args[0].aval.av[1]);
-  for (i = 2; i < args[0].aval.ac; i++) {
+  int n = sprintf(item->cmd, "%.255s", args[0].aval.av[1]);
+  for (int i = 2; i < args[0].aval.ac; i++) {
     if (strpbrk(args[0].aval.av[i], " ,\"\\"))
       n += sprintf(item->cmd + n, " '%.*s'", 255 - 3 - n, args[0].aval.av[i]);
     else
