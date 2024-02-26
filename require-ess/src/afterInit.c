@@ -25,7 +25,7 @@ struct cmditem {
     char *a[12];
     char cmd[256];
   } x;
-} * cmdlist, **cmdlast = &cmdlist;
+} *cmdlist, **cmdlast = &cmdlist;
 
 void afterInitHook(initHookState state) {
   struct cmditem *item;
@@ -79,28 +79,6 @@ static struct cmditem *newItem(char *cmd, int type) {
   *cmdlast = item;
   cmdlast = &item->next;
   return item;
-}
-
-int afterInit(char *cmd, char *a1, char *a2, char *a3, char *a4, char *a5,
-              char *a6, char *a7, char *a8, char *a9, char *a10, char *a11) {
-  struct cmditem *item = newItem(cmd, 0);
-  if (!item)
-    return -1;
-
-  item->x.a[0] = cmd;
-  item->x.a[1] = a1;
-  item->x.a[2] = a2;
-  item->x.a[3] = a3;
-  item->x.a[4] = a4;
-  item->x.a[5] = a5;
-  item->x.a[6] = a6;
-  item->x.a[7] = a7;
-  item->x.a[8] = a8;
-  item->x.a[9] = a9;
-  item->x.a[10] = a10;
-  item->x.a[11] = a11;
-
-  return 0;
 }
 
 static const iocshFuncDef afterInitDef = {
