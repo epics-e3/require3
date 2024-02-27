@@ -21,7 +21,9 @@ DBCORE_API int epicsStdCall iocshCmd(const char *cmd);
 struct cmditem {
   struct cmditem *next;
   char cmd[256];
-} *cmdlist, **cmdlast = &cmdlist;
+};
+
+struct cmditem *cmdlist, **cmdlast = &cmdlist;
 
 void afterInitHook(initHookState state) {
   struct cmditem *item;
@@ -29,7 +31,9 @@ void afterInitHook(initHookState state) {
   if (state != initHookAfterIocRunning) return;
   for (item = cmdlist; item != NULL; item = item->next) {
     printf("%s\n", item->cmd);
-    iocshCmd(item->cmd);
+    if (iocshCmd(item->cmd)) {
+      errlogPrintf("afterInit: Command '%s' failed to run\n", item->cmd);
+    };
   }
 }
 
