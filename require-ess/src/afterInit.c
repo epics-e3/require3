@@ -34,20 +34,7 @@ void afterInitHook(initHookState state) {
 }
 
 static struct cmditem *newItem(char *cmd) {
-  static int first_time = 1;
   struct cmditem *item;
-  if (!cmd) {
-    errlogPrintf("usage: afterInit command, args...\n");
-    return NULL;
-  }
-  if (interruptAccept) {
-    errlogPrintf("afterInit can only be used before iocInit\n");
-    return NULL;
-  }
-  if (first_time) {
-    first_time = 0;
-    initHookRegister(afterInitHook);
-  }
   item = malloc(sizeof(struct cmditem));
   if (item == NULL) {
     errlogPrintf("afterInit %s", strerror(errno));
@@ -66,10 +53,27 @@ static const iocshFuncDef afterInitDef = {
     }};
 
 static void afterInitFunc(const iocshArgBuf *args) {
-  struct cmditem *item = newItem(args[0].aval.av[1]);
+  static int first_time = 1;
+  char *cmd;
+
+  if (first_time) {
+    first_time = 0;
+    initHookRegister(afterInitHook);
+  }
+  if (interruptAccept) {
+    errlogPrintf("afterInit can only be used before iocInit\n");
+    return;
+  }
+
+  cmd = args[0].aval.av[1];
+  if (!cmd) {
+    errlogPrintf("usage: afterInit command, args...\n");
+    return;
+  }
+  struct cmditem *item = newItem(cmd);
   if (!item) return;
 
-  int n = sprintf(item->cmd, "%.255s", args[0].aval.av[1]);
+  int n = sprintf(item->cmd, "%.255s", cmd);
   for (int i = 2; i < args[0].aval.ac; i++) {
     if (strpbrk(args[0].aval.av[i], " ,\"\\"))
       n += sprintf(item->cmd + n, " '%.*s'", 255 - 3 - n, args[0].aval.av[i]);
