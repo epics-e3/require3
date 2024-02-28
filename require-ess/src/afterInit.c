@@ -19,14 +19,18 @@ struct cmditem {
 struct cmditem *cmdlist, **cmdlast = &cmdlist;
 
 void afterInitHook(initHookState state) {
-  struct cmditem *item;
-
   if (state != initHookAfterIocRunning) return;
-  for (item = cmdlist; item != NULL; item = item->next) {
+
+  struct cmditem *item = cmdlist;
+  struct cmditem *next = NULL;
+  while (item) {
     printf("%s\n", item->cmd);
     if (iocshCmd(item->cmd)) {
       errlogPrintf("afterInit: Command '%s' failed to run\n", item->cmd);
     };
+    next = item->next;
+    free(item);
+    item = next;
   }
 }
 
