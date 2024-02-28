@@ -4,6 +4,7 @@
 #include <dbAccess.h>
 #include <epicsExport.h>
 #include <epicsStdio.h>
+#include <epicsString.h>
 #include <errlog.h>
 #include <errno.h>
 #include <initHooks.h>
@@ -13,7 +14,7 @@
 
 struct cmditem {
   struct cmditem *next;
-  char cmd[256];
+  char *cmd;
 };
 
 struct cmditem *cmdlist, **cmdlast = &cmdlist;
@@ -29,6 +30,7 @@ void afterInitHook(initHookState state) {
       errlogPrintf("afterInit: Command '%s' failed to run\n", item->cmd);
     };
     next = item->next;
+    free(item->cmd);
     free(item);
     item = next;
   }
@@ -38,10 +40,11 @@ static struct cmditem *newItem(char *cmd) {
   struct cmditem *item;
   item = malloc(sizeof(struct cmditem));
   if (item == NULL) {
-    errlogPrintf("afterInit %s", strerror(errno));
     return NULL;
   }
+  item->cmd = epicsStrDup(cmd);
   item->next = NULL;
+
   *cmdlast = item;
   cmdlast = &item->next;
   return item;
@@ -50,7 +53,7 @@ static struct cmditem *newItem(char *cmd) {
 static const iocshFuncDef afterInitDef = {
     "afterInit", 1,
     (const iocshArg *[]){
-        &(iocshArg){"commandline", iocshArgArgv},
+        &(iocshArg){"commandline", iocshArgString},
     }};
 
 static void afterInitFunc(const iocshArgBuf *args) {
@@ -66,21 +69,16 @@ static void afterInitFunc(const iocshArgBuf *args) {
     return;
   }
 
-  cmd = args[0].aval.av[1];
-  if (!cmd) {
-    errlogPrintf("usage: afterInit command, args...\n");
+  cmd = args[0].sval;
+  if (!cmd || !cmd[0]) {
+    errlogPrintf("Usage: afterInit \"command\"\n");
     return;
   }
   struct cmditem *item = newItem(cmd);
-  if (!item) return;
 
-  int n = sprintf(item->cmd, "%.255s", cmd);
-  for (int i = 2; i < args[0].aval.ac; i++) {
-    if (strpbrk(args[0].aval.av[i], " ,\"\\"))
-      n += sprintf(item->cmd + n, " '%.*s'", 255 - 3 - n, args[0].aval.av[i]);
-    else
-      n += sprintf(item->cmd + n, " %.*s", 255 - 1 - n, args[0].aval.av[i]);
-  }
+  if (!item)
+    errlogPrintf("afterInit: error adding command %s; %s", cmd,
+                 strerror(errno));
 }
 
 static void afterInitRegister(void) {
