@@ -1,22 +1,15 @@
 /* Copyright (C) 2020 Dirk Zimoch */
 /* Copyright (C) 2020-2023 European Spallation Source, ERIC */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include <dbAccess.h>
 #include <epicsExport.h>
 #include <epicsStdio.h>
 #include <errlog.h>
 #include <errno.h>
 #include <initHooks.h>
-#include <stdio.h>
+#include <iocsh.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <iocsh.h>
-DBCORE_API int epicsStdCall iocshCmd(const char *cmd);
 
 struct cmditem {
   struct cmditem *next;
