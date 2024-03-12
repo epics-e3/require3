@@ -23,7 +23,7 @@ def iocsh(
     cell_path: List[Path],
     no_init: bool,
     realtime: bool,
-    gdb: bool,
+    gdb: str,
     valgrind: str,
     debug: bool,
 ):
@@ -64,7 +64,7 @@ def iocsh(
             tmp_startup_script.load_module(entry)
 
         if file:
-            tmp_startup_script.set_variable("E3_CMD_TOP", {str(file.parent)})
+            tmp_startup_script.set_variable("E3_CMD_TOP", str(file.parent))
             tmp_startup_script.load_snippet(file)
 
         for entry in command:
@@ -75,7 +75,11 @@ def iocsh(
 
         if not no_init:
             # if file isn't passed we shouldn't try to read its' content
-            if not file or re.search(r"^\s*iocInit\b", file.read_text()) is None:
+            if (
+                not file
+                or re.search(r"^\s*iocInit\b", file.read_text(), flags=re.MULTILINE)
+                is None
+            ):
                 tmp_startup_script.add_command("iocInit")
 
         tmp_startup_script.save()
@@ -87,8 +91,8 @@ def iocsh(
             tmp_startup_script.name,
         ]
 
-        if gdb:
-            cmd = ["gdb", "--args", cmd]
+        if gdb is not None:
+            cmd = ["gdb"] + gdb.split(" ") + ["--args"] + cmd
         elif valgrind:
             cmd = ["valgrind"] + valgrind.split(" ") + cmd
         elif realtime:
@@ -158,7 +162,9 @@ def generate_parser() -> argparse.ArgumentParser:
     mutex_group_modifiers.add_argument(
         "-dg",
         "--gdb",
-        action="store_true",
+        nargs="?",
+        const="",
+        metavar="ARGUMENT",
         help="run with gdb",
     )
     mutex_group_modifiers.add_argument(

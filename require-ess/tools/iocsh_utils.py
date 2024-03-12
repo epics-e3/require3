@@ -12,7 +12,7 @@ from pathlib import Path
 @atexit.register
 def graceful_shutdown() -> None:
     print("\nExiting e3 IOC shell")
-    os.system("[[ $- == *i* ]] && stty sane")
+    os.system("[[ -t 1 ]] && stty sane")
 
 
 class TemporaryStartupScript:

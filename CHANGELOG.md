@@ -11,11 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Allow for module-specific build rules (see: sequencer) to be installed and used
   within e3
 * Automatically install LICENSE files with modules
+* `afterInit` can now run commands of arbitrary length. Note: The syntax has changed from
+  ```
+  afterInit foo bar baz
+  ```
+  to
+  ```
+  afterInit 'foo bar baz'
+  ```
 
 ### Bugfixes
 
 * Fixed an issue where .template and .substitutions files with the same name would build incorrectly
 * Removed a number of memory leaks found by valgrind
+* Fixed issue where failure of one of the patches to apply wouldn't stop the build
+* Fixed memory leak in `afterInit`
 
 ### Other changes
 
