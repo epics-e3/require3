@@ -94,7 +94,9 @@ def iocsh(
         if gdb is not None:
             cmd = ["gdb"] + gdb.split(" ") + ["--args"] + cmd
         elif valgrind:
-            cmd = ["valgrind"] + valgrind.split(" ") + cmd
+            supp_file = os.path.abspath(os.path.dirname(__file__)) + "/iocsh_epics.supp"
+            non_optional = ["--suppressions=" + supp_file]
+            cmd = ["valgrind"] + non_optional + valgrind.split(" ") + cmd
         elif realtime:
             os.environ["LD_BIND_NOW"] = 1
             cmd = "chrt --fifo 1".split(" ") + cmd
