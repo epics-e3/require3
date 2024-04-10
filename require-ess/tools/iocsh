@@ -167,7 +167,7 @@ def generate_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="",
         metavar="ARGUMENT",
-        help="run with gdb, optionally with arguments",
+        help="run with gdb, optionally with arguments. For no arguments use \"-dg --\"",
     )
     mutex_group_modifiers.add_argument(
         "-dv",
@@ -175,7 +175,7 @@ def generate_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="--leak-check=full",
         metavar="ARGUMENT",
-        help="run with valgrind, optionally with arguments (default '%(const)s')",
+        help="run with valgrind, optionally with arguments (default '%(const)s'). For no arguments use \"-dv --\"",
     )
     mutex_group_modifiers.add_argument(
         "--debug",
