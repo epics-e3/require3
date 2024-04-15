@@ -98,7 +98,7 @@ def iocsh(
             non_optional = ["--suppressions=" + supp_file]
             cmd = ["valgrind"] + non_optional + valgrind.split(" ") + cmd
         elif realtime:
-            os.environ["LD_BIND_NOW"] = 1
+            os.environ["LD_BIND_NOW"] = str(1)
             cmd = "chrt --fifo 1".split(" ") + cmd
 
         logging.debug(f"Running command `{' '.join(cmd)}`")
