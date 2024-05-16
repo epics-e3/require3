@@ -20,7 +20,6 @@ def iocsh(
     module: List[str],
     command: List[str],
     database: List[Path],
-    cell_path: List[Path],
     no_init: bool,
     realtime: bool,
     gdb: str,
@@ -43,19 +42,6 @@ def iocsh(
         logging.debug(f"Script path is {Path(__file__).resolve()}")
         logging.debug(f"Executed from {Path.cwd()}")
         logging.debug(f"Temporary startup script at {tmp_startup_script.name}")
-
-        if cell_path:
-            cell_paths = ":".join(
-                [
-                    str(
-                        p.resolve() / epics_base_dir.name / f"require-{require_version}"
-                    )
-                    for p in reversed(cell_path)
-                ]
-            )
-            tmp_startup_script.set_variable(
-                "EPICS_DRIVER_PATH", f"{cell_paths}:{os.environ['EPICS_DRIVER_PATH']}"
-            )
 
         if debug:
             tmp_startup_script.add_command("var requireDebug 1")
@@ -94,9 +80,11 @@ def iocsh(
         if gdb is not None:
             cmd = ["gdb"] + gdb.split(" ") + ["--args"] + cmd
         elif valgrind:
-            cmd = ["valgrind"] + valgrind.split(" ") + cmd
+            supp_file = os.path.abspath(os.path.dirname(__file__)) + "/iocsh_epics.supp"
+            non_optional = ["--suppressions=" + supp_file]
+            cmd = ["valgrind"] + non_optional + valgrind.split(" ") + cmd
         elif realtime:
-            os.environ["LD_BIND_NOW"] = 1
+            os.environ["LD_BIND_NOW"] = str(1)
             cmd = "chrt --fifo 1".split(" ") + cmd
 
         logging.debug(f"Running command `{' '.join(cmd)}`")
@@ -147,15 +135,6 @@ def generate_parser() -> argparse.ArgumentParser:
         type=Path,
         help="load database file(s) (`dbLoadRecords`)",
     )
-    parser.add_argument(
-        "-l",
-        "--cell-path",
-        type=Path,
-        action="append",
-        default=list(),
-        metavar="PATH",
-        help="path(s) to cell(s)",
-    )
 
     mutex_group_modifiers = parser.add_mutually_exclusive_group()
     mutex_group_modifiers.add_argument("-rt", "--realtime", action="store_true")
@@ -165,7 +144,7 @@ def generate_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="",
         metavar="ARGUMENT",
-        help="run with gdb",
+        help="run with gdb, optionally with arguments. For no arguments use \"-dg --\"",
     )
     mutex_group_modifiers.add_argument(
         "-dv",
@@ -173,7 +152,7 @@ def generate_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="--leak-check=full",
         metavar="ARGUMENT",
-        help="run with valgrind",
+        help="run with valgrind, optionally with arguments (default '%(const)s'). For no arguments use \"-dv --\"",
     )
     mutex_group_modifiers.add_argument(
         "--debug",

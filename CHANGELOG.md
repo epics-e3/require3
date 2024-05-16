@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
   afterInit 'foo bar baz'
   ```
+* Add NTTable PV for module and version information as `LoadedModules`
 
 ### Bugfixes
 

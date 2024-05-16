@@ -1,0 +1,9 @@
+{
+   Perpetual thread that leaks during exit
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   fun:newNode
+   ...
+   fun:taskwdInsert
+}
