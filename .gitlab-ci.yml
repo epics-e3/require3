@@ -1,16 +1,14 @@
 ---
+include:
+  - project: "ics-infrastructure/gitlab-ci-yml"
+    file: "PreCommit.gitlab-ci.yml"
+
 default:
   tags:
     - docker
 
 stages:
   - check
-
-run pre-commit:
-  stage: check
-  image: registry.esss.lu.se/ics-docker/pre-commit:latest
-  script:
-    - pre-commit run --all-files
 
 shellcheck:
   image: pipelinecomponents/shellcheck:latest
