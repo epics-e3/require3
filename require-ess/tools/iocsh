@@ -144,7 +144,7 @@ def generate_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="",
         metavar="ARGUMENT",
-        help="run with gdb, optionally with arguments. For no arguments use \"-dg --\"",
+        help='run with gdb, optionally with arguments. For no arguments use "-dg --"',
     )
     mutex_group_modifiers.add_argument(
         "-dv",
