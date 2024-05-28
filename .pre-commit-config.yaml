@@ -9,3 +9,9 @@ repos:
     rev: v13.0.0
     hooks:
       - id: clang-format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.2
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format

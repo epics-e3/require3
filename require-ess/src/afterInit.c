@@ -20,7 +20,8 @@ struct cmditem {
 struct cmditem *cmdlist, **cmdlast = &cmdlist;
 
 void afterInitHook(initHookState state) {
-  if (state != initHookAfterIocRunning) return;
+  if (state != initHookAfterIocRunning)
+    return;
 
   struct cmditem *item = cmdlist;
   struct cmditem *next = NULL;

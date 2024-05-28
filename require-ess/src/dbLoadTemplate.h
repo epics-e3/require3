@@ -15,5 +15,4 @@
 DBCORE_API int dbLoadTemplate(const char *sub_file, const char *cmd_collect,
                               const char *path);
 
-
 #endif /*INCdbLoadTemplateh*/
