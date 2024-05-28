@@ -1,2 +1,0 @@
-pytest
-run-iocsh --index-url https://artifactory.esss.lu.se/artifactory/api/pypi/pypi-virtual/simple
