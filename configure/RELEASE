@@ -20,3 +20,6 @@ EPICS_BASE=/usr/local/epics/base-3.14.12
 #Want to use md command with global variables?
 #Set path to symbolname library
 #SYMBOLNAME=
+
+-include $(TOP)/../RELEASE.local
+-include $(TOP)/configure/RELEASE.local
