@@ -1,4 +1,7 @@
 ---
+variables:
+  E3_CI_MODIFIED_BASE_VERSION: "7.0.8-d498b42-20240419T152141" # strip the first part of the tag name - see E3-1529
+
 include:
   - project: "ics-infrastructure/gitlab-ci-yml"
     file: "PreCommit.gitlab-ci.yml"
@@ -9,6 +12,7 @@ default:
 
 stages:
   - check
+  - build
 
 shellcheck:
   image: pipelinecomponents/shellcheck:latest
@@ -31,4 +35,16 @@ shfmt:
   before_script:
     - shfmt -version
   script:
-    - shfmt -i 2 -ci -d .  # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
+    - shfmt -i 2 -ci -d . # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
+
+build:
+  stage: build
+  image: registry.esss.lu.se/ics-docker/centos-e3:latest
+  before_script:
+    - curl -L -o epics.tar.gz https://artifactory.esss.lu.se/artifactory/e3/epics-base-$E3_CI_MODIFIED_BASE_VERSION.tar.gz
+    - tar -zxvf epics.tar.gz
+    - export BASE_PATH=$(ls -d $(pwd)/epics/base-*)
+    - export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${BASE_PATH}/lib/linux-x86_64"
+    - echo "EPICS_BASE:=${BASE_PATH}" >> configure/RELEASE.local
+  script:
+    - make

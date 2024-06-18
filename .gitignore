@@ -14,3 +14,9 @@ dkms.conf
 \#*
 .cvsignore
 .vscode
+bin/
+dbd/
+db/
+lib/
+include/
+*.local
