@@ -50,7 +50,7 @@ def iocsh(
             tmp_startup_script.load_module(entry)
 
         if file:
-            tmp_startup_script.set_variable("E3_CMD_TOP", str(file.parent))
+            tmp_startup_script.set_variable("E3_CMD_TOP", str(file.parent.resolve()))
             tmp_startup_script.load_snippet(file)
 
         for entry in command:
