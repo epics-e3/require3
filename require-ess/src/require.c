@@ -251,6 +251,10 @@ static void fillModuleListRecord(initHookState state) {
   if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
     errlogPrintf("require: Error to put ModuleVersions\n");
   }
+
+  free(bufferModules);
+  free(bufferVersions);
+  free(bufferModver);
 }
 
 static int registerRequire() {
