@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Fix truncated errorlog messages
+
+## [5.1.0]
+
 ### New features
 
 * Allow for module-specific build rules (see: sequencer) to be installed and used
@@ -98,5 +102,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Removed references to EPICS Base v3
 
 
-[Unreleased]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.0.0...master
+[Unreleased]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.0...master
+[5.1.0]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.0.0...5.1.0
 [5.0.0]: https://gitlab.esss.lu.se/epics-modules/require/-/compare/3.1.4_conda_fix_epics_7.0.6.1...e3-1170?from_project_id=960&straight=false
