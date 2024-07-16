@@ -8,6 +8,8 @@ import sys
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
+DEFAULT_ERRLOG_BUFFER_SIZE = 2048
+
 
 @atexit.register
 def graceful_shutdown() -> None:
@@ -29,6 +31,10 @@ class TemporaryStartupScript:
         self.set_variable("REQUIRE_IOC", generate_prefix())
         self.set_variable("IOCSH_TOP", Path.cwd())
         self.set_variable("IOCSH_PS1", generate_prompt())
+
+        self.add_command(
+            f"errLogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE}"
+        )
 
         # load require
         self.add_command(
