@@ -38,8 +38,8 @@ shfmt:
     - shfmt -i 2 -ci -d . # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
 
 build:
-  stage: build
   image: registry.esss.lu.se/ics-docker/centos-e3:latest
+  stage: build
   before_script:
     - curl -L -o epics.tar.gz https://artifactory.esss.lu.se/artifactory/e3/epics-base-$E3_CI_MODIFIED_BASE_VERSION.tar.gz
     - tar -zxvf epics.tar.gz
