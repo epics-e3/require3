@@ -33,7 +33,7 @@ class TemporaryStartupScript:
         self.set_variable("IOCSH_PS1", generate_prompt())
 
         self.add_command(
-            f"errLogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE}"
+            f"errlogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE}"
         )
 
         # load require
