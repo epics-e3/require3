@@ -32,8 +32,10 @@ class TemporaryStartupScript:
         self.set_variable("IOCSH_TOP", Path.cwd())
         self.set_variable("IOCSH_PS1", generate_prompt())
 
+        # The message size maximum must be slightly smaller than the buffer size
+        # (to account for the null terminator)
         self.add_command(
-            f"errlogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE}"
+            f"errlogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE-1}"
         )
 
         # load require
