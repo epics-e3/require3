@@ -397,9 +397,6 @@ SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out 
 DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
 DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
 
-# Create dbd file for GPIB code.
-DBDFILES += $(patsubst %.gt,%.dbd,$(notdir $(filter %.gt,${SRCS})))
-
 ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
 endif
