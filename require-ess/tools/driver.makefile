@@ -39,7 +39,7 @@
 #    If not defined, it is derived from the directory name.
 # SOURCES
 #    All source files to compile.
-#    If not defined, default is all *.c *.cc *.cpp *.st *.stt in
+#    If not defined, default is all *.c *.cc *.cpp *.gt in
 #    the source directory (where you run make).
 #    If you define this, you must list ALL sources.
 # DBDS
@@ -179,8 +179,7 @@ ifndef T_A
 
 # Look for sources etc., and select target architectures to build.
 # Export everything for second run:
-
-AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.st *.stt *.gt))
+AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.gt))
 SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
 export SRCS
 
@@ -406,10 +405,6 @@ ifeq (,$(findstring debug,${MAKECMDGOALS}))
     include $(MODULE_CONFIGS)
   endif
 endif
-
-# Create dbd file for snl code.
-DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
-DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
 
 ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
