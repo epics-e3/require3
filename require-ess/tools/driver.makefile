@@ -39,9 +39,6 @@
 #    If not defined, it is derived from the directory name.
 # SOURCES
 #    All source files to compile.
-#    If not defined, default is all *.c *.cc *.cpp *.gt in
-#    the source directory (where you run make).
-#    If you define this, you must list ALL sources.
 # DBDS
 #    All dbd files of the project.
 #    If not defined, default is all *.dbd files in the source directory.
@@ -179,8 +176,7 @@ ifndef T_A
 
 # Look for sources etc., and select target architectures to build.
 # Export everything for second run:
-AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.gt))
-SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
+SRCS = ${SOURCES}
 export SRCS
 
 DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Record.dbd) $(strip $(filter-out %Include.dbd dbCommon.dbd %Record.dbd,$(wildcard *.dbd)) ${BPTS}))
