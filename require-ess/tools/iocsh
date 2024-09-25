@@ -21,7 +21,6 @@ def iocsh(
     command: List[str],
     database: List[Path],
     no_init: bool,
-    realtime: bool,
     gdb: str,
     valgrind: str,
     debug: bool,
@@ -83,9 +82,6 @@ def iocsh(
             supp_file = os.path.abspath(os.path.dirname(__file__)) + "/iocsh_epics.supp"
             non_optional = ["--suppressions=" + supp_file]
             cmd = ["valgrind"] + non_optional + valgrind.split(" ") + cmd
-        elif realtime:
-            os.environ["LD_BIND_NOW"] = str(1)
-            cmd = "chrt --fifo 1".split(" ") + cmd
 
         logging.debug(f"Running command `{' '.join(cmd)}`")
         try:
@@ -137,7 +133,6 @@ def generate_parser() -> argparse.ArgumentParser:
     )
 
     mutex_group_modifiers = parser.add_mutually_exclusive_group()
-    mutex_group_modifiers.add_argument("-rt", "--realtime", action="store_true")
     mutex_group_modifiers.add_argument(
         "-dg",
         "--gdb",
