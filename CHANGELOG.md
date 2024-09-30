@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 * Fix truncated errorlog messages
+* Remove `--realtime` option from `iocsh`
 
 ## [5.1.0]
 
