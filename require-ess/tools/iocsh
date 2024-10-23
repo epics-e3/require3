@@ -49,6 +49,9 @@ def iocsh(
             tmp_startup_script.load_module(entry)
 
         if file:
+            if not file.exists():
+                logging.debug(f"File {file} does not exist. Exiting.")
+                sys.exit(-1)
             tmp_startup_script.set_variable("E3_CMD_TOP", str(file.parent.resolve()))
             tmp_startup_script.load_snippet(file)
 

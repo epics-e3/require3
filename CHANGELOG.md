@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Fix truncated errorlog messages
 * Remove `--realtime` option from `iocsh`
+* Exit `iocsh` if file to run does not exist
 
 ## [5.1.0]
 
