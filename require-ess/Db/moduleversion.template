@@ -7,7 +7,7 @@ record(waveform, "$(REQUIRE_IOC):Modules")
     field(DISP, "1")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):LoadedModules":{"value.MODS":{+type:"plain",+channel:"VAL"}}
+        "$(REQUIRE_IOC):LoadedModules":{"value.MODS":{+channel:"VAL"}}
     })
 }
 
