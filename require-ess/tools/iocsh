@@ -21,22 +21,17 @@ def iocsh(
     command: List[str],
     database: List[Path],
     no_init: bool,
+    iocname: str,
     gdb: str,
     valgrind: str,
     debug: bool,
 ):
-    with TemporaryStartupScript() as tmp_startup_script:
+    with TemporaryStartupScript(iocname) as tmp_startup_script:
         require_version = verify_environment_and_return_require_version()
         epics_base_dir = Path(os.environ["EPICS_BASE"])
 
         print(generate_banner())
         print(f"Starting e3 IOC shell version {require_version}")
-        try:
-            iocname = os.environ["IOCNAME"]
-        except KeyError:
-            logging.warning("Environment variable IOCNAME is not set.")
-        else:
-            logging.info(f"IOCNAME is set to {iocname}")
         logging.debug(f"PID for iocsh {os.getpid()}")
         logging.debug(f"Script path is {Path(__file__).resolve()}")
         logging.debug(f"Executed from {Path.cwd()}")
@@ -158,6 +153,8 @@ def generate_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument("-i", "--no-init", action="store_true")
+
+    parser.add_argument("--iocname", help="IOC name (generates fallback if not set)")
 
     return parser
 
