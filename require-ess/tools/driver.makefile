@@ -170,6 +170,8 @@ OBJ=.o
 COMMON_DIR = O.${EPICSVERSION}_Common
 
 ifndef T_A
+
+where_am_I:=$(abspath $(CURDIR))/
 ## RUN 1
 # Target achitecture not yet defined, but EPICSVERSION is already known.
 # Still in source directory.
@@ -270,6 +272,8 @@ $(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BU
 else # T_A
 
 ifeq ($(filter O.%,$(notdir ${CURDIR})),)
+where_am_I:=$(abspath $(CURDIR))/
+
 ## RUN 2
 # Target architecture defined.
 # Still in source directory, second run.
@@ -319,6 +323,8 @@ export TMPS
 export SUBS
 
 else # in O.*
+where_am_I:=$(abspath $(CURDIR)/..)/
+
 ## RUN 3
 # In build directory.
 
