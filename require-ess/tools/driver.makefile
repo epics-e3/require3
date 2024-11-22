@@ -592,7 +592,7 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
-define license_install =
+define license_install
 $1: $2
 	@echo "Installing license file $$^"
 	$$(INSTALL) -d -m444 $$^ $$(@D)
