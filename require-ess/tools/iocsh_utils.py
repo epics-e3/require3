@@ -7,6 +7,7 @@ import socket
 import sys
 from tempfile import NamedTemporaryFile
 from pathlib import Path
+from sys import platform
 
 DEFAULT_ERRLOG_BUFFER_SIZE = 2048
 
@@ -38,9 +39,16 @@ class TemporaryStartupScript:
             f"errlogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE-1}"
         )
 
+        if platform.startswith("linux"):
+            shared_lib_suffix = "so"
+        elif platform == "darwin":
+            shared_lib_suffix = "dylib"
+        else:
+            raise NotImplementedError(f"Unsupported platform: {platform}")
+
         # load require
         self.add_command(
-            f"dlload {str(Path(os.environ['E3_REQUIRE_LIB']) / os.environ['EPICS_HOST_ARCH'] / 'librequire.so')}"
+            f"dlload {str(Path(os.environ['E3_REQUIRE_LIB']) / os.environ['EPICS_HOST_ARCH'] / f'librequire.{shared_lib_suffix}')}"
         )
         self.add_command(
             f"dbLoadDatabase {str(Path(os.environ['E3_REQUIRE_DBD']) / 'require.dbd')}"

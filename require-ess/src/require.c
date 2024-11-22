@@ -55,8 +55,9 @@ int requireDebug;
 #define OS_CLASS "freebsd"
 #endif // freebsd
 
-#ifdef darwin
+#ifdef __MACH__
 #define OS_CLASS "Darwin"
+#define PATH_MAX 1024
 #endif // darwin
 
 #ifdef _AIX32
@@ -75,7 +76,11 @@ int requireDebug;
 
 #define PREFIX "lib"
 #define INFIX
+#ifdef __MACH__
+#define EXT ".dylib"
+#else
 #define EXT ".so"
+#endif
 #include <dirent.h>
 #define DIR_HANDLE DIR *
 #define IF_OPEN_DIR(f) if ((dir = opendir(f)))

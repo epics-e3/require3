@@ -21,8 +21,6 @@
 where_am_I := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 include $(where_am_I)/require-ess/tools/driver.makefile
 
-BUILDCLASSES += Linux
-
 APP := require-ess
 APPSRC := $(APP)/src
 APPDB := $(APP)/Db
