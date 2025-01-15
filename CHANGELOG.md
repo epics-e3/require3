@@ -6,9 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-* Fix truncated errorlog messages
+### New Features
+
 * Remove `--realtime` option from `iocsh`
+* Add timestamp for `LoadedModules`
+* Deprecate `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`
+
+### Bugfixes
+
 * Exit `iocsh` if file to run does not exist
+* Add trigger mapping on `LoadedModules` to silence QSRV2 warning
+
+## [5.1.1]
+
+### Bugfixes
+
+* Fix memory leaks on IOC exit
+* Fix dirty terminal after IOC exit for some distributions
+* Resolve `E3_CMD_TOP` when a startup script is being run with `iocsh` (previously expanded to just `.`)
+* Fix truncated errorlog messages
 
 ## [5.1.0]
 
@@ -104,6 +120,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Removed references to EPICS Base v3
 
 
-[Unreleased]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.0...master
-[5.1.0]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.0.0...5.1.0
+[Unreleased]: https://gitlab.esss.lu.se/epics-modules/require/-/compare/5.1.1...master
 [5.0.0]: https://gitlab.esss.lu.se/epics-modules/require/-/compare/3.1.4_conda_fix_epics_7.0.6.1...e3-1170?from_project_id=960&straight=false
