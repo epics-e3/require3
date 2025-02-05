@@ -393,6 +393,20 @@ USR_DBDFLAGS += $(DBDEXPANDPATH)
 # Search all directories where sources or headers come from, plus existing os dependend subdirectories.
 SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out /%,$(dir ${SRCS:%=../%} ${HDRS:%=../%}))), $d $(addprefix $d/, os/${OS_CLASS} $(POSIX_$(POSIX)) os/default))))
 
+MODULE_CONFIGS = ${CFGS:%=../%}
+MODULE_CONFIGS += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/CONFIG*))
+
+MODULE_RULES = ${CFGS:%=../%}
+MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
+
+# We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
+# mode. Including this causes all of the source files to be compiled!
+ifeq (,$(findstring debug,${MAKECMDGOALS}))
+  ifneq ($(strip $(MODULE_CONFIGS)),)
+    include $(MODULE_CONFIGS)
+  endif
+endif
+
 # Create dbd file for snl code.
 DBDFILES += $(patsubst %.st,%_snl.dbd,$(notdir $(filter %.st,${SRCS})))
 DBDFILES += $(patsubst %.stt,%_snl.dbd,$(notdir $(filter %.stt,${SRCS})))
@@ -405,9 +419,6 @@ endif
 ifneq ($(MODULELIB),)
 LIBOBJS += $(addsuffix $(OBJ),$(basename ${VERSIONFILE}))
 endif # MODULELIB
-
-MODULE_RULES = ${CFGS:%=../%}
-MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
 
 debug::
 	@echo "===================== Pass 3: Build directory ====================="
@@ -432,6 +443,7 @@ debug::
 	@echo "TEMPLS = ${TEMPLS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "MODULE_LOCATION = ${MODULE_LOCATION}"
+	@echo "MODULE_CONFIGS = ${MODULE_CONFIGS}"
 	@echo "MODULE_RULES = ${MODULE_RULES}"
 
 build: MODULEINFOS
