@@ -72,7 +72,7 @@ CONFIG=${EPICS_BASE}/configure
 LIBVERSION := $(or $(LIBVERSION),dev)
 EPICSVERSION:=$(EPICS_BASE_VERSION)
 
-BUILDCLASSES = Linux
+BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
 MODULE=
@@ -228,8 +228,8 @@ export SCR
 
 INSTALL_LICENSE = ${MODULE_LOCATION}/doc
 # Find all license files to distribute with binaries
-LICENSES = $(shell find -not -path '*/.*' -type f -iname LICENSE)
-LICENSES += $(shell find -not -path '*/.*' -type f -iname Copyright)
+LICENSES = $(shell find . -not -path '*/.*' -type f -iname LICENSE)
+LICENSES += $(shell find . -not -path '*/.*' -type f -iname Copyright)
 export LICENSES
 
 # Filter architectures to build using EXCLUDE_ARCHS.
@@ -596,7 +596,7 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
-define license_install =
+define license_install
 $1: $2
 	@echo "Installing license file $$^"
 	$$(INSTALL) -d -m444 $$^ $$(@D)

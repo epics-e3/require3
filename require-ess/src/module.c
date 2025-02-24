@@ -1,6 +1,10 @@
 #include <dbAccess.h>
 #include <errlog.h>
+#ifdef __MACH__
+#include <mach/error.h>
+#else
 #include <error.h>
+#endif
 #include <limits.h>
 #include <osiFileName.h>
 #include <stdio.h>
