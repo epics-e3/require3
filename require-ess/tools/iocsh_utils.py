@@ -24,14 +24,16 @@ class TemporaryStartupScript:
     Holds on to commands in a buffer which it writes to file.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, iocname: str = None) -> None:
         self.file = NamedTemporaryFile(delete=False)
         self.command_buffer = []
         self._saved = False
 
-        self.set_variable("REQUIRE_IOC", generate_prefix())
+        self.set_variable("REQUIRE_IOC", iocname or generate_prefix())
         self.set_variable("IOCSH_TOP", Path.cwd())
-        self.set_variable("IOCSH_PS1", generate_prompt())
+        self.set_variable(
+            "IOCSH_PS1", f"{iocname} > " if iocname else generate_prompt()
+        )
 
         # The message size maximum must be slightly smaller than the buffer size
         # (to account for the null terminator)
@@ -138,28 +140,21 @@ def extract_require_version() -> str:
         sys.exit("Please source an environment before you try to use the IOC shell")
 
 
-def generate_prompt(separator: str = " > ") -> str:
+def generate_prompt() -> str:
     """Return IOC shell prompt."""
-    try:
-        prompt = os.environ["IOCNAME"]
-    except KeyError:
-        fqdn = socket.gethostname()
-        hostname, *_ = fqdn.partition(".")
-        prompt = f"{hostname}-{os.getpid()}"
-    return f"{prompt}{separator}"
+    fqdn = socket.gethostname()
+    hostname, *_ = fqdn.partition(".")
+    prompt = f"{hostname}-{os.getpid()}"
+    return f"{prompt} > "
 
 
-def generate_prefix(prefix: str = "TEST:") -> str:
-    """Return fallback IOC-name."""
+def generate_prefix() -> str:
+    """Return fallback PV prefix."""
     try:
-        iocname = os.environ["IOCNAME"]
-    except KeyError:
-        try:
-            user = os.getlogin()
-        except OSError:  # for wonky cases
-            user = "UNKNOWN"
-        iocname = f"{prefix}{user}-{os.getpid()}"
-    return iocname
+        user = os.getlogin()
+    except OSError:  # for wonky cases
+        user = "UNKNOWN"
+    return f"TEST:{user}-{os.getpid()}"
 
 
 def generate_banner() -> str:

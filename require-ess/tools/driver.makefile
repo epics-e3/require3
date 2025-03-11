@@ -39,9 +39,6 @@
 #    If not defined, it is derived from the directory name.
 # SOURCES
 #    All source files to compile.
-#    If not defined, default is all *.c *.cc *.cpp *.gt in
-#    the source directory (where you run make).
-#    If you define this, you must list ALL sources.
 # DBDS
 #    All dbd files of the project.
 #    If not defined, default is all *.dbd files in the source directory.
@@ -173,14 +170,15 @@ OBJ=.o
 COMMON_DIR = O.${EPICSVERSION}_Common
 
 ifndef T_A
+
+where_am_I:=$(abspath $(CURDIR))/
 ## RUN 1
 # Target achitecture not yet defined, but EPICSVERSION is already known.
 # Still in source directory.
 
 # Look for sources etc., and select target architectures to build.
 # Export everything for second run:
-AUTOSRCS := $(filter-out ~%,$(wildcard *.c *.cc *.cpp *.gt))
-SRCS = $(if ${SOURCES},$(filter-out -none-,${SOURCES}),${AUTOSRCS})
+SRCS = ${SOURCES}
 export SRCS
 
 DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Record.dbd) $(strip $(filter-out %Include.dbd dbCommon.dbd %Record.dbd,$(wildcard *.dbd)) ${BPTS}))
@@ -274,6 +272,8 @@ $(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BU
 else # T_A
 
 ifeq ($(filter O.%,$(notdir ${CURDIR})),)
+where_am_I:=$(abspath $(CURDIR))/
+
 ## RUN 2
 # Target architecture defined.
 # Still in source directory, second run.
@@ -323,6 +323,8 @@ export TMPS
 export SUBS
 
 else # in O.*
+where_am_I:=$(abspath $(CURDIR)/..)/
+
 ## RUN 3
 # In build directory.
 
