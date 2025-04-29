@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Exit `iocsh` if file to run does not exist
 * Add trigger mapping on `LoadedModules` to silence QSRV2 warning
 
+## [5.1.1.post1]
+
+### Bugfixes
+
+* Add `MODULE_CONFIG` variable to include module-specific config file
+
+### Other changes
+
+* Remove dbd rules for GPIB code
+* Remove dbd rules for sequencer
+
 ## [5.1.1]
 
 ### Bugfixes
