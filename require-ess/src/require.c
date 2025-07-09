@@ -921,11 +921,10 @@ static const iocshFuncDef requireDef = {
     "require", 2,
     (const iocshArg *[]){
         &(iocshArg){"module", iocshArgString},
-        &(iocshArg){"[version]", iocshArgString},
     }};
 
 static void requireFunc(const iocshArgBuf *args) {
-  require(args[0].sval, args[1].sval);
+  require(args[0].sval, NULL);
 }
 
 static const iocshFuncDef libversionShowDef = {
