@@ -32,7 +32,6 @@
 
 #include "common.h"
 #include "module.h"
-#include "version.h"
 
 int requireDebug;
 
@@ -649,7 +648,7 @@ static int require_priv(const char *module) {
   } else {
     debug("require: no %s  loaded yet\n", module);
 
-    /* Step 1: Search for module in driverpath. Select the first version found.
+    /* Step 1: Search for module in driverpath. Select the last version found.
      */
     selectedVersion = fetch_module(filename, sizeof(filename), module);
     if (!selectedVersion) {
