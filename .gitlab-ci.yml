@@ -1,6 +1,6 @@
 ---
 variables:
-  E3_CI_MODIFIED_BASE_VERSION: "7.0.8-d498b42-20240419T152141" # strip the first part of the tag name - see E3-1529
+  E3_CI_MODIFIED_BASE_VERSION: "7.0.8.1-68332f4-20240917T140931" # strip the first part of the tag name - see E3-1529
 
 include:
   - project: "ics-infrastructure/gitlab-ci-yml"
