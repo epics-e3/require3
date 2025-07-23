@@ -96,7 +96,6 @@ CP = cp
 MKDIR = mkdir -p -m 775
 
 # Some generated file names:
-VERSIONFILE = ${PRJ}_version_${LIBVERSION}.c
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
 DEPFILE = ${PRJ}.dep
 
@@ -412,11 +411,6 @@ ifneq ($(strip ${DBDFILES}),)
 MODULEDBD=${PRJ}.dbd
 endif
 
-# If we build a library, provide a version variable.
-ifneq ($(MODULELIB),)
-LIBOBJS += $(addsuffix $(OBJ),$(basename ${VERSIONFILE}))
-endif # MODULELIB
-
 debug::
 	@echo "===================== Pass 3: Build directory ====================="
 	@echo "BUILDCLASSES = ${BUILDCLASSES}"
@@ -611,9 +605,6 @@ $(foreach l,$(LICENSES),$(eval $(call license_install,$(INSTALL_DOC)/$l,../$l)))
 	@echo "Converting $*.gt"
 	${LN} $< $(*F).gt
 	gdc $(*F).gt
-
-${VERSIONFILE}:
-	echo "char _${PRJ}LibRelease[] = \"${LIBVERSION}\";" >> $@
 
 # Create file to fill registry from dbd file.
 ${REGISTRYFILE}: ${MODULEDBD}
