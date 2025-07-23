@@ -652,7 +652,7 @@ static int require_priv(const char *module) {
     selectedVersion = fetch_module(filename, sizeof(filename), module);
     if (!selectedVersion) {
       returnvalue = -1;
-      goto require_priv_end;
+      return returnvalue;
     }
     /* Step 2 : Looking for .dep file */
     debug("require: looking for dependency file\n");
