@@ -309,7 +309,6 @@ int libversionShow(const char *outfile) {
 
 /* require (module)
 Look if module is already loaded.
-If module is already loaded check for version mismatch.
 If module is not yet loaded load the library with ld,
 load <module>.dbd with dbLoadDatabase (if file exists)
 and call <module>_registerRecordDeviceDriver function.
