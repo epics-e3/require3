@@ -636,14 +636,7 @@ static int require_priv(const char *module) {
   if (loaded) {
     /* We don't need to load it again */
     debug("Module %s is aready loaded", module);
-
-    dirname = getLibLocation(&loadedModules, module);
-    if (dirname[0] == 0)
-      return 0;
-    debug("require: library found in %s\n", dirname);
-    snprintf(filename, sizeof(filename), "%s%n", dirname, &releasediroffs);
-    putenvprintf("MODULE=%s", module);
-    pathAdd("SCRIPT_PATH", dirname);
+    return returnvalue;
   } else {
     debug("require: no %s  loaded yet\n", module);
 
