@@ -7,7 +7,6 @@ LIBRARY_IOC = require
 require_SRCS += require_registerRecordDeviceDriver.cpp
 
 require_SRCS += require.c
-require_SRCS += version.c
 require_SRCS += afterInit.c
 require_SRCS += common.c
 require_SRCS += module.c

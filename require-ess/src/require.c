@@ -32,7 +32,6 @@
 
 #include "common.h"
 #include "module.h"
-#include "version.h"
 
 int requireDebug;
 
@@ -308,116 +307,8 @@ int libversionShow(const char *outfile) {
 #define MATCH 1
 #define HIGHER 3
 
-static int compareDigit(int found, int requested, const char *name) {
-  debug("require: compareDigit: found %d, requested %d for digit %s\n", found,
-        requested, name);
-  if (found < requested) {
-    debug("require: compareVersions: MISMATCH too low %s number\n", name);
-    return MISMATCH;
-  }
-  if (found > requested) {
-    debug("require: compareVersions: HIGHER %s number\n", name);
-    return HIGHER;
-  }
-
-  return MATCH;
-}
-
-static int compareNumericVersion(semver_t *sv_found, semver_t *sv_request) {
-  int match = 0;
-
-  match = compareDigit(sv_found->major, sv_request->major, "major");
-  if (match != MATCH) {
-    return match;
-  }
-  match = compareDigit(sv_found->minor, sv_request->minor, "minor");
-  if (match != MATCH) {
-    return match;
-  }
-  return compareDigit(sv_found->patch, sv_request->patch, "patch");
-}
-
-/*
- * Returns if the version <found> is higher than <request>.
- */
-static int compareVersions(const char *found, const char *request,
-                           int already_matched) {
-  semver_t *sv_found = NULL, *sv_request = NULL;
-  int match = 0;
-
-  debug("require: compareVersions(found=%s, request=%s)\n", found,
-        request ? request : "");
-
-  if (request == NULL || request[0] == 0) {
-    debug("require: compareVersions: MATCH empty version requested\n");
-    return MATCH;
-  }
-  if (found == NULL || found[0] == 0) {
-    debug("require: compareVersions: MISMATCH empty version found\n");
-    return MISMATCH;
-  }
-
-  sv_found = parse_semver(found);
-  sv_request = parse_semver(request);
-  if (sv_found == NULL || sv_request == NULL) {
-    debug("require: compareVersion: failed to allocate semver_t\n");
-    return MISMATCH;
-  }
-
-  // TODO: maybe don't do this. This is only in the case that
-  // we have found an installed version with no revision number.
-  if (already_matched && sv_request->revision == -1)
-    sv_request->revision = 0;
-
-  // test version, look for exact.
-  if (strlen(sv_request->test_str) > 0) {
-    if (strcmp(sv_found->test_str, sv_request->test_str) == 0) {
-      debug("require: compareVersions: Test version requested and found, "
-            "matches\n");
-      match = MATCH;
-    } else if (strlen(sv_found->test_str) > 0) {
-      debug("require: compareVersions: Test versions requested and found, no "
-            "match\n");
-      match = MISMATCH;
-    } else {
-      debug("require: compareVersions: found numeric version, higher than "
-            "test\n");
-      match = HIGHER;
-    }
-  } else if (strlen(sv_found->test_str) > 0) {
-    debug("require: compareVersions: Numeric version requested, test version "
-          "found\n");
-    match = MISMATCH;
-  } else {
-    match = compareNumericVersion(sv_found, sv_request);
-  }
-
-  // Finally, check revision numbers
-  if (match == MATCH) {
-    if (sv_request->revision == -1) {
-      if (already_matched) {
-        debug("require: compareVersions: No revision number for already found "
-              "version. Returning HIGHER\n");
-        match = HIGHER;
-      } else {
-        debug(
-            "require: compareVersions: No revision number requested. Returning "
-            "MATCH\n");
-        match = MATCH;
-      }
-    } else {
-      match =
-          compareDigit(sv_found->revision, sv_request->revision, "revision");
-    }
-  }
-  cleanup_semver(sv_found);
-  cleanup_semver(sv_request);
-  return match;
-}
-
 /* require (module)
 Look if module is already loaded.
-If module is already loaded check for version mismatch.
 If module is not yet loaded load the library with ld,
 load <module>.dbd with dbLoadDatabase (if file exists)
 and call <module>_registerRecordDeviceDriver function.
@@ -427,9 +318,9 @@ it calls epicsExit to abort the application.
 */
 
 /* wrapper to abort statup script */
-static int require_priv(const char *module, const char *version);
+static int require_priv(const char *module);
 
-int require(const char *module, const char *version) {
+int require(const char *module) {
   int status = 0;
 
   if (module == NULL) {
@@ -444,15 +335,7 @@ int require(const char *module, const char *version) {
     return -1;
   }
 
-  if (version && version[0] == 0)
-    version = NULL;
-
-  if (version && strcmp(version, "none") == 0) {
-    debug("require: skip version=none\n");
-    return 0;
-  }
-
-  status = require_priv(module, version);
+  status = require_priv(module);
 
   if (status == 0)
     return 0;
@@ -553,8 +436,8 @@ static int handleDependencies(const char *module, char *depfilename) {
       /* terminate version */
       *end = 0;
     }
-    printf("Module %s depends on %s %s\n", module, rmodule, rversion);
-    if (require(rmodule, rversion) != 0) {
+    printf("Module %s depends on %s\n", module, rmodule);
+    if (require(rmodule) != 0) {
       fclose(depfile);
       return -1;
     }
@@ -564,13 +447,13 @@ static int handleDependencies(const char *module, char *depfilename) {
 }
 
 /*
- * Fetches the correct module version based on the requested version by
+ * Fetches the correct module on it's newest version by
  * searching through EPICS_DRIVER_PATH until it finds a matching version.
  *
  * Sets <filename> to be the path the the underlying module.
  */
-static char *fetch_module_version(char *filename, size_t max_file_len,
-                                  const char *module, const char *version) {
+static char *fetch_module(char *filename, size_t max_file_len,
+                          const char *module) {
   const char *dirname = NULL;
   const char *driverpath = NULL;
   const char *end = NULL;
@@ -578,9 +461,6 @@ static char *fetch_module_version(char *filename, size_t max_file_len,
   int versionLength = 0;
   char *selectedVersion = NULL;
   char *founddir = NULL;
-
-  int someVersionFound = 0;
-  int someArchFound = 0;
 
   driverpath = getenv("EPICS_DRIVER_PATH");
   if (driverpath == NULL)
@@ -625,57 +505,6 @@ static char *fetch_module_version(char *filename, size_t max_file_len,
         if (currentFilename[0] == '.')
           continue; /* ignore hidden directories */
 
-        someVersionFound = 1;
-
-        /* Look for highest matching version. */
-        debug("require: checking version %s against required %s\n",
-              currentFilename, version ? version : "");
-
-        switch (compareVersions(currentFilename, version, FALSE)) {
-        case MATCH: /* all given numbers match. */
-        {
-          someArchFound = 1;
-
-          debug("require: %s %s may match %s\n", module, currentFilename,
-                version ? version : "");
-
-          /* Check if it has our EPICS version and architecture. */
-          /* Even if it has no library, at least it has a dep file in the
-           * lib dir */
-
-          /* Step 1 : library file location */
-          /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
-          if (!TRY_FILE(modulediroffs,
-                        "%s" OSI_PATH_SEPARATOR LIBDIR "%s" OSI_PATH_SEPARATOR,
-                        currentFilename, targetArch)) {
-            /* filename =
-             * "<dirname>/[dirlen]<module>/[modulediroffs]<version>/lib/<targetArch>/"
-             */
-            debug("require: %s %s has no support for %s %s\n", module,
-                  currentFilename, epicsRelease, targetArch);
-            continue;
-          }
-
-          /* Is it higher than the one we found before? */
-          if (found)
-            debug("require: %s %s support for %s %s found, compare against "
-                  "previously found %s\n",
-                  module, currentFilename, epicsRelease, targetArch, found);
-          if (!found ||
-              compareVersions(currentFilename, found, TRUE) == HIGHER) {
-            debug("require: %s %s looks promising\n", module, currentFilename);
-            break;
-          }
-          debug("require: version %s is lower than %s \n", currentFilename,
-                found);
-          continue;
-        }
-        default: {
-          debug("require: %s %s does not match %s\n", module, currentFilename,
-                version);
-          continue;
-        }
-        }
         /* we have found something */
         if (founddir)
           free(founddir);
@@ -694,18 +523,7 @@ static char *fetch_module_version(char *filename, size_t max_file_len,
   }
 
   if (!found) {
-    if (someArchFound)
-      errlogPrintf("Module %s%s%s not available for %s\n(but maybe for other "
-                   "EPICS versions or architectures)\n",
-                   module, version ? " version " : "", version ? version : "",
-                   targetArch);
-    else if (someVersionFound)
-      errlogPrintf(
-          "Module %s%s%s not available (but other versions are available)\n",
-          module, version ? " version " : "", version ? version : "");
-    else
-      errlogPrintf("Module %s%s%s not available\n", module,
-                   version ? " version " : "", version ? version : "");
+    errlogPrintf("Module %s not available\n", module);
     if (founddir)
       free(founddir);
     return NULL;
@@ -724,13 +542,12 @@ static char *fetch_module_version(char *filename, size_t max_file_len,
 }
 
 /*
- * Loads the shared library if available.
+ * Load module if it's available.
  *
- * Returns the actual version string for the module, and NULL if there is a
- * mismatch.
+ * Returns the version loaded, NULL if no version exist.
  */
-static const char *compare_module_version(char *filename, const char *module,
-                                          const char *version, int libdiroffs) {
+static const char *load_module(char *filename, const char *module,
+                               const char *version, int libdiroffs) {
   HMODULE libhandle = NULL;
   char *symbolname = NULL;
   const char *found = NULL;
@@ -755,15 +572,6 @@ static const char *compare_module_version(char *filename, const char *module,
     found = (const char *)getAddress(libhandle, symbolname);
     free(symbolname);
     printf("Loaded %s version %s\n", module, found);
-
-    /* check what we got */
-    debug("require: compare requested version %s with loaded version %s\n",
-          version, found);
-    if (compareVersions(found, version, FALSE) == MISMATCH) {
-      errlogPrintf("Requested %s version %s not available, found only %s.\n",
-                   module, version, found);
-      return NULL;
-    }
   }
   return found;
 }
@@ -802,7 +610,7 @@ static int load_module_data(char *filename, const char *module,
   return 0;
 }
 
-static int require_priv(const char *module, const char *version) {
+static int require_priv(const char *module) {
   int returnvalue = 0;
   const char *loaded = NULL;
   const char *found = NULL;
@@ -821,38 +629,23 @@ static int require_priv(const char *module, const char *version) {
       globalTemplates = strdup(t);
   }
 
-  debug("require: module=\"%s\" version=\"%s\"\n", module, version);
+  debug("require: module=\"%s\"\n", module);
 
-  /* check already loaded verion */
+  /* check already loaded*/
   loaded = getLibVersion(&loadedModules, module);
   if (loaded) {
-    /* Library already loaded. Check Version. */
-    switch (compareVersions(loaded, version, FALSE)) {
-    case MATCH:
-      printf("Module %s version %s already loaded\n", module, loaded);
-      break;
-    default:
-      printf("Conflict between requested %s version %s and already loaded "
-             "version %s.\n",
-             module, version, loaded);
-      return -1;
-    }
-    dirname = getLibLocation(&loadedModules, module);
-    if (dirname[0] == 0)
-      return 0;
-    debug("require: library found in %s\n", dirname);
-    snprintf(filename, sizeof(filename), "%s%n", dirname, &releasediroffs);
-    putenvprintf("MODULE=%s", module);
-    pathAdd("SCRIPT_PATH", dirname);
+    /* We don't need to load it again */
+    debug("Module %s is aready loaded", module);
+    return returnvalue;
   } else {
-    debug("require: no %s version loaded yet\n", module);
+    debug("require: no %s  loaded yet\n", module);
 
-    /* Step 1: Search for module in driverpath */
-    selectedVersion =
-        fetch_module_version(filename, sizeof(filename), module, version);
+    /* Step 1: Search for module in driverpath. Select the last version found.
+     */
+    selectedVersion = fetch_module(filename, sizeof(filename), module);
     if (!selectedVersion) {
       returnvalue = -1;
-      goto require_priv_end;
+      return returnvalue;
     }
     /* Step 2 : Looking for .dep file */
     debug("require: looking for dependency file\n");
@@ -878,11 +671,11 @@ static int require_priv(const char *module, const char *version) {
     releasediroffs += dirlen;
     libdiroffs += dirlen;
 
-    /* Step 3: Ensure that we have loaded the correct version */
-    debug("require: Check that the loaded and requested versions match\n");
-    found =
-        compare_module_version(filename, module, selectedVersion, libdiroffs);
+    /* Step 3: Load the module library */
+    debug("require: Load the library if file exists\n");
+    found = load_module(filename, module, selectedVersion, libdiroffs);
     if (!found) {
+      debug("require: Module not found\n");
       returnvalue = -1;
       goto require_priv_end;
     }
@@ -918,15 +711,12 @@ require_priv_end:
 }
 
 static const iocshFuncDef requireDef = {
-    "require", 2,
+    "require", 1,
     (const iocshArg *[]){
         &(iocshArg){"module", iocshArgString},
-        &(iocshArg){"[version]", iocshArgString},
     }};
 
-static void requireFunc(const iocshArgBuf *args) {
-  require(args[0].sval, args[1].sval);
-}
+static void requireFunc(const iocshArgBuf *args) { require(args[0].sval); }
 
 static const iocshFuncDef libversionShowDef = {
     "libversionShow", 1,

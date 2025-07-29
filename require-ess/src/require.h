@@ -13,7 +13,7 @@ extern "C" {
 #define __attribute__(dummy)
 #endif // __GNUC__
 
-int require(const char *libname, const char *version);
+int require(const char *libname);
 int libversionShow(const char *outfile);
 int putenvprintf(const char *format, ...)
     __attribute__((__format__(__printf__, 1, 2)));
