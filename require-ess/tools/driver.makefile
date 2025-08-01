@@ -72,18 +72,18 @@ EPICSVERSION:=$(EPICS_BASE_VERSION)
 BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
-MODULE=
-PROJECT=
-PRJ := $(strip $(or ${MODULE},${PROJECT}))
-
-MODULE_LOCATION =${EPICS_MODULES}/$(or ${PRJ},$(error PRJ not defined))/$(or ${LIBVERSION},$(error LIBVERSION not defined))
-
 # $PREFIX can be used to refer to dependencies installed by conda
 # (like -I$(PREFIX)/include/libxml2)
 # Set PREFIX to
 # - PREFIX if set (when using conda-build)
 # - CONDA_PREFIX otherwise (when compiling locally in a conda env)
 PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
+
+MODULE=
+PROJECT=
+PRJ := $(strip $(or ${MODULE},${PROJECT}))
+
+MODULE_LOCATION = $(PREFIX)/epics-modules/$(PRJ)
 
 # Override config here:
 -include ${MAKEHOME}/config
@@ -98,6 +98,7 @@ MKDIR = mkdir -p -m 775
 # Some generated file names:
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
 DEPFILE = ${PRJ}.dep
+VERSIONFILE = ${PRJ}_version
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -302,9 +303,6 @@ install build:
 
 else
 
-install:: build
-	$(if $(wildcard ${MODULE_LOCATION}/lib/${T_A}),$(error ${MODULE_LOCATION}/lib/${T_A} already exists. If you really want to overwrite then uninstall first.))
-
 $(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
@@ -343,18 +341,19 @@ $(foreach m, $(wildcard ${EPICS_MODULES}/*/*),$(eval $(patsubst $(EPICS_MODULES)
 define ADD_INCLUDES_TEMPLATE
 INSTALL_INCLUDES += $$(patsubst %,-I${2}/${1}/%/include,$${${1}_VERSION})
 endef
-$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*)))   ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(EPICS_MODULES))))
+$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${PREFIX}/epics/*))) ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(PREFIX)/epics)))
 
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
-INSTALL_BIN     = ${INSTALL_REV}/bin/$(T_A)
-INSTALL_LIB     = ${INSTALL_REV}/lib/$(T_A)
-INSTALL_INCLUDE = ${INSTALL_REV}/include
+INSTALL_BIN     = ${PREFIX}/bin
+INSTALL_LIB     = ${PREFIX}/lib
+INSTALL_INCLUDE = ${PREFIX}/include
+INSTALL_DEP     = ${INSTALL_REV}
 INSTALL_DBD     = ${INSTALL_REV}/dbd
 INSTALL_DB      = ${INSTALL_REV}/db
 INSTALL_CONFIG  = ${INSTALL_REV}/cfg
-INSTALL_DOC     = ${MODULE_LOCATION}/doc
+INSTALL_DOC     = ${INSTALL_REV}/doc
 INSTALL_SCR     = ${INSTALL_REV}
 
 LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(filter-out /%,$l))$(filter /%,$l)))
@@ -441,6 +440,7 @@ build: MODULEINFOS
 build: ${MODULEDBD}
 build: ${DEPFILE}
 build: db_internal
+build: ${VERSIONFILE}
 
 db_internal:
 
@@ -503,7 +503,7 @@ vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(so
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
 
-PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE}
+PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${VERSIONFILE}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
 	@echo ${PRODUCTS} > PRODUCTS
@@ -516,8 +516,10 @@ ${MODULEDBD}: ${DBDFILES}
 
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
-INSTALL_DEPS = ${DEPFILE:%=${INSTALL_LIB}/%}
+INSTALL_DEPS = ${DEPFILE:%=${INSTALL_DEP}/%}
+INSTALL_VERSION = ${VERSIONFILE:%=${INSTALL_DEP}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
+# append project names
 INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
 ifneq ($(strip $(HDR_SUBDIRS)),)
   INSTALL_HDRS = $(addprefix ${INSTALL_INCLUDE}/,$(notdir $(filter-out $(addsuffix /%,$(HDR_SUBDIRS)),${HDRS})))
@@ -531,6 +533,7 @@ INSTALL_CONFIGS = $(addprefix ${INSTALL_CONFIG}/,$(notdir ${CFGS}))
 INSTALL_LICENSES = $(addprefix ${INSTALL_DOC}/,${LICENSES})
 
 debug::
+	@echo "MODULELIB = $(MODULELIB)"
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
 	@echo "INSTALL_LIBS = $(INSTALL_LIBS)"
 	@echo "INSTALL_DEPS = $(INSTALL_DEPS)"
@@ -562,7 +565,8 @@ endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} \
-            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_LICENSES}
+            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_VERSION} \
+            ${INSTALL_LICENSES}
 
 install: ${INSTALLS}
 
@@ -574,6 +578,10 @@ ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
 	$(INSTALL) -d -m$(SHRLIB_PERMISSIONS) $< $(@D)
 ${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
+	@echo "Installing module dependency file $@"
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
+
+${INSTALL_VERSION}: $(notdir ${INSTALL_VERSION})
 	@echo "Installing module dependency file $@"
 	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
 
@@ -611,7 +619,7 @@ ${REGISTRYFILE}: ${MODULEDBD}
 	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
 
 # Create dependency file for recursive requires.
-.PHONY: ${DEPFILE}
+.PHONY: ${DEPFILE} ${VERSIONFILE}
 ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 	@echo "Collecting dependencies"
 	$(RM) $@.tmp
@@ -621,6 +629,9 @@ ${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
 # Manully added dependencies: ${REQ}
 	@$(foreach m,${REQ},echo "$m $($m_VERSION)" >> $@.tmp;)
 	cat $@.tmp | sort -u >> $@
+
+${VERSIONFILE}: ${USERMAKEFILE}
+	@echo "$(LIBVERSION)" > $@
 
 endif # In O.* directory
 endif # T_A defined

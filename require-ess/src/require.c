@@ -101,6 +101,7 @@ int requireDebug;
 #define FILENAME(e) e->d_name
 
 #define LIBDIR "lib" OSI_PATH_SEPARATOR
+#define DEPDIR "dep" OSI_PATH_SEPARATOR
 #define TEMPLATEDIR "db"
 #define LIBRELEASE "LibRelease"
 
@@ -447,146 +448,60 @@ static int handleDependencies(const char *module, char *depfilename) {
 }
 
 /*
- * Fetches the correct module on it's newest version by
- * searching through EPICS_DRIVER_PATH until it finds a matching version.
+ * Fetches the module path
  *
  * Sets <filename> to be the path the the underlying module.
  */
-static char *fetch_module(char *filename, size_t max_file_len,
-                          const char *module) {
-  const char *dirname = NULL;
+static int fetch_module_path(char *filename, size_t max_file_len,
+                             const char *module) {
   const char *driverpath = NULL;
-  const char *end = NULL;
-  const char *found = NULL;
-  int versionLength = 0;
-  char *selectedVersion = NULL;
-  char *founddir = NULL;
 
   driverpath = getenv("EPICS_DRIVER_PATH");
   if (driverpath == NULL)
     driverpath = ".";
   debug("require: searchpath=%s\n", driverpath);
 
-  for (dirname = driverpath; dirname != NULL; dirname = end) {
-    /* get one directory from driverpath */
-    int dirlen = 0;
-    int modulediroffs = 0;
-    DIR_HANDLE dir = NULL;
-    DIR_ENTRY direntry = NULL;
+  snprintf(filename, max_file_len,
+           "%s" OSI_PATH_SEPARATOR "%s" OSI_PATH_SEPARATOR, driverpath, module);
 
-    end = strchr(dirname, OSI_PATH_LIST_SEPARATOR[0]);
-    if (end && end[1] == OSI_PATH_SEPARATOR[0] &&
-        end[2] == OSI_PATH_SEPARATOR[0]) /* "http://..." and friends */
-      end = strchr(end + 2, OSI_PATH_LIST_SEPARATOR[0]);
-    if (end)
-      dirlen = (int)(end++ - dirname);
-    else
-      dirlen = (int)strnlen(dirname, PATH_MAX);
-    if (dirlen == 0)
-      continue; /* ignore empty driverpath elements */
-
-    debug("require: trying %.*s\n", dirlen, dirname);
-
-    snprintf(filename, max_file_len,
-             "%.*s" OSI_PATH_SEPARATOR "%s" OSI_PATH_SEPARATOR "%n", dirlen,
-             dirname, module, &modulediroffs);
-    dirlen++;
-    /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]" */
-
-    /* Does the module directory exist? */
-    IF_OPEN_DIR(filename) {
-      debug("require: found directory %s\n", filename);
-
-      /* Now look for versions. */
-      START_DIR_LOOP {
-        char *currentFilename = FILENAME(direntry);
-
-        SKIP_NON_DIR(direntry)
-        if (currentFilename[0] == '.')
-          continue; /* ignore hidden directories */
-
-        /* we have found something */
-        if (founddir)
-          free(founddir);
-        /* filename = "<dirname>/[dirlen]<module>/[modulediroffs]..." */
-        if (asprintf(&founddir, "%.*s%s", modulediroffs, filename,
-                     currentFilename) < 0)
-          return NULL;
-        /* founddir = "<dirname>/[dirlen]<module>/[modulediroffs]<version>" */
-        found = founddir + modulediroffs; /* version part in the path */
-      }
-      END_DIR_LOOP
-    }
-    /* filename = "<dirname>/[dirlen]..." */
-    if (!found)
-      debug("require: no matching version in %.*s\n", dirlen, filename);
+  debug("require: trying %s\n", filename);
+  DIR *founddir = opendir(filename);
+  if (founddir != NULL) {
+    closedir(founddir);
+    return 0;
   }
-
-  if (!found) {
-    errlogPrintf("Module %s not available\n", module);
-    if (founddir)
-      free(founddir);
-    return NULL;
-  }
-
-  /* founddir = "<dirname>/[dirlen]<module>/<version>" */
-  printf("Module %s version %s found in %s" OSI_PATH_SEPARATOR "\n", module,
-         found, founddir);
-
-  snprintf(filename, max_file_len, "%s" OSI_PATH_SEPARATOR, founddir);
-  versionLength = strlen(found) + 1;
-  selectedVersion = calloc(versionLength, sizeof(char));
-  memcpy(selectedVersion, found, versionLength);
-  free(founddir);
-  return selectedVersion;
+  /* Module is not installed */
+  errlogPrintf("Module %s not available\n", module);
+  memset(filename, 0, max_file_len);
+  return -1;
 }
 
 /*
  * Load module if it's available.
  *
- * Returns the version loaded, NULL if no version exist.
+ * Returns 0 if loaded, -1 otherwise.
  */
-static const char *load_module(char *filename, const char *module,
-                               const char *version, int libdiroffs) {
-  HMODULE libhandle = NULL;
-  char *symbolname = NULL;
-  const char *found = NULL;
-  /* filename =
-     "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/PREFIX<module>INFIX(EXT)?"
-   */
-  if (!(TRY_FILE(libdiroffs, PREFIX "%s" INFIX EXT, module))) {
-    errlogPrintf("Module %s has no library\n", module);
-    found = version;
-  } else {
-    printf("Loading library %s\n", filename);
-    if ((libhandle = loadlib(filename)) == NULL) {
-      return NULL;
-    }
-
-    /* now check what version we really got (with compiled-in version number)
-     */
-    if (asprintf(&symbolname, "_%sLibRelease", module) < 0) {
-      return NULL;
-    }
-
-    found = (const char *)getAddress(libhandle, symbolname);
-    free(symbolname);
-    printf("Loaded %s version %s\n", module, found);
+static int load_module(const char *module) {
+  char libname[PATH_MAX] = {0};
+  /* filename = "/lib/lib<module>.so" */
+  snprintf(libname, PATH_MAX, "lib%s.so", module);
+  if (dlopen(libname, RTLD_NOW | RTLD_GLOBAL) == NULL) {
+    errlogPrintf("Loading library failed: %s\n", libname);
+    return -1;
   }
-  return found;
+  return 0;
 }
 
 /*
  * Loads the module .dbd file and runs registerRecordDeviceDriver.
  */
-static int load_module_data(char *filename, const char *module,
-                            const char *version, int releasediroffs) {
+static int load_module_data(char *filename, int filesize, const char *module,
+                            char *version) {
   int returnvalue = 0;
   char *symbolname = NULL;
 
   /* load dbd file */
-  if (TRY_NONEMPTY_FILE(releasediroffs, "dbd" OSI_PATH_SEPARATOR "%s.dbd",
-                        module)) {
+  if (TRY_FILE(filesize, "dbd" OSI_PATH_SEPARATOR "%s.dbd", module)) {
     printf("Loading dbd file %s\n", filename);
     if (dbLoadDatabase(filename, NULL, NULL) != 0) {
       errlogPrintf("Error loading %s\n", filename);
@@ -607,19 +522,31 @@ static int load_module_data(char *filename, const char *module,
     /* no dbd file, but that might be OK */
     printf("%s has no dbd file\n", module);
   }
+
+  /* Fetch version */
+  if (TRY_FILE(filesize, "%s_version", module)) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+      errlogPrintf("Error open %s\n", filename);
+      return -1;
+    }
+    char *ret = fgets(version, PATH_MAX, file);
+    if (ret == NULL) {
+      fclose(file);
+      errlogPrintf("Error reading %s\n", filename);
+      return -1;
+    }
+    fclose(file);
+  }
   return 0;
 }
 
 static int require_priv(const char *module) {
   int returnvalue = 0;
-  const char *loaded = NULL;
   const char *found = NULL;
-  const char *dirname = NULL;
-  char *selectedVersion = NULL;
 
   int dirlen = 0;
-  int releasediroffs = 0;
-  int libdiroffs = 0;
+  char version[PATH_MAX] = {0};
   char filename[PATH_MAX] = {0};
 
   static char *globalTemplates = NULL;
@@ -632,18 +559,17 @@ static int require_priv(const char *module) {
   debug("require: module=\"%s\"\n", module);
 
   /* check already loaded*/
-  loaded = getLibVersion(&loadedModules, module);
-  if (loaded) {
+  found = getLibVersion(&loadedModules, module);
+  if (found != NULL) {
     /* We don't need to load it again */
-    debug("Module %s is aready loaded", module);
+    debug("Module %s is aready loaded, %s\n", module, found);
     return returnvalue;
   } else {
     debug("require: no %s  loaded yet\n", module);
 
-    /* Step 1: Search for module in driverpath. Select the last version found.
+    /* Step 1: Search for module in driverpath.
      */
-    selectedVersion = fetch_module(filename, sizeof(filename), module);
-    if (!selectedVersion) {
+    if (fetch_module_path(filename, sizeof(filename), module) != 0) {
       returnvalue = -1;
       return returnvalue;
     }
@@ -651,52 +577,40 @@ static int require_priv(const char *module) {
     debug("require: looking for dependency file\n");
 
     dirlen = strnlen(filename, PATH_MAX);
-    if (!TRY_FILE(dirlen,
-                  OSI_PATH_SEPARATOR "%n" LIBDIR "%s" OSI_PATH_SEPARATOR
-                                     "%n%s.dep",
-                  &releasediroffs, targetArch, &libdiroffs, module)) {
-      /* filename =
-         "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
-       */
+    if (!TRY_FILE(dirlen, OSI_PATH_SEPARATOR DEPDIR "%s.dep", module)) {
+      /* filename = "/<module>/dep/module.dep" */
       errlogPrintf("Dependency file %s not found\n", filename);
     } else {
-      /* filename =
-       * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]/lib/<targetArch>/[libdiroffs]/module.dep"
-       */
+      /* filename = "/<module>/dep/module.dep" */
       if (handleDependencies(module, filename) == -1) {
         returnvalue = -1;
-        goto require_priv_end;
+        return returnvalue;
       }
     }
-    releasediroffs += dirlen;
-    libdiroffs += dirlen;
 
     /* Step 3: Load the module library */
     debug("require: Load the library if file exists\n");
-    found = load_module(filename, module, selectedVersion, libdiroffs);
-    if (!found) {
+    returnvalue = load_module(module);
+    if (returnvalue != 0) {
       debug("require: Module not found\n");
-      returnvalue = -1;
-      goto require_priv_end;
+      return returnvalue;
     }
 
     /* Step 4: Load module data */
     debug("require: Load module data\n");
-    returnvalue = load_module_data(filename, module, found, releasediroffs);
-    if (returnvalue) {
-      goto require_priv_end;
+    filename[dirlen] = 0; // reset directory
+    returnvalue = load_module_data(filename, dirlen, module, version);
+    if (returnvalue != 0) {
+      return returnvalue;
     }
 
     /* register module with path */
-    filename[releasediroffs] = 0;
-    registerModule(&loadedModules, module, found, filename);
+    filename[dirlen] = 0;
+    registerModule(&loadedModules, module, version, filename);
   }
 
   debug("require: looking for template directory\n");
-  /* filename =
-   * "<dirname>/[dirlen]<module>/<version>/[releasediroffs]..."
-   */
-  if (!(TRY_FILE(releasediroffs, TEMPLATEDIR) &&
+  if (!(TRY_FILE(dirlen, OSI_PATH_SEPARATOR TEMPLATEDIR) &&
         setupDbPath(module, filename) == 0)) {
     /* if no template directory found, restore TEMPLATES to initial value */
     char *t;
@@ -704,10 +618,7 @@ static int require_priv(const char *module) {
     if (globalTemplates && (!t || strcmp(globalTemplates, t) != 0))
       putenvprintf("TEMPLATES=%s", globalTemplates);
   }
-
-require_priv_end:
-  free(selectedVersion);
-  return returnvalue;
+  return 0;
 }
 
 static const iocshFuncDef requireDef = {
