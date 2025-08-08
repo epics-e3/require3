@@ -14,10 +14,10 @@ struct linkedList {
   unsigned int size;
 };
 
-const char *getLibVersion(struct linkedList *linkedlist, const char *libname);
-const char *getLibLocation(struct linkedList *linkedlist, const char *libname);
-int isModuleLoaded(struct linkedList *linkedlist, const char *libname);
-int registerModule(struct linkedList *linkedlist, const char *module,
+const char *getLibVersion(const char *libname);
+const char *getLibLocation(const char *libname);
+int isModuleLoaded(const char *libname);
+int registerModule(const char *module,
                    const char *version, const char *location);
 
 #endif /*__MODULE_H__*/

@@ -36,6 +36,7 @@ SOURCES += $(APPSRC)/dbLoadTemplate.y
 DBDS    += $(APPSRC)/dbLoadTemplate.dbd
 
 HEADERS += $(APPSRC)/require.h
+HEADERS += $(APPSRC)/module.h
 
 # We need to find the Linux link.h before the EPICS link.h
 USR_INCLUDES_Linux=-idirafter $(EPICS_BASE)/include

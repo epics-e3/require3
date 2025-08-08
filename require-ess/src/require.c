@@ -131,8 +131,6 @@ static HMODULE loadlib(const char *libname) {
   return libhandle;
 }
 
-struct linkedList loadedModules = {0};
-
 static int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
       realpathSeparator(dbdir); /* so we can change directory later safely */
@@ -152,7 +150,7 @@ static int setupDbPath(const char *module, const char *dbdir) {
 
   putenvprintf("%s_DB=%s", module, absdir);
   putenvprintf("TEMPLATES=%s", absdir);
-  if (isModuleLoaded(&loadedModules, "stream")) {
+  if (isModuleLoaded("stream")) {
     pathAdd("STREAM_PROTOCOL_PATH", absdir);
   }
   pathAdd("EPICS_DB_INCLUDE_PATH", absdir);

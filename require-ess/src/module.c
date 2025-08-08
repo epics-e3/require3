@@ -18,9 +18,11 @@
 
 unsigned long int bufferSize = 0;
 
-const char *getLibVersion(struct linkedList *linkedlist, const char *libname) {
+struct linkedList linkedlist = {0};
+
+const char *getLibVersion(const char *libname) {
   struct module *m = NULL;
-  for (m = linkedlist->head; m; m = m->next) {
+  for (m = linkedlist.head; m; m = m->next) {
     if (strcmp(m->name, libname) == 0) {
       return m->version;
     }
@@ -28,9 +30,9 @@ const char *getLibVersion(struct linkedList *linkedlist, const char *libname) {
   return NULL;
 }
 
-const char *getLibLocation(struct linkedList *linkedlist, const char *libname) {
+const char *getLibLocation(const char *libname) {
   struct module *m = NULL;
-  for (m = linkedlist->head; m; m = m->next) {
+  for (m = linkedlist.head; m; m = m->next) {
     if (strcmp(m->name, libname) == 0) {
       return m->path;
     }
@@ -38,17 +40,17 @@ const char *getLibLocation(struct linkedList *linkedlist, const char *libname) {
   return NULL;
 }
 
-int isModuleLoaded(struct linkedList *linkedlist, const char *libname) {
+int isModuleLoaded(const char *libname) {
   struct module *m = NULL;
-  for (m = linkedlist->head; m; m = m->next) {
+  for (m = linkedlist.head; m; m = m->next) {
     if (strcmp(m->name, libname) == 0)
       return TRUE;
   }
   return FALSE;
 }
 
-int registerModule(struct linkedList *linkedlist, const char *moduleName,
-                   const char *version, const char *location) {
+int registerModule(const char *moduleName, const char *version,
+                   const char *location) {
   char *absLocation = NULL;
   char *absLocationRequire = NULL;
   char *argstring = NULL;
@@ -105,13 +107,13 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName,
    * being written in fillModuleListRecord.  So the magic number here is related
    * to that string format.*/
   bufferSize += nameSize + versionSize + 2;
-  if (linkedlist->size == 0) {
-    linkedlist->head = module;
+  if (linkedlist.size == 0) {
+    linkedlist.head = module;
   } else {
-    linkedlist->tail->next = module;
+    linkedlist.tail->next = module;
   }
-  linkedlist->tail = module;
-  linkedlist->size++;
+  linkedlist.tail = module;
+  linkedlist.size++;
 
   putenvprintf("MODULE=%s", module->name);
   putenvprintf("%s_VERSION=%s", module->name, module->version);
@@ -143,7 +145,7 @@ int registerModule(struct linkedList *linkedlist, const char *moduleName,
                "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
                "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
                getenv("REQUIRE_IOC"), module->name, module->version,
-               linkedlist->size, bufferSize) < 0) {
+               linkedlist.size, bufferSize) < 0) {
     errlogPrintf("Error asprintf failed\n");
     return 0;
   }
