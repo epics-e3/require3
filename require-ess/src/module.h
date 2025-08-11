@@ -1,5 +1,6 @@
 #ifndef __MODULE_H__
 #define __MODULE_H__
+#include <initHooks.h>
 
 struct module {
   struct module *next;
@@ -14,10 +15,12 @@ struct linkedList {
   unsigned int size;
 };
 
+int libversionShow(const char *outfile);
+void fillModuleListRecord(initHookState state);
 const char *getLibVersion(const char *libname);
 const char *getLibLocation(const char *libname);
 int isModuleLoaded(const char *libname);
-int registerModule(const char *module,
-                   const char *version, const char *location);
+int registerModule(const char *module, const char *version,
+                   const char *location);
 
 #endif /*__MODULE_H__*/

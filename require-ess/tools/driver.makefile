@@ -360,6 +360,11 @@ LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(f
 
 MODULELIB = $(if ${LIBRARY_OBJS},${LIB_PREFIX}${PRJ}${SHRLIB_SUFFIX},)
 
+# Handle registry stuff automagically if we have a dbd file.
+# See ${REGISTRYFILE} rule below.
+LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})))
+
+
 LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
 LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
 LIBOBJS += ${LIBRARIES:%=${INSTALL_LIB}/%Lib}
@@ -369,17 +374,14 @@ PRODUCT_OBJS = ${LIBRARY_OBJS}
 
 # Linux
 LOADABLE_LIBRARY=$(if ${LIBRARY_OBJS},${PRJ},)
-
-# Handle registry stuff automagically if we have a dbd file.
-# See ${REGISTRYFILE} rule below.
-LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})))
-
 # Create and include dependency files.
 HDEPENDS =
 HDEPENDS_METHOD = COMP
 HDEPENDS_COMPFLAGS = -c
 MKMF = DO_NOT_USE_MKMF
 CPPFLAGS += -MD
+CPPFLAGS += -DMODULE_NAME='"${MODULE}"' -DLIBVERSION='"${LIBVERSION}"'
+CXXFLAGS += -I$(E3_REQUIRE_TOOLS)/
 -include *.d
 
 # Need to find source dbd files relative to one dir up but generated dbd files in this dir.
@@ -397,6 +399,7 @@ MODULE_CONFIGS += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MO
 
 MODULE_RULES = ${CFGS:%=../%}
 MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
+
 
 # We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
 # mode. Including this causes all of the source files to be compiled!
@@ -614,9 +617,17 @@ $(foreach l,$(LICENSES),$(eval $(call license_install,$(INSTALL_DOC)/$l,../$l)))
 	${LN} $< $(*F).gt
 	gdc $(*F).gt
 
-# Create file to fill registry from dbd file.
+# Create file to fill registry from dbd file. Because of c++ static
+# initialization order fiasco all static initialization needs to be
+# in a single function. Therefore the last line of
+# module_registerRecordDeviceDriver.cpp, that would run Registration()
+# for initialization, is removed. Then init.cpp is appended and
+# __module_library_init() is initializes the library and calls
+# Registration().
 ${REGISTRYFILE}: ${MODULEDBD}
 	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
+	sed -i'.bak' '$$d' $@
+	echo "#include <init.cpp>" >> $@
 
 # Create dependency file for recursive requires.
 .PHONY: ${DEPFILE} ${VERSIONFILE}

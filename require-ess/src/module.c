@@ -5,8 +5,12 @@
 #else
 #include <error.h>
 #endif
+#include <epicsStdio.h>
+#include <errno.h>
+#include <iocsh.h>
 #include <limits.h>
 #include <osiFileName.h>
+#include <recSup.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +23,113 @@
 unsigned long int bufferSize = 0;
 
 struct linkedList linkedlist = {0};
+
+static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
+  char recordname[PVNAME_STRINGSZ] = {0};
+
+  sprintf(recordname, "%.*s%s",
+          (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ - 1) - 1),
+          getenv("REQUIRE_IOC"), namepart);
+
+  if (dbNameToAddr(recordname, paddr) != 0) {
+    errlogPrintf("require:getRecordHandle : record %s not found\n", recordname);
+    return -1;
+  }
+  if (paddr->field_type != type) {
+    errlogPrintf(
+        "require:getRecordHandle : record %s has wrong type %s instead of %s\n",
+        recordname, pamapdbfType[paddr->field_type].strvalue,
+        pamapdbfType[type].strvalue);
+    return -1;
+  }
+  if (paddr->pfield == NULL) {
+    errlogPrintf(
+        "require:getRecordHandle : record %s has not yet allocated memory\n",
+        recordname);
+    return -1;
+  }
+
+  return 0;
+}
+
+int libversionShow(const char *outfile) {
+  struct module *m = NULL;
+
+  FILE *out = epicsGetStdout();
+
+  if (outfile) {
+    out = fopen(outfile, "w");
+    if (out == NULL) {
+      errlogPrintf("can't open %s: %s\n", outfile, strerror(errno));
+      return -1;
+    }
+  }
+  for (m = linkedlist.head; m; m = m->next) {
+    fprintf(out, "%s-%20s %s\n", m->name, m->version, m->path);
+  }
+  if (fflush(out) < 0 && outfile) {
+    errlogPrintf("can't write to %s: %s\n", outfile, strerror(errno));
+    return -1;
+  }
+  if (outfile)
+    fclose(out);
+  return 0;
+}
+
+/*
+We can fill the records only after they have been initialized, at
+initHookAfterFinishDevSup. But use double indirection here because in 3.13 we
+must wait until initHooks is loaded before we can register the hook.
+*/
+void fillModuleListRecord(initHookState state) {
+  if (state != initHookAfterFinishDevSup)
+    return;
+
+  struct dbAddr modules = {0}, versions = {0}, modver = {0};
+  char *bufferModules, *bufferVersions, *bufferModver;
+  struct module *m = NULL;
+  int i = 0;
+  int c = 0;
+
+  getRecordHandle(":Modules", DBF_STRING, &modules);
+  getRecordHandle(":Versions", DBF_STRING, &versions);
+  getRecordHandle(":ModuleVersions", DBF_CHAR, &modver);
+
+  bufferModules =
+      (char *)calloc(MAX_STRING_SIZE * linkedlist.size, sizeof(char));
+  bufferVersions =
+      (char *)calloc(MAX_STRING_SIZE * linkedlist.size, sizeof(char));
+  bufferModver =
+      (char *)calloc(MAX_STRING_SIZE * linkedlist.size, sizeof(char));
+
+  for (m = linkedlist.head, i = 0; m != NULL; m = m->next, i++) {
+    debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
+          MAX_STRING_SIZE - 1, m->name);
+    sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, m->name);
+    debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
+          MAX_STRING_SIZE - 1, m->version);
+    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, m->version);
+    debug("require: %s+=\"%s %s\"\n", modver.precord->name, m->name,
+          m->version);
+    c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
+  }
+
+  if (dbPut(&modules, DBF_STRING, bufferModules, linkedlist.size) != 0) {
+    errlogPrintf("require: Error to put Modules\n");
+  }
+  if (dbPut(&versions, DBF_STRING, bufferVersions, linkedlist.size) != 0) {
+    errlogPrintf("require: Error to put Versions\n");
+  }
+  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
+    errlogPrintf("require: Error to put ModuleVersions\n");
+  }
+
+  free(bufferModules);
+  free(bufferVersions);
+  free(bufferModver);
+}
 
 const char *getLibVersion(const char *libname) {
   struct module *m = NULL;

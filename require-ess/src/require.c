@@ -81,13 +81,10 @@ int requireDebug;
 #define EXT ".so"
 #endif
 #include <dirent.h>
-#define LIBDIR "lib" OSI_PATH_SEPARATOR
-#define DEPDIR "dep" OSI_PATH_SEPARATOR
-#define TEMPLATEDIR "db"
-#define LIBRELEASE "LibRelease"
 
 #define E3_REQUIRE_LOCATION "E3_REQUIRE_LOCATION"
 #define E3_REQUIRE_VERSION "E3_REQUIRE_VERSION"
+#define E3_SYMBOL "__module_lib_version"
 
 #ifndef OS_CLASS
 #error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
@@ -131,7 +128,7 @@ static HMODULE loadlib(const char *libname) {
   return libhandle;
 }
 
-static int setupDbPath(const char *module, const char *dbdir) {
+int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
       realpathSeparator(dbdir); /* so we can change directory later safely */
   if (absdir == NULL) {
@@ -155,131 +152,6 @@ static int setupDbPath(const char *module, const char *dbdir) {
   }
   pathAdd("EPICS_DB_INCLUDE_PATH", absdir);
   free(absdir);
-  return 0;
-}
-
-static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
-  char recordname[PVNAME_STRINGSZ] = {0};
-
-  sprintf(recordname, "%.*s%s",
-          (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ - 1) - 1),
-          getenv("REQUIRE_IOC"), namepart);
-
-  if (dbNameToAddr(recordname, paddr) != 0) {
-    errlogPrintf("require:getRecordHandle : record %s not found\n", recordname);
-    return -1;
-  }
-  if (paddr->field_type != type) {
-    errlogPrintf(
-        "require:getRecordHandle : record %s has wrong type %s instead of %s\n",
-        recordname, pamapdbfType[paddr->field_type].strvalue,
-        pamapdbfType[type].strvalue);
-    return -1;
-  }
-  if (paddr->pfield == NULL) {
-    errlogPrintf(
-        "require:getRecordHandle : record %s has not yet allocated memory\n",
-        recordname);
-    return -1;
-  }
-
-  return 0;
-}
-
-/*
-We can fill the records only after they have been initialized, at
-initHookAfterFinishDevSup. But use double indirection here because in 3.13 we
-must wait until initHooks is loaded before we can register the hook.
-*/
-static void fillModuleListRecord(initHookState state) {
-  if (state != initHookAfterFinishDevSup)
-    return;
-
-  struct dbAddr modules = {0}, versions = {0}, modver = {0};
-  char *bufferModules, *bufferVersions, *bufferModver;
-  struct module *m = NULL;
-  int i = 0;
-  int c = 0;
-
-  getRecordHandle(":Modules", DBF_STRING, &modules);
-  getRecordHandle(":Versions", DBF_STRING, &versions);
-  getRecordHandle(":ModuleVersions", DBF_CHAR, &modver);
-
-  bufferModules =
-      (char *)calloc(MAX_STRING_SIZE * loadedModules.size, sizeof(char));
-  bufferVersions =
-      (char *)calloc(MAX_STRING_SIZE * loadedModules.size, sizeof(char));
-  bufferModver =
-      (char *)calloc(MAX_STRING_SIZE * loadedModules.size, sizeof(char));
-
-  for (m = loadedModules.head, i = 0; m != NULL; m = m->next, i++) {
-    debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
-          MAX_STRING_SIZE - 1, m->name);
-    sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
-            MAX_STRING_SIZE - 1, m->name);
-    debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
-          MAX_STRING_SIZE - 1, m->version);
-    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
-            MAX_STRING_SIZE - 1, m->version);
-    debug("require: %s+=\"%s %s\"\n", modver.precord->name, m->name,
-          m->version);
-    c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
-  }
-
-  if (dbPut(&modules, DBF_STRING, bufferModules, loadedModules.size) != 0) {
-    errlogPrintf("require: Error to put Modules\n");
-  }
-  if (dbPut(&versions, DBF_STRING, bufferVersions, loadedModules.size) != 0) {
-    errlogPrintf("require: Error to put Versions\n");
-  }
-  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
-    errlogPrintf("require: Error to put ModuleVersions\n");
-  }
-
-  free(bufferModules);
-  free(bufferVersions);
-  free(bufferModver);
-}
-
-static int registerRequire() {
-  char *requireLocation = NULL;
-  char *requireVersion = NULL;
-
-  requireLocation = getenv(E3_REQUIRE_LOCATION);
-  if (!requireLocation) {
-    errlogPrintf("require: Failed to get " E3_REQUIRE_LOCATION "\n");
-    return -1;
-  }
-  requireVersion = getenv(E3_REQUIRE_VERSION);
-  if (!requireVersion) {
-    errlogPrintf("require: Failed to get " E3_REQUIRE_VERSION "\n");
-    return -1;
-  }
-  registerModule(&loadedModules, "require", requireVersion, requireLocation);
-  return 0;
-}
-
-int libversionShow(const char *outfile) {
-  struct module *m = NULL;
-
-  FILE *out = epicsGetStdout();
-
-  if (outfile) {
-    out = fopen(outfile, "w");
-    if (out == NULL) {
-      errlogPrintf("can't open %s: %s\n", outfile, strerror(errno));
-      return -1;
-    }
-  }
-  for (m = loadedModules.head; m; m = m->next) {
-    fprintf(out, "%s-%20s %s\n", m->name, m->version, m->path);
-  }
-  if (fflush(out) < 0 && outfile) {
-    errlogPrintf("can't write to %s: %s\n", outfile, strerror(errno));
-    return -1;
-  }
-  if (outfile)
-    fclose(out);
   return 0;
 }
 
@@ -330,7 +202,7 @@ int require(const char *module) {
   return status;
 }
 
-static off_t fileSize(const char *filename) {
+off_t fileSize(const char *filename) {
   struct stat filestat = {0};
   if (stat(filename, &filestat) != 0) {
     debug("require: %s does not exist\n", filename);
@@ -369,116 +241,11 @@ static off_t fileSize(const char *filename) {
     return -1;
   }
 }
-#define fileExists(filename) (fileSize(filename) >= 0)
-#define fileNotEmpty(filename) (fileSize(filename) > 0)
-#define TRY_FILE(offs, ...)                                                    \
-  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) &&                  \
-   fileExists(filename))
-
-#define TRY_NONEMPTY_FILE(offs, ...)                                           \
-  (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) &&                  \
-   fileNotEmpty(filename))
-
-static int handleDependencies(const char *module, char *depfilename) {
-  FILE *depfile = NULL;
-  char buffer[40] = {0};
-  char *end = NULL;      /* end of string */
-  char *rmodule = NULL;  /* required module */
-  char *rversion = NULL; /* required version */
-
-  debug("require: parsing dependency file %s\n", depfilename);
-  depfile = fopen(depfilename, "r");
-  while (fgets(buffer, sizeof(buffer) - 1, depfile)) {
-    rmodule = buffer;
-    /* ignore leading spaces */
-    while (isspace((unsigned char)*rmodule))
-      rmodule++;
-    /* ignore empty lines and comment lines */
-    if (*rmodule == 0 || *rmodule == '#')
-      continue;
-    /* rmodule at start of module name */
-    rversion = rmodule;
-    /* find end of module name */
-    while (*rversion && !isspace((unsigned char)*rversion))
-      rversion++;
-    /* terminate module name */
-    *rversion++ = 0;
-    /* ignore spaces */
-    while (isspace((unsigned char)*rversion))
-      rversion++;
-    /* rversion at start of version */
-
-    if (*rversion) {
-      end = rversion;
-      /* find end of version */
-      while (*end && !isspace((unsigned char)*end))
-        end++;
-      /* terminate version */
-      *end = 0;
-    }
-    printf("Module %s depends on %s\n", module, rmodule);
-    if (require(rmodule) != 0) {
-      fclose(depfile);
-      return -1;
-    }
-  }
-  fclose(depfile);
-  return 0;
-}
-
-/*
- * Fetches the module path
- *
- * Sets <filename> to be the path the the underlying module.
- */
-static int fetch_module_path(char *filename, size_t max_file_len,
-                             const char *module) {
-  const char *driverpath = NULL;
-
-  driverpath = getenv("EPICS_DRIVER_PATH");
-  if (driverpath == NULL)
-    driverpath = ".";
-  debug("require: searchpath=%s\n", driverpath);
-
-  snprintf(filename, max_file_len,
-           "%s" OSI_PATH_SEPARATOR "%s" OSI_PATH_SEPARATOR, driverpath, module);
-
-  debug("require: trying %s\n", filename);
-  DIR *founddir = opendir(filename);
-  if (founddir != NULL) {
-    closedir(founddir);
-    return 0;
-  }
-  /* Module is not installed */
-  errlogPrintf("Module %s not available\n", module);
-  memset(filename, 0, max_file_len);
-  return -1;
-}
-
-/*
- * Load module if it's available.
- *
- * Returns 0 if loaded, -1 otherwise.
- */
-static int load_module(const char *module) {
-  char libname[PATH_MAX] = {0};
-  /* filename = "/lib/lib<module>.so" */
-  snprintf(libname, PATH_MAX, "lib%s.so", module);
-  if (dlopen(libname, RTLD_NOW | RTLD_GLOBAL) == NULL) {
-    errlogPrintf("Loading library failed: %s\n", libname);
-    return -1;
-  }
-  return 0;
-}
 
 /*
  * Loads the module .dbd file and runs registerRecordDeviceDriver.
  */
-static int load_module_data(char *filename, int filesize, const char *module,
-                            char *version) {
-  int returnvalue = 0;
-  char *symbolname = NULL;
-
+int load_module_dbd(char *filename, const char *module, int filesize) {
   /* load dbd file */
   if (TRY_FILE(filesize, "dbd" OSI_PATH_SEPARATOR "%s.dbd", module)) {
     printf("Loading dbd file %s\n", filename);
@@ -486,116 +253,34 @@ static int load_module_data(char *filename, int filesize, const char *module,
       errlogPrintf("Error loading %s\n", filename);
       return -1;
     }
-
-    /* when dbd is loaded call register function */
-    if (asprintf(&symbolname, "%s_registerRecordDeviceDriver", module) < 0) {
-      return -1;
-    }
-
-    printf("Calling function %s\n", symbolname);
-    returnvalue = iocshCmd(symbolname);
-    free(symbolname);
-    if (returnvalue)
-      return -1;
   } else {
     /* no dbd file, but that might be OK */
     printf("%s has no dbd file\n", module);
-  }
-
-  /* Fetch version */
-  if (TRY_FILE(filesize, "%s_version", module)) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-      errlogPrintf("Error open %s\n", filename);
-      return -1;
-    }
-    char *ret = fgets(version, PATH_MAX, file);
-    if (ret == NULL) {
-      fclose(file);
-      errlogPrintf("Error reading %s\n", filename);
-      return -1;
-    }
-    fclose(file);
   }
   return 0;
 }
 
 static int require_priv(const char *module) {
-  int returnvalue = 0;
-  const char *found = NULL;
-
-  int dirlen = 0;
-  char version[PATH_MAX] = {0};
-  char filename[PATH_MAX] = {0};
-
-  static char *globalTemplates = NULL;
-  if (!globalTemplates) {
-    char *t = getenv("TEMPLATES");
-    if (t)
-      globalTemplates = strdup(t);
-  }
+  void *lib_handle = NULL;
+  char lib[PATH_MAX] = {0};
+  void *symbol_address = NULL;
+  char *dlsym_error = NULL;
 
   debug("require: module=\"%s\"\n", module);
-
-  /* check already loaded*/
-  found = getLibVersion(&loadedModules, module);
-  if (found != NULL) {
-    /* We don't need to load it again */
-    debug("Module %s is aready loaded, %s\n", module, found);
-    return returnvalue;
-  } else {
-    debug("require: no %s  loaded yet\n", module);
-
-    /* Step 1: Search for module in driverpath.
-     */
-    if (fetch_module_path(filename, sizeof(filename), module) != 0) {
-      returnvalue = -1;
-      return returnvalue;
-    }
-    /* Step 2 : Looking for .dep file */
-    debug("require: looking for dependency file\n");
-
-    dirlen = strnlen(filename, PATH_MAX);
-    if (!TRY_FILE(dirlen, OSI_PATH_SEPARATOR DEPDIR "%s.dep", module)) {
-      /* filename = "/<module>/dep/module.dep" */
-      errlogPrintf("Dependency file %s not found\n", filename);
-    } else {
-      /* filename = "/<module>/dep/module.dep" */
-      if (handleDependencies(module, filename) == -1) {
-        returnvalue = -1;
-        return returnvalue;
-      }
-    }
-
-    /* Step 3: Load the module library */
-    debug("require: Load the library if file exists\n");
-    returnvalue = load_module(module);
-    if (returnvalue != 0) {
-      debug("require: Module not found\n");
-      return returnvalue;
-    }
-
-    /* Step 4: Load module data */
-    debug("require: Load module data\n");
-    filename[dirlen] = 0; // reset directory
-    returnvalue = load_module_data(filename, dirlen, module, version);
-    if (returnvalue != 0) {
-      return returnvalue;
-    }
-
-    /* register module with path */
-    filename[dirlen] = 0;
-    registerModule(&loadedModules, module, version, filename);
+  /* Load required librarie */
+  debug("require: Load the library if file exists\n");
+  snprintf(lib, PATH_MAX, PREFIX "%s" EXT, module);
+  lib_handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
+  if (lib_handle == NULL) {
+    debug("require: Module not found\n");
+    return -1;
   }
-
-  debug("require: looking for template directory\n");
-  if (!(TRY_FILE(dirlen, OSI_PATH_SEPARATOR TEMPLATEDIR) &&
-        setupDbPath(module, filename) == 0)) {
-    /* if no template directory found, restore TEMPLATES to initial value */
-    char *t;
-    t = getenv("TEMPLATES");
-    if (globalTemplates && (!t || strcmp(globalTemplates, t) != 0))
-      putenvprintf("TEMPLATES=%s", globalTemplates);
+  symbol_address = dlsym(lib_handle, E3_SYMBOL);
+  dlsym_error = dlerror();
+  if (dlsym_error != NULL || symbol_address == NULL) {
+    dlclose(lib_handle);
+    errlogPrintf(PREFIX "%s" EXT " is not an EPICS module.", module);
+    return -1;
   }
   return 0;
 }
@@ -644,9 +329,6 @@ static void requireRegister(void) {
     iocshRegister(&libversionShowDef, libversionShowFunc);
     iocshRegister(&ldDef, ldFunc);
     iocshRegister(&pathAddDef, pathAddFunc);
-    if (registerRequire() != 0) {
-      errlogPrintf("require: Could not register require.\n");
-    }
 
     set_require_env();
     initHookRegister(fillModuleListRecord);
