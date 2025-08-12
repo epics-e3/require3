@@ -181,7 +181,9 @@ int registerModule(const char *moduleName, const char *version,
   if (location) {
     absLocation = realpathSeparator(location);
   }
-
+  if (!absLocation) {
+    return -1;
+  }
   struct module *module = NULL;
   if (!(module = (struct module *)calloc(sizeof(struct module), 1))) {
     goto out_of_memory;
@@ -193,7 +195,7 @@ int registerModule(const char *moduleName, const char *version,
   if (nameSize > MAX_MODULE_SIZE)
     return -1;
   if (!(module->name = calloc(nameSize, sizeof(char)))) {
-    goto out_of_memory;
+    goto free_module;
   }
   strcpy(module->name, moduleName);
 
@@ -201,13 +203,13 @@ int registerModule(const char *moduleName, const char *version,
   if (versionSize > MAX_MODULE_SIZE)
     return -1;
   if (!(module->version = calloc(versionSize, sizeof(char)))) {
-    goto out_of_memory;
+    goto free_name;
   }
   strcpy(module->version, version);
 
   if (!(module->path =
             calloc(strnlen(absLocation, PATH_MAX) + 1, sizeof(char)))) {
-    goto out_of_memory;
+    goto free_version;
   }
   strcpy(module->path, absLocation ? absLocation : "");
   free(absLocation);
@@ -266,6 +268,12 @@ int registerModule(const char *moduleName, const char *version,
   free(absLocationRequire);
   return 0;
 
+free_version:
+  free(module->version);
+free_name:
+  free(module->name);
+free_module:
+  free(module);
 out_of_memory:
   errlogPrintf("require: out of memory\n");
   return -1;
