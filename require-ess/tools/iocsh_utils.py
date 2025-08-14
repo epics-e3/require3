@@ -29,7 +29,7 @@ class TemporaryStartupScript:
         self.command_buffer = []
         self._saved = False
 
-        self.set_variable("REQUIRE_IOC", iocname or generate_prefix())
+        self.set_variable("REQUIRE_IOC", sanitize_iocname(iocname or generate_prefix()))
         self.set_variable("IOCSH_TOP", Path.cwd())
         self.set_variable(
             "IOCSH_PS1", f"{iocname} > " if iocname else generate_prompt()
@@ -167,3 +167,14 @@ def generate_banner() -> str:
  `----'`----'     `--' `-----'  `-----'    `----' `--' `--' `----'`--'`--'
 """
     return ascii_art
+
+
+def sanitize_iocname(iocname: str) -> str:
+    """Remove characters not allowed in PV names from iocname."""
+    extra_allowed = "_-+:[]<>;"
+    sanitized = "".join(c if c.isalnum() or c in extra_allowed else "" for c in iocname)
+    if sanitized != iocname:
+        logging.warning(
+            f"Removed illegal characters from IOC name: '{iocname}' -> '{sanitized}'"
+        )
+    return sanitized
