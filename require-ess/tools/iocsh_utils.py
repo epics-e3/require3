@@ -161,7 +161,7 @@ def generate_prefix() -> str:
 
 def generate_banner() -> str:
     """Return ascii art banner."""
-    ascii_art = """
+    ascii_art = r"""
        ,----.     ,--. ,-----.  ,-----.           ,--.            ,--.,--.
  ,---. '.-.  |    |  |'  .-.  ''  .--./     ,---. |  ,---.  ,---. |  ||  |
 | .-. :  .' <     |  ||  | |  ||  |        (  .-' |  .-.  || .-. :|  ||  |
