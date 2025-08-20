@@ -107,7 +107,6 @@ def verify_environment_and_return_require_version() -> str:
             "EPICS_HOST_ARCH",
             "EPICS_BASE",
             "E3_REQUIRE_VERSION",
-            "E3_REQUIRE_NAME",
             "E3_REQUIRE_BIN",
             "E3_REQUIRE_LIB",
             "E3_REQUIRE_DB",
