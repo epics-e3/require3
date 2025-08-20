@@ -16,6 +16,7 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 
 # EPICS_BASE usually appears last so other apps can override stuff:
 EPICS_BASE=/usr/local/epics/base-3.14.12
+PVXS=/path/to/pvxs
 
 #Want to use md command with global variables?
 #Set path to symbolname library
