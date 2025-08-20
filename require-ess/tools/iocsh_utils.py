@@ -8,8 +8,10 @@ import sys
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 from sys import platform
+from typing import List
 
 DEFAULT_ERRLOG_BUFFER_SIZE = 2048
+SUPP_FILE = Path(__file__).resolve().parent / "iocsh_epics.supp"
 
 
 @atexit.register
@@ -178,3 +180,15 @@ def sanitize_iocname(iocname: str) -> str:
             f"Removed illegal characters from IOC name: '{iocname}' -> '{sanitized}'"
         )
     return sanitized
+
+
+def fetch_debugger_args(debugger: str, debugger_args: str) -> List[str]:
+    """Fetch the debugger arguments for the given debugger."""
+    if debugger == "gdb":
+        return debugger_args.split(" ") + ["--args"]
+    if debugger == "lldb":
+        return debugger_args.split(" ") + ["--"]
+    if debugger == "valgrind":
+        debugger_args = debugger_args if debugger_args else "--leak-check=full"
+        return [f"--suppressions={SUPP_FILE!s}"] + debugger_args.split(" ")
+    raise NotImplementedError(f"Invalid debugger: {debugger}")

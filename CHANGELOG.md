@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add timestamp for `LoadedModules`
 * Deprecate `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`
 * Switch to using softIocPVX in lieu of softIocPVA (new PVA stack)
+* Support to use lldb for debugging. Note that this changes how debugging works:
+```sh
+$ iocsh --debugger gdb --debugger-args "args for gdb" st.cmd
+$ iocsh --debugger lldb --debugger-args "args for lldb" st.cmd
+$ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
+```
 
 ### Bugfixes
 
