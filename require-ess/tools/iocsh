@@ -28,7 +28,7 @@ def iocsh(
 ):
     with TemporaryStartupScript(iocname) as tmp_startup_script:
         require_version = verify_environment_and_return_require_version()
-        epics_base_dir = Path(os.environ["EPICS_BASE"])
+        pvxs_dir = Path(os.environ["PVXS"])
 
         print(generate_banner())
         print(f"Starting e3 IOC shell version {require_version}")
@@ -68,9 +68,9 @@ def iocsh(
         tmp_startup_script.save()
 
         cmd = [
-            str(epics_base_dir / "bin" / os.environ["EPICS_HOST_ARCH"] / "softIocPVA"),
+            "softIocPVX",
             "-D",
-            str(epics_base_dir / "dbd" / "softIocPVA.dbd"),
+            str(pvxs_dir / "dbd" / "softIocPVX.dbd"),
             tmp_startup_script.name,
         ]
 

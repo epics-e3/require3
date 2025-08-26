@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Remove `--realtime` option from `iocsh`
 * Add timestamp for `LoadedModules`
 * Deprecate `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`
+* Switch to using softIocPVX in lieu of softIocPVA (new PVA stack)
 
 ### Bugfixes
 
