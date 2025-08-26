@@ -13,6 +13,7 @@ from typing import List
 from iocsh_utils import verify_environment_and_return_require_version
 from iocsh_utils import TemporaryStartupScript
 from iocsh_utils import generate_banner
+from iocsh_utils import fetch_debugger_args
 
 
 def iocsh(
@@ -22,8 +23,8 @@ def iocsh(
     database: List[Path],
     no_init: bool,
     iocname: str,
-    gdb: str,
-    valgrind: str,
+    debugger: str,
+    debugger_args: str,
     debug: bool,
 ):
     with TemporaryStartupScript(iocname) as tmp_startup_script:
@@ -74,12 +75,8 @@ def iocsh(
             tmp_startup_script.name,
         ]
 
-        if gdb is not None:
-            cmd = ["gdb"] + gdb.split(" ") + ["--args"] + cmd
-        elif valgrind:
-            supp_file = os.path.abspath(os.path.dirname(__file__)) + "/iocsh_epics.supp"
-            non_optional = ["--suppressions=" + supp_file]
-            cmd = ["valgrind"] + non_optional + valgrind.split(" ") + cmd
+        if debugger:
+            cmd = [debugger] + fetch_debugger_args(debugger, debugger_args) + cmd
 
         logging.debug(f"Running command `{' '.join(cmd)}`")
         try:
@@ -104,11 +101,11 @@ def generate_parser() -> argparse.ArgumentParser:
         version="%(prog)s version {_version}".format(
             _version=verify_environment_and_return_require_version()
         ),
-        help="print version and exit",
+        help="Print version and exit",
     )
 
     parser.add_argument(
-        "file", type=Path, nargs="?", default=None, help="path to startup script"
+        "file", type=Path, nargs="?", default=None, help="Path to startup script"
     )
     parser.add_argument(
         "-r",
@@ -116,10 +113,10 @@ def generate_parser() -> argparse.ArgumentParser:
         dest="module",
         action="append",
         default=list(),
-        help="load module(s), optionally with version using the syntax `module,version`",
+        help="Load module(s), optionally with version using the syntax `module,version`",
     )
     parser.add_argument(
-        "-c", "--command", action="append", default=list(), help="execute command(s)"
+        "-c", "--command", action="append", default=list(), help="Execute command(s)"
     )
     parser.add_argument(
         "-d",
@@ -127,27 +124,21 @@ def generate_parser() -> argparse.ArgumentParser:
         action="append",
         default=list(),
         type=Path,
-        help="load database file(s) (`dbLoadRecords`)",
+        help="Load database file(s) (`dbLoadRecords`)",
     )
 
-    mutex_group_modifiers = parser.add_mutually_exclusive_group()
-    mutex_group_modifiers.add_argument(
-        "-dg",
-        "--gdb",
+    parser.add_argument(
+        "--debugger",
         nargs="?",
-        const="",
-        metavar="ARGUMENT",
-        help='run with gdb, optionally with arguments. For no arguments use "-dg --"',
+        choices=["gdb", "lldb", "valgrind"],
+        default=None,
+        const="gdb",
+        help='Run with selected debugger. To pass arguments, use --debuger-args "args"',
     )
-    mutex_group_modifiers.add_argument(
-        "-dv",
-        "--valgrind",
-        nargs="?",
-        const="--leak-check=full",
-        metavar="ARGUMENT",
-        help="run with valgrind, optionally with arguments (default '%(const)s'). For no arguments use \"-dv --\"",
+    parser.add_argument(
+        "--debugger-args", help="Arguments to pass to debugger", default=""
     )
-    mutex_group_modifiers.add_argument(
+    parser.add_argument(
         "--debug",
         action="store_true",
     )
@@ -163,4 +154,7 @@ if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s: %(message)s ", level=logging.DEBUG)
     parser = generate_parser()
     args = parser.parse_args()
+    if args.debugger_args and not args.debugger:
+        parser.error("Debugger arguments supplied, but no debugger specified.")
+
     iocsh(**vars(args))
