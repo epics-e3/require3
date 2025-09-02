@@ -224,12 +224,6 @@ SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
 SCR += ${SCRIPTS_${EPICSVERSION}}
 export SCR
 
-INSTALL_LICENSE = ${MODULE_LOCATION}/doc
-# Find all license files to distribute with binaries
-LICENSES = $(shell find . -not -path '*/.*' -type f -iname LICENSE)
-LICENSES += $(shell find . -not -path '*/.*' -type f -iname Copyright)
-export LICENSES
-
 # Filter architectures to build using EXCLUDE_ARCHS.
 ALL_ARCHS = ${EPICS_HOST_ARCH} ${CROSS_COMPILER_TARGET_ARCHS}
 BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),\
@@ -253,7 +247,6 @@ debug::
 	@echo "EXCLUDE_ARCHS = ${EXCLUDE_ARCHS}"
 	@echo "LIBVERSION = ${LIBVERSION}"
 	@echo "EPICS_MODULES = ${EPICS_MODULES}"
-	@echo "LICENSES = ${LICENSES}"
 
 # Create e.g. build-$(T_A) rules for each architecture, so that we can just do
 #   build: build-arch1 build-arch2
@@ -533,7 +526,6 @@ INSTALL_DBS  = $(addprefix ${INSTALL_DB}/,$(notdir ${TEMPLS}))
 INSTALL_SCRS = $(addprefix ${INSTALL_SCR}/,$(notdir ${SCR}))
 INSTALL_BINS = $(addprefix ${INSTALL_BIN}/,$(notdir ${BINS}))
 INSTALL_CONFIGS = $(addprefix ${INSTALL_CONFIG}/,$(notdir ${CFGS}))
-INSTALL_LICENSES = $(addprefix ${INSTALL_DOC}/,${LICENSES})
 
 debug::
 	@echo "MODULELIB = $(MODULELIB)"
@@ -552,7 +544,6 @@ debug::
 	@echo "INSTALL_CONFIGS = $(INSTALL_CONFIGS)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
 	@echo "INSTALL_BINS = $(INSTALL_BINS)"
-	@echo "INSTALL_LICENSES = $(INSTALL_LICENSES)"
 	@echo "HDR_SUBDIRS = $(HDR_SUBDIRS)"
 
 define install_subdirs
@@ -568,8 +559,7 @@ endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} \
-            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_VERSION} \
-            ${INSTALL_LICENSES}
+            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_VERSION}
 
 install: ${INSTALLS}
 
@@ -604,12 +594,6 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
-define license_install
-$1: $2
-	@echo "Installing license file $$^"
-	$$(INSTALL) -d -m444 $$^ $$(@D)
-endef
-$(foreach l,$(LICENSES),$(eval $(call license_install,$(INSTALL_DOC)/$l,../$l)))
 
 # Create GPIB code from *.gt file.
 %.c %.dbd %.list: %.gt
