@@ -61,3 +61,13 @@ gcc_default:
     PVXS: "1.4.0"
     PVXS_REPOOWNER: epics-base
     VV: "1"
+
+clang_default:
+  extends: .build
+  variables:
+    CMP: "clang"
+    BASE: "7.0"
+    MODULES: "pvxs"
+    PVXS: "1.4.0"
+    PVXS_REPOOWNER: epics-base
+    VV: "1"

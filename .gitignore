@@ -20,3 +20,4 @@ db/
 lib/
 include/
 *.local
+.gitlab-ci-local
