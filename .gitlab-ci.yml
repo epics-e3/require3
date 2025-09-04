@@ -44,13 +44,14 @@ shfmt:
 
 .build:
   stage: build
+  image: ubuntu:22.04
   before_script:
-    - apt-get update -qq && apt-get install -y -qq build-essential git python curl p7zip-full
-    - python .ci/cue.py prepare
+    - apt-get update -qq && apt-get install -y -qq build-essential git python3 curl p7zip-full libevent-dev
+    - python3 .ci/cue.py prepare
   script:
-    - python .ci/cue.py build
-    - python .ci/cue.py test
-    - python .ci/cue.py test-results
+    - python3 .ci/cue.py build
+    - python3 .ci/cue.py test
+    - python3 .ci/cue.py test-results
 
 gcc_default:
   extends: .build
