@@ -71,3 +71,12 @@ clang_default:
     PVXS: "1.4.0"
     PVXS_REPOOWNER: epics-base
     VV: "1"
+
+driver_makefile_build:
+  extends: .build
+  variables:
+    MODULES: "pvxs"
+    PVXS: "1.4.0"
+    PVXS_REPOOWNER: epics-base
+    VV: "1"
+    EXTRA: "EPICS_MODULES=/tmp MODULE=require -f require.Makefile build install"
