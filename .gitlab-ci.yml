@@ -35,12 +35,12 @@ shellcheck:
       xargs -0 -P $(nproc) -r -n1 sh -c 'FILE="$0"; if head -n1 "$FILE" |grep -q "^#\\! \?/.\+\(ba|d|k\)\?sh" ; then shellcheck "$FILE" --format=gcc -x ; else /bin/true ; fi '
 
 shfmt:
-  image: mvdan/shfmt:v3.2.0-alpine
+  image: mvdan/shfmt:v3.12.0-alpine
   stage: check
   before_script:
     - shfmt -version
   script:
-    - shfmt -i 2 -ci -d . # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
+    - shfmt -d --apply-ignore . # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
 
 .build:
   stage: build
