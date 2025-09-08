@@ -33,7 +33,6 @@ off_t fileSize(const char *filename);
 int setupDbPath(const char *module, const char *dbdir);
 int load_module_dbd(char *filename, const char *module, int filesize);
 int require(const char *libname);
-int libversionShow(const char *outfile);
 int putenvprintf(const char *format, ...)
     __attribute__((__format__(__printf__, 1, 2)));
 void pathAdd(const char *varname, const char *dirname);

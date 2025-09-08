@@ -52,30 +52,6 @@ static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
   return 0;
 }
 
-int libversionShow(const char *outfile) {
-  struct module *m = NULL;
-
-  FILE *out = epicsGetStdout();
-
-  if (outfile) {
-    out = fopen(outfile, "w");
-    if (out == NULL) {
-      errlogPrintf("can't open %s: %s\n", outfile, strerror(errno));
-      return -1;
-    }
-  }
-  for (m = linkedlist.head; m; m = m->next) {
-    fprintf(out, "%s-%20s %s\n", m->name, m->version, m->path);
-  }
-  if (fflush(out) < 0 && outfile) {
-    errlogPrintf("can't write to %s: %s\n", outfile, strerror(errno));
-    return -1;
-  }
-  if (outfile)
-    fclose(out);
-  return 0;
-}
-
 /*
 We can fill the records only after they have been initialized, at
 initHookAfterFinishDevSup. But use double indirection here because in 3.13 we

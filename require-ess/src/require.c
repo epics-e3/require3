@@ -1,20 +1,12 @@
 /* Copyright (C) 2020 Dirk Zimoch */
 /* Copyright (C) 2020-2022 European Spallation Source, ERIC */
 
-#ifdef __unix
-/* for vasprintf and dl_iterate_phdr */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif // _GNU_SOURCE
-#endif // __unix
-
-/* for 64 bit (NFS) file systems */
-#define _FILE_OFFSET_BITS 64
-
 #include "require.h"
 
 #include <ctype.h>
 #include <dbAccess.h>
+#include <dlfcn.h>
+#include <dirent.h>
 #include <epicsExit.h>
 #include <epicsExport.h>
 #include <epicsStdio.h>
@@ -36,66 +28,34 @@
 int requireDebug;
 
 #if defined(__unix) || defined(UNIX)
-
 #ifndef OS_CLASS
 #if defined(__linux) || defined(linux)
 #define OS_CLASS "Linux"
 #endif // __linux
-
-#ifdef SOLARIS
-#define OS_CLASS "solaris"
-#endif // SOLARIS
-
-#ifdef __rtems__
-#define OS_CLASS "RTEMS"
-#endif // __rtems__
-
-#ifdef freebsd
-#define OS_CLASS "freebsd"
-#endif // freebsd
-
 #ifdef __MACH__
 #define OS_CLASS "Darwin"
 #define PATH_MAX 1024
 #endif // darwin
-
-#ifdef _AIX32
-#define OS_CLASS "AIX"
-#endif // _AIX32
-#endif // OS_CLASS
-
 #else
 #error Only support Unix based distros
 #endif
 
-#include <dlfcn.h>
-#define HMODULE void *
-
-#define getAddress(module, name) dlsym(module, name)
-
 #define PREFIX "lib"
-#define INFIX
-#ifdef __MACH__
+#ifdef _MACH__
 #define EXT ".dylib"
 #else
 #define EXT ".so"
 #endif
-#include <dirent.h>
 
 #define E3_REQUIRE_LOCATION "E3_REQUIRE_LOCATION"
 #define E3_REQUIRE_VERSION "E3_REQUIRE_VERSION"
 #define E3_SYMBOL "__module_lib_version"
 
 #ifndef OS_CLASS
-#error OS_CLASS not defined: Try to compile with USR_CFLAGS += -DOS_CLASS='"${OS_CLASS}"'
+#error OS_CLASS not defined
 #endif // OS_CLASS
 
 const char osClass[] = OS_CLASS;
-
-/* loadlib (library)
-Find a loadable library by name and load it.
-*/
-
 char epicsRelease[80];
 char *targetArch;
 
@@ -112,20 +72,6 @@ void set_require_env() {
   putenvprintf("EPICS_HOST_ARCH=%s", targetArch);
   putenvprintf("EPICS_RELEASE=%s", epicsRelease);
   putenvprintf("OS_CLASS=%s", osClass);
-}
-
-static HMODULE loadlib(const char *libname) {
-  HMODULE libhandle = NULL;
-
-  if (libname == NULL) {
-    errlogPrintf("missing library name\n");
-    return NULL;
-  }
-
-  if ((libhandle = dlopen(libname, RTLD_NOW | RTLD_GLOBAL)) == NULL) {
-    errlogPrintf("Loading %s library failed: %s\n", libname, dlerror());
-  }
-  return libhandle;
 }
 
 int setupDbPath(const char *module, const char *dbdir) {
@@ -155,10 +101,6 @@ int setupDbPath(const char *module, const char *dbdir) {
   return 0;
 }
 
-#define MISMATCH -1
-#define MATCH 1
-#define HIGHER 3
-
 /* require (module)
 Look if module is already loaded.
 If module is not yet loaded load the library with ld,
@@ -176,8 +118,8 @@ int require(const char *module) {
   int status = 0;
 
   if (module == NULL) {
-    printf("Usage: require \"<module>\" [, \"<version>\" ]\n");
-    printf("Loads " PREFIX "<module>" INFIX EXT " and <libname>.dbd\n");
+    printf("Usage: require \"<module>\"\n");
+    printf("Loads " PREFIX "<module>" EXT " and <libname>.dbd\n");
     printf("And calls <module>_registerRecordDeviceDriver\n");
     return -1;
   }
@@ -293,23 +235,6 @@ static const iocshFuncDef requireDef = {
 
 static void requireFunc(const iocshArgBuf *args) { require(args[0].sval); }
 
-static const iocshFuncDef libversionShowDef = {
-    "libversionShow", 1,
-    (const iocshArg *[]){
-        &(iocshArg){"outputfile", iocshArgString},
-    }};
-
-static void libversionShowFunc(const iocshArgBuf *args) {
-  libversionShow(args[0].sval);
-}
-
-static const iocshFuncDef ldDef = {"ld", 1,
-                                   (const iocshArg *[]){
-                                       &(iocshArg){"library", iocshArgString},
-                                   }};
-
-static void ldFunc(const iocshArgBuf *args) { loadlib(args[0].sval); }
-
 static const iocshFuncDef pathAddDef = {
     "pathAdd", 2,
     (const iocshArg *[]){
@@ -326,8 +251,6 @@ static void requireRegister(void) {
   if (firstTime) {
     firstTime = 0;
     iocshRegister(&requireDef, requireFunc);
-    iocshRegister(&libversionShowDef, libversionShowFunc);
-    iocshRegister(&ldDef, ldFunc);
     iocshRegister(&pathAddDef, pathAddFunc);
 
     set_require_env();

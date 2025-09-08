@@ -15,7 +15,6 @@ struct linkedList {
   unsigned int size;
 };
 
-int libversionShow(const char *outfile);
 void fillModuleListRecord(initHookState state);
 const char *getLibVersion(const char *libname);
 const char *getLibLocation(const char *libname);
