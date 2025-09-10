@@ -24,7 +24,6 @@ char *realpathSeparator(const char *location) {
     return NULL;
   }
   size = strnlen(buffer, PATH_MAX);
-  /* linux realpath removes trailing slash */
   if (buffer[size - 1] != OSI_PATH_SEPARATOR[0]) {
     char *tmp = realloc(buffer, size + sizeof(OSI_PATH_SEPARATOR));
     if (!tmp) {
@@ -80,7 +79,6 @@ void pathAdd(const char *varname, const char *dirname) {
     return;
   }
 
-  /* add directory to front */
   old_path = getenv(varname);
   if (old_path == NULL) {
     putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
@@ -88,11 +86,9 @@ void pathAdd(const char *varname, const char *dirname) {
     size_t len = strnlen(dirname, PATH_MAX);
     char *p = NULL;
 
-    /* skip over "." at the beginning */
     if (old_path[0] == '.' && old_path[1] == OSI_PATH_LIST_SEPARATOR[0])
       old_path += 2;
 
-    /* If directory is already in path, move it to front */
     p = old_path;
     while ((p = strstr(p, dirname)) != NULL) {
       if ((p == old_path || *(p - 1) == OSI_PATH_LIST_SEPARATOR[0]) &&
@@ -107,7 +103,7 @@ void pathAdd(const char *varname, const char *dirname) {
       }
       p += len;
     }
-    if (p == NULL) /* add new directory to the front (after "." )*/
+    if (p == NULL)
       putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s" OSI_PATH_LIST_SEPARATOR
                    "%s",
                    varname, dirname, old_path);

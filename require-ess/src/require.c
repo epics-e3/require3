@@ -74,6 +74,12 @@ void set_require_env() {
   putenvprintf("OS_CLASS=%s", osClass);
 }
 
+/* Set up db search path environment variables
+ * <module>_DB             template path of <module>
+ * TEMPLATES               template path of the current module (overwritten)
+ * EPICS_DB_INCLUDE_PATH   template path of all loaded modules (last in front
+ * after ".")
+ */
 int setupDbPath(const char *module, const char *dbdir) {
   char *absdir =
       realpathSeparator(dbdir); /* so we can change directory later safely */
@@ -83,13 +89,6 @@ int setupDbPath(const char *module, const char *dbdir) {
   }
 
   debug("require: found template directory %s\n", absdir);
-
-  /* set up db search path environment variables
-    <module>_DB             template path of <module>
-    TEMPLATES               template path of the current module (overwritten)
-    EPICS_DB_INCLUDE_PATH   template path of all loaded modules (last in front
-    after ".")
-  */
 
   putenvprintf("%s_DB=%s", module, absdir);
   putenvprintf("TEMPLATES=%s", absdir);
@@ -103,15 +102,12 @@ int setupDbPath(const char *module, const char *dbdir) {
 
 /* require (module)
 Look if module is already loaded.
-If module is not yet loaded load the library with ld,
-load <module>.dbd with dbLoadDatabase (if file exists)
-and call <module>_registerRecordDeviceDriver function.
+If module is not yet loaded load the library with ld
+and check if module was build with init.cpp.
 
 If require is called from the iocsh before iocInit and fails,
 it calls epicsExit to abort the application.
 */
-
-/* wrapper to abort statup script */
 static int require_priv(const char *module);
 
 int require(const char *module) {
@@ -138,7 +134,6 @@ int require(const char *module) {
   if (interruptAccept)
     return status;
 
-  /* require failed in startup script before iocInit */
   errlogPrintf("Aborting startup script\n");
   epicsExit(1);
   return status;
@@ -185,7 +180,7 @@ off_t fileSize(const char *filename) {
 }
 
 /*
- * Loads the module .dbd file and runs registerRecordDeviceDriver.
+ * Loads the module.dbd file.
  */
 int load_module_dbd(char *filename, const char *module, int filesize) {
   /* load dbd file */
@@ -209,7 +204,6 @@ static int require_priv(const char *module) {
   char *dlsym_error = NULL;
 
   debug("require: module=\"%s\"\n", module);
-  /* Load required librarie */
   debug("require: Load the library if file exists\n");
   snprintf(lib, PATH_MAX, PREFIX "%s" EXT, module);
   lib_handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);

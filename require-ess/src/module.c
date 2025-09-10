@@ -52,12 +52,10 @@ static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
   return 0;
 }
 
-/*
-We can fill the records only after they have been initialized, at
-initHookAfterFinishDevSup. But use double indirection here because in 3.13 we
-must wait until initHooks is loaded before we can register the hook.
-*/
 void fillModuleListRecord(initHookState state) {
+  /* We can fill the records only after they have been initialized, at
+   * initHookAfterFinishDevSup.
+   */
   if (state != initHookAfterFinishDevSup)
     return;
 
@@ -221,14 +219,14 @@ int registerModule(const char *moduleName, const char *version,
                mylocation) < 0)
     return 0;
   /*
-     Require DB has the following four PVs:
-     - $(REQUIRE_IOC):$(MODULE)Version
-     - $(REQUIRE_IOC):ModuleVersions
-     - $(REQUIRE_IOC):Versions
-     - $(REQUIRE_IOC):Modules
-     We reserved 30 chars for :$(MODULE)Version, so MODULE has the maximum 24
-     chars. And we've reserved for 30 chars for $(REQUIRE_IOC). So, the whole PV
-     and record name in moduleversion.template has 59 + 1.
+   * Require DB has the following four PVs:
+   * - $(REQUIRE_IOC):$(MODULE)Version
+   * - $(REQUIRE_IOC):ModuleVersions
+   * - $(REQUIRE_IOC):Versions
+   * - $(REQUIRE_IOC):Modules
+   * We reserved 30 chars for :$(MODULE)Version, so MODULE has the maximum 24
+   * chars. And we've reserved for 30 chars for $(REQUIRE_IOC). So, the whole PV
+   * and record name in moduleversion.template has 59 + 1.
    */
   if (asprintf(&argstring,
                "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
