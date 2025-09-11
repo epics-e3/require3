@@ -2,7 +2,7 @@
 TOP = ../..
 include $(TOP)/configure/CONFIG
 
-LIBRARY_IOC = require
+LOADABLE_LIBRARY = require
 
 require_SRCS += require_registerRecordDeviceDriver.cpp
 
@@ -11,12 +11,8 @@ require_SRCS += afterInit.c
 require_SRCS += common.c
 require_SRCS += module.c
 
-require_SRCS += dbLoadTemplate.c
-
 DBD += require.dbd
 DBD += afterInit.dbd
-
-DBD += dbLoadTemplate.dbd
 
 INC += require.h
 

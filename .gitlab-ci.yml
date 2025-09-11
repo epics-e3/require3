@@ -1,6 +1,11 @@
 ---
 variables:
-  E3_CI_MODIFIED_BASE_VERSION: "7.0.8.1-68332f4-20240917T140931" # strip the first part of the tag name - see E3-1529
+  GIT_SUBMODULE_STRATEGY: "recursive"
+  SETUP_PATH: ".ci-local:.ci"
+  BASE_RECURSIVE: "NO"
+  APT: "libreadline6-dev libncurses5-dev perl clang g++-mingw-w64-i686 g++-mingw-w64-x86-64 qemu-system-x86 re2c"
+  CMP: "gcc"
+  BGFC: "default"
 
 include:
   - project: "ics-infrastructure/gitlab-ci-yml"
@@ -22,29 +27,56 @@ shellcheck:
   script:
     # anything ending on .*sh, should be shell script
     - |
-      find . -name .git -type d -prune -o -type f -name \*.\*sh -print0 |
+      find . -name .git -type d -prune -o -name .ci -type d -prune -o -type f -name \*.\*sh -print0 |
       xargs -0 -P $(nproc) -r -n1 shellcheck --format=gcc -x
     # magic, any file with a valid shebang should be scanned aswell
     - |
-      find . -name .git -type d -prune -o -type f -regex '.*/[^.]*$' -print0 |
+      find . -name .git -type d -prune -o -name .ci -type d -prune -o -type f -regex '.*/[^.]*$' -print0 |
       xargs -0 -P $(nproc) -r -n1 sh -c 'FILE="$0"; if head -n1 "$FILE" |grep -q "^#\\! \?/.\+\(ba|d|k\)\?sh" ; then shellcheck "$FILE" --format=gcc -x ; else /bin/true ; fi '
 
 shfmt:
-  image: mvdan/shfmt:v3.2.0-alpine
+  image: mvdan/shfmt:v3.12.0-alpine
   stage: check
   before_script:
     - shfmt -version
   script:
-    - shfmt -i 2 -ci -d . # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
+    - shfmt -d --apply-ignore . # 2 spaces indent, indent switch-case statements, show diff (don't apply change)
 
-build:
-  image: registry.esss.lu.se/ics-docker/centos-e3:latest
+.build:
   stage: build
+  image: ubuntu:22.04
   before_script:
-    - curl -L -o epics.tar.gz https://artifactory.esss.lu.se/artifactory/e3/epics-base-$E3_CI_MODIFIED_BASE_VERSION.tar.gz
-    - tar -zxvf epics.tar.gz
-    - export BASE_PATH=$(ls -d $(pwd)/epics/base-*)
-    - export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${BASE_PATH}/lib/linux-x86_64"
-    - echo "EPICS_BASE:=${BASE_PATH}" >> configure/RELEASE.local
+    - apt-get update -qq && apt-get install -y -qq build-essential git python3 curl p7zip-full libevent-dev
+    - python3 .ci/cue.py prepare
   script:
-    - make
+    - python3 .ci/cue.py build
+    - python3 .ci/cue.py test
+    - python3 .ci/cue.py test-results
+
+gcc_default:
+  extends: .build
+  variables:
+    BASE: "7.0"
+    MODULES: "pvxs"
+    PVXS: "1.4.0"
+    PVXS_REPOOWNER: epics-base
+    VV: "1"
+
+clang_default:
+  extends: .build
+  variables:
+    CMP: "clang"
+    BASE: "7.0"
+    MODULES: "pvxs"
+    PVXS: "1.4.0"
+    PVXS_REPOOWNER: epics-base
+    VV: "1"
+
+driver_makefile_build:
+  extends: .build
+  variables:
+    MODULES: "pvxs"
+    PVXS: "1.4.0"
+    PVXS_REPOOWNER: epics-base
+    VV: "1"
+    EXTRA: "EPICS_MODULES=/tmp MODULE=require -f require.Makefile build install"

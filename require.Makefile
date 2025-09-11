@@ -32,9 +32,6 @@ SOURCES += $(APPSRC)/module.c
 DBDS    += $(APPSRC)/require.dbd
 DBDS    += $(APPSRC)/afterInit.dbd
 
-SOURCES += $(APPSRC)/dbLoadTemplate.y
-DBDS    += $(APPSRC)/dbLoadTemplate.dbd
-
 HEADERS += $(APPSRC)/require.h
 
 # We need to find the Linux link.h before the EPICS link.h
