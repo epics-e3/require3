@@ -28,7 +28,7 @@ __attribute__((visibility("default"), used)) char __module_lib_version[] =
 static int __module_library_init() {
   char filename[PATH_MAX] = {0};
   const char *driverpath = NULL;
-  driverpath = getenv("EPICS_DRIVER_PATH");
+  driverpath = getenv("REQUIRE_MODULE_PATH");
   if (driverpath == NULL)
     driverpath = ".";
 
