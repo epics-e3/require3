@@ -104,12 +104,12 @@ int setup_db_path(const char *module, const char *db_directory) {
 }
 
 /* require (module)
-Look if module is already loaded.
-If module is not yet loaded load the library with ld
-and check if module was build with init.cpp.
+ * Look if module is already loaded.
+ * If module is not yet loaded load the library with ld
+ * and check if module was build with init.cpp.
 
-If require is called from the iocsh before iocInit and fails,
-it calls epicsExit to abort the application.
+ * If require is called from the iocsh before iocInit and fails,
+ * it calls epicsExit to abort the application.
 */
 static int require_priv(const char *module);
 
@@ -195,7 +195,6 @@ int load_module_dbd(char *filename, const char *module, int filesize) {
       return -1;
     }
   } else {
-    /* no dbd file, but that might be OK */
     printf("%s has no dbd file\n", module);
   }
   return 0;
