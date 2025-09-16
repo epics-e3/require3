@@ -37,7 +37,7 @@ int requireDebug;
 #define PATH_MAX 1024
 #endif // darwin
 #else
-#error Only support Unix based distros
+#error Distro not supported
 #endif
 
 #define PREFIX "lib"
