@@ -113,8 +113,6 @@ ENV=
 # Don't install anything (different from default EPICS make rules).
 default: build
 
-prebuild:
-
 clean:
 	$(RMDIR) O.*
 
