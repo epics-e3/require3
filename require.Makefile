@@ -24,6 +24,7 @@ include $(where_am_I)/require-ess/tools/driver.makefile
 APP := require-ess
 APPSRC := $(APP)/src
 APPDB := $(APP)/Db
+APPTOOLS := $(APP)/tools
 
 SOURCES += $(APPSRC)/require.c
 SOURCES += $(APPSRC)/afterInit.c
@@ -35,12 +36,18 @@ DBDS    += $(APPSRC)/afterInit.dbd
 HEADERS += $(APPSRC)/require.h
 HEADERS += $(APPSRC)/module.h
 
+BINS += $(APPTOOLS)/iocsh
+BINS += $(APPTOOLS)/iocsh_utils.py
+BINS += $(APPTOOLS)/iocsh_complete.bash
+
+SCRIPTS += $(APPTOOLS)/driver.makefile
+SCRIPTS += $(APPTOOLS)/iocsh_epics.supp
+
+CONFIGS += configure/CONFIG_REQUIRE
+
 # We need to find the Linux link.h before the EPICS link.h
 USR_INCLUDES_Linux=-idirafter $(EPICS_BASE)/include
 
 USR_CFLAGS += -std=gnu99
 
 TEMPLATES += $(APPDB)/moduleversion.template
-
-vpath dbLoadTemplate_lex.l ../$(APPSRC)
-dbLoadTemplate.c: ../$(APPSRC)/dbLoadTemplate_lex.c ../$(APPSRC)/dbLoadTemplate.h

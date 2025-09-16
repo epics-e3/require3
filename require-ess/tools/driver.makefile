@@ -54,6 +54,12 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 # Get the name of the Makefile that included this file.
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
+REQUIRE_CONFIG=$(firstword $(wildcard $(CURDIR)/configure/CONFIG_REQUIRE \
+                 ${E3_REQUIRE_LOCATION}/cfg/CONFIG_REQUIRE))
+include ${REQUIRE_CONFIG}
+export INSTALL_PREFIX
+export EPICS_MODULES_LOCATION
+
 # These are the targets that we will pass through to the next stages of require's
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
@@ -72,18 +78,11 @@ EPICSVERSION:=$(EPICS_BASE_VERSION)
 BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
-# $PREFIX can be used to refer to dependencies installed by conda
-# (like -I$(PREFIX)/include/libxml2)
-# Set PREFIX to
-# - PREFIX if set (when using conda-build)
-# - CONDA_PREFIX otherwise (when compiling locally in a conda env)
-PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
-
 MODULE=
 PROJECT=
 PRJ := $(strip $(or ${MODULE},${PROJECT}))
 
-MODULE_LOCATION = $(PREFIX)/epics-modules/$(PRJ)
+MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
 # Override config here:
 -include ${MAKEHOME}/config
@@ -332,15 +331,15 @@ $(foreach m, $(wildcard ${EPICS_MODULES}/*/*),$(eval $(patsubst $(EPICS_MODULES)
 define ADD_INCLUDES_TEMPLATE
 INSTALL_INCLUDES += $$(patsubst %,-I${2}/${1}/%/include,$${${1}_VERSION})
 endef
-$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${PREFIX}/epics/*))) ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(PREFIX)/epics)))
+$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES_LOCATION}/*))) ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(EPICS_MODULES_LOCATION))))
 
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
-INSTALL_BIN     = ${PREFIX}/bin
-INSTALL_LIB     = ${PREFIX}/lib
-INSTALL_INCLUDE = ${PREFIX}/include
-INSTALL_DEP     = ${INSTALL_REV}
+INSTALL_BIN     = ${INSTALL_PREFIX}/bin
+INSTALL_LIB     = ${INSTALL_PREFIX}/lib
+INSTALL_INCLUDE = ${INSTALL_PREFIX}/include
+INSTALL_DEP     = ${INSTALL_REV}/dep
 INSTALL_DBD     = ${INSTALL_REV}/dbd
 INSTALL_DB      = ${INSTALL_REV}/db
 INSTALL_CONFIG  = ${INSTALL_REV}/cfg
