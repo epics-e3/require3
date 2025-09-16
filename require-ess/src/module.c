@@ -22,37 +22,38 @@
 
 unsigned long int bufferSize = 0;
 
-struct linkedList linkedlist = {0};
+struct linkedList linked_list = {0};
 
-static int getRecordHandle(const char *namepart, short type, DBADDR *paddr) {
-  char recordname[PVNAME_STRINGSZ] = {0};
+static int get_record_handle(const char *namepart, short type, DBADDR *paddr) {
+  char record_name[PVNAME_STRINGSZ] = {0};
 
-  sprintf(recordname, "%.*s%s",
+  sprintf(record_name, "%.*s%s",
           (int)(PVNAME_STRINGSZ - strnlen(namepart, PVNAME_STRINGSZ - 1) - 1),
           getenv("REQUIRE_IOC"), namepart);
 
-  if (dbNameToAddr(recordname, paddr) != 0) {
-    errlogPrintf("require:getRecordHandle : record %s not found\n", recordname);
+  if (dbNameToAddr(record_name, paddr) != 0) {
+    errlogPrintf("require:get_record_handle : record %s not found\n",
+                 record_name);
     return -1;
   }
   if (paddr->field_type != type) {
-    errlogPrintf(
-        "require:getRecordHandle : record %s has wrong type %s instead of %s\n",
-        recordname, pamapdbfType[paddr->field_type].strvalue,
-        pamapdbfType[type].strvalue);
+    errlogPrintf("require:get_record_handle : record %s has wrong type %s "
+                 "instead of %s\n",
+                 record_name, pamapdbfType[paddr->field_type].strvalue,
+                 pamapdbfType[type].strvalue);
     return -1;
   }
   if (paddr->pfield == NULL) {
     errlogPrintf(
-        "require:getRecordHandle : record %s has not yet allocated memory\n",
-        recordname);
+        "require:get_record_handle : record %s has not yet allocated memory\n",
+        record_name);
     return -1;
   }
 
   return 0;
 }
 
-void fillModuleListRecord(initHookState state) {
+void fill_module_list_record(initHookState state) {
   /* We can fill the records only after they have been initialized, at
    * initHookAfterFinishDevSup.
    */
@@ -65,18 +66,18 @@ void fillModuleListRecord(initHookState state) {
   int i = 0;
   int c = 0;
 
-  getRecordHandle(":Modules", DBF_STRING, &modules);
-  getRecordHandle(":Versions", DBF_STRING, &versions);
-  getRecordHandle(":ModuleVersions", DBF_CHAR, &modver);
+  get_record_handle(":Modules", DBF_STRING, &modules);
+  get_record_handle(":Versions", DBF_STRING, &versions);
+  get_record_handle(":ModuleVersions", DBF_CHAR, &modver);
 
   bufferModules =
-      (char *)calloc(MAX_STRING_SIZE * linkedlist.size, sizeof(char));
+      (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
   bufferVersions =
-      (char *)calloc(MAX_STRING_SIZE * linkedlist.size, sizeof(char));
+      (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
   bufferModver =
-      (char *)calloc(MAX_STRING_SIZE * linkedlist.size, sizeof(char));
+      (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
 
-  for (m = linkedlist.head, i = 0; m != NULL; m = m->next, i++) {
+  for (m = linked_list.head, i = 0; m != NULL; m = m->next, i++) {
     debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
           MAX_STRING_SIZE - 1, m->name);
     sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
@@ -90,10 +91,10 @@ void fillModuleListRecord(initHookState state) {
     c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
   }
 
-  if (dbPut(&modules, DBF_STRING, bufferModules, linkedlist.size) != 0) {
+  if (dbPut(&modules, DBF_STRING, bufferModules, linked_list.size) != 0) {
     errlogPrintf("require: Error to put Modules\n");
   }
-  if (dbPut(&versions, DBF_STRING, bufferVersions, linkedlist.size) != 0) {
+  if (dbPut(&versions, DBF_STRING, bufferVersions, linked_list.size) != 0) {
     errlogPrintf("require: Error to put Versions\n");
   }
   if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
@@ -105,9 +106,9 @@ void fillModuleListRecord(initHookState state) {
   free(bufferModver);
 }
 
-const char *getLibVersion(const char *libname) {
+const char *get_lib_version(const char *libname) {
   struct module *m = NULL;
-  for (m = linkedlist.head; m; m = m->next) {
+  for (m = linked_list.head; m; m = m->next) {
     if (strcmp(m->name, libname) == 0) {
       return m->version;
     }
@@ -115,9 +116,9 @@ const char *getLibVersion(const char *libname) {
   return NULL;
 }
 
-const char *getLibLocation(const char *libname) {
+const char *get_lib_location(const char *libname) {
   struct module *m = NULL;
-  for (m = linkedlist.head; m; m = m->next) {
+  for (m = linked_list.head; m; m = m->next) {
     if (strcmp(m->name, libname) == 0) {
       return m->path;
     }
@@ -125,21 +126,21 @@ const char *getLibLocation(const char *libname) {
   return NULL;
 }
 
-int isModuleLoaded(const char *libname) {
+int is_module_loaded(const char *libname) {
   struct module *m = NULL;
-  for (m = linkedlist.head; m; m = m->next) {
+  for (m = linked_list.head; m; m = m->next) {
     if (strcmp(m->name, libname) == 0)
       return TRUE;
   }
   return FALSE;
 }
 
-int registerModule(const char *moduleName, const char *version,
-                   const char *location) {
-  char *absLocation = NULL;
-  char *absLocationRequire = NULL;
-  char *argstring = NULL;
-  const char *mylocation = NULL;
+int register_module(const char *moduleName, const char *version,
+                    const char *location) {
+  char *abslute_path = NULL;
+  char *require_absolute_path = NULL;
+  char *template_arguments = NULL;
+  const char *require_custom_path = NULL;
 
   /* require should be called only before iocInit. */
   if (interruptAccept)
@@ -153,9 +154,9 @@ int registerModule(const char *moduleName, const char *version,
     version = "";
 
   if (location) {
-    absLocation = realpathSeparator(location);
+    abslute_path = real_path_separator(location);
   }
-  if (!absLocation) {
+  if (!abslute_path) {
     return -1;
   }
   struct module *module = NULL;
@@ -182,11 +183,11 @@ int registerModule(const char *moduleName, const char *version,
   strcpy(module->version, version);
 
   if (!(module->path =
-            calloc(strnlen(absLocation, PATH_MAX) + 1, sizeof(char)))) {
+            calloc(strnlen(abslute_path, PATH_MAX) + 1, sizeof(char)))) {
     goto free_version;
   }
-  strcpy(module->path, absLocation ? absLocation : "");
-  free(absLocation);
+  strcpy(module->path, abslute_path ? abslute_path : "");
+  free(abslute_path);
 
   /* This bufferSize is used to calculate the ModuleVersions buffer size.  It
    * will be updated every time we call dbLoadRecords at the end of this
@@ -194,29 +195,29 @@ int registerModule(const char *moduleName, const char *version,
    * being written in fillModuleListRecord.  So the magic number here is related
    * to that string format.*/
   bufferSize += nameSize + versionSize + 2;
-  if (linkedlist.size == 0) {
-    linkedlist.head = module;
+  if (linked_list.size == 0) {
+    linked_list.head = module;
   } else {
-    linkedlist.tail->next = module;
+    linked_list.tail->next = module;
   }
-  linkedlist.tail = module;
-  linkedlist.size++;
+  linked_list.tail = module;
+  linked_list.size++;
 
-  putenvprintf("MODULE=%s", module->name);
-  putenvprintf("%s_VERSION=%s", module->name, module->version);
+  put_env_printf("MODULE=%s", module->name);
+  put_env_printf("%s_VERSION=%s", module->name, module->version);
   if (location) {
-    putenvprintf("%s_DIR=%s", module->name, module->path);
-    pathAdd("SCRIPT_PATH", module->path);
+    put_env_printf("%s_DIR=%s", module->name, module->path);
+    path_add("SCRIPT_PATH", module->path);
   }
 
   /* create a record with the version string */
-  mylocation = getenv("require_DIR");
-  if (mylocation == NULL)
+  require_custom_path = getenv("require_DIR");
+  if (require_custom_path == NULL)
     return 0;
-  if (asprintf(&absLocationRequire,
+  if (asprintf(&require_absolute_path,
                "%s" OSI_PATH_SEPARATOR "db" OSI_PATH_SEPARATOR
                "moduleversion.template",
-               mylocation) < 0)
+               require_custom_path) < 0)
     return 0;
   /*
    * Require DB has the following four PVs:
@@ -228,18 +229,18 @@ int registerModule(const char *moduleName, const char *version,
    * chars. And we've reserved for 30 chars for $(REQUIRE_IOC). So, the whole PV
    * and record name in moduleversion.template has 59 + 1.
    */
-  if (asprintf(&argstring,
+  if (asprintf(&template_arguments,
                "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
                "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
                getenv("REQUIRE_IOC"), module->name, module->version,
-               linkedlist.size, bufferSize) < 0) {
+               linked_list.size, bufferSize) < 0) {
     errlogPrintf("Error asprintf failed\n");
     return 0;
   }
   printf("Loading module info records for %s\n", module->name);
-  dbLoadRecords(absLocationRequire, argstring);
-  free(argstring);
-  free(absLocationRequire);
+  dbLoadRecords(require_absolute_path, template_arguments);
+  free(template_arguments);
+  free(require_absolute_path);
   return 0;
 
 free_version:

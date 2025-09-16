@@ -5,8 +5,8 @@
 
 #include <ctype.h>
 #include <dbAccess.h>
-#include <dlfcn.h>
 #include <dirent.h>
+#include <dlfcn.h>
 #include <epicsExit.h>
 #include <epicsExport.h>
 #include <epicsStdio.h>
@@ -54,24 +54,27 @@ int requireDebug;
 #ifndef OS_CLASS
 #error OS_CLASS not defined
 #endif // OS_CLASS
+#else
+#error Only unix systems are supported
+#endif
 
-const char osClass[] = OS_CLASS;
-char epicsRelease[80];
-char *targetArch;
+const char os_class[] = OS_CLASS;
+char epics_release[80];
+char *target_arch;
 
 void set_require_env() {
   char *epics_version_major = getenv("EPICS_VERSION_MAJOR");
   char *epics_version_middle = getenv("EPICS_VERSION_MIDDLE");
   char *epics_version_minor = getenv("EPICS_VERSION_MINOR");
 
-  sprintf(epicsRelease, "%s.%s.%s", epics_version_major, epics_version_middle,
+  sprintf(epics_release, "%s.%s.%s", epics_version_major, epics_version_middle,
           epics_version_minor);
-  targetArch = getenv("EPICS_HOST_ARCH");
+  target_arch = getenv("EPICS_HOST_ARCH");
 
-  putenvprintf("T_A=%s", targetArch);
-  putenvprintf("EPICS_HOST_ARCH=%s", targetArch);
-  putenvprintf("EPICS_RELEASE=%s", epicsRelease);
-  putenvprintf("OS_CLASS=%s", osClass);
+  put_env_printf("T_A=%s", target_arch);
+  put_env_printf("EPICS_HOST_ARCH=%s", target_arch);
+  put_env_printf("EPICS_RELEASE=%s", epics_release);
+  put_env_printf("OS_CLASS=%s", os_class);
 }
 
 /* Set up db search path environment variables
@@ -80,23 +83,23 @@ void set_require_env() {
  * EPICS_DB_INCLUDE_PATH   template path of all loaded modules (last in front
  * after ".")
  */
-int setupDbPath(const char *module, const char *dbdir) {
-  char *absdir =
-      realpathSeparator(dbdir); /* so we can change directory later safely */
-  if (absdir == NULL) {
-    debug("require: cannot resolve %s\n", dbdir);
+int setup_db_path(const char *module, const char *db_directory) {
+  char *absolute_path = real_path_separator(
+      db_directory); /* so we can change directory later safely */
+  if (absolute_path == NULL) {
+    debug("require: cannot resolve %s\n", db_directory);
     return -1;
   }
 
-  debug("require: found template directory %s\n", absdir);
+  debug("require: found template directory %s\n", absolute_path);
 
-  putenvprintf("%s_DB=%s", module, absdir);
-  putenvprintf("TEMPLATES=%s", absdir);
-  if (isModuleLoaded("stream")) {
-    pathAdd("STREAM_PROTOCOL_PATH", absdir);
+  put_env_printf("%s_DB=%s", module, absolute_path);
+  put_env_printf("TEMPLATES=%s", absolute_path);
+  if (is_module_loaded("stream")) {
+    path_add("STREAM_PROTOCOL_PATH", absolute_path);
   }
-  pathAdd("EPICS_DB_INCLUDE_PATH", absdir);
-  free(absdir);
+  path_add("EPICS_DB_INCLUDE_PATH", absolute_path);
+  free(absolute_path);
   return 0;
 }
 
@@ -120,6 +123,7 @@ int require(const char *module) {
     return -1;
   }
 
+  /* interruptAccept is a global variable from EPICS Base*/
   if (interruptAccept) {
     errlogPrintf("Error! Modules can only be loaded before iocIint!\n");
     return -1;
@@ -139,7 +143,7 @@ int require(const char *module) {
   return status;
 }
 
-off_t fileSize(const char *filename) {
+off_t file_size(const char *filename) {
   struct stat filestat = {0};
   if (stat(filename, &filestat) != 0) {
     debug("require: %s does not exist\n", filename);
@@ -221,34 +225,34 @@ static int require_priv(const char *module) {
   return 0;
 }
 
-static const iocshFuncDef requireDef = {
+static const iocshFuncDef require_def = {
     "require", 1,
     (const iocshArg *[]){
         &(iocshArg){"module", iocshArgString},
     }};
 
-static void requireFunc(const iocshArgBuf *args) { require(args[0].sval); }
+static void require_func(const iocshArgBuf *args) { require(args[0].sval); }
 
-static const iocshFuncDef pathAddDef = {
+static const iocshFuncDef path_add_def = {
     "pathAdd", 2,
     (const iocshArg *[]){
         &(iocshArg){"ENV_VARIABLE", iocshArgString},
         &(iocshArg){"directory", iocshArgString},
     }};
 
-static void pathAddFunc(const iocshArgBuf *args) {
-  pathAdd(args[0].sval, args[1].sval);
+static void path_add_func(const iocshArgBuf *args) {
+  path_add(args[0].sval, args[1].sval);
 }
 
 static void requireRegister(void) {
-  static int firstTime = 1;
-  if (firstTime) {
-    firstTime = 0;
-    iocshRegister(&requireDef, requireFunc);
-    iocshRegister(&pathAddDef, pathAddFunc);
+  static int first_time = 1;
+  if (first_time) {
+    first_time = 0;
+    iocshRegister(&require_def, require_func);
+    iocshRegister(&path_add_def, path_add_func);
 
     set_require_env();
-    initHookRegister(fillModuleListRecord);
+    initHookRegister(fill_module_list_record);
   }
 }
 

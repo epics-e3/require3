@@ -15,11 +15,11 @@ struct linkedList {
   unsigned int size;
 };
 
-void fillModuleListRecord(initHookState state);
-const char *getLibVersion(const char *libname);
-const char *getLibLocation(const char *libname);
-int isModuleLoaded(const char *libname);
-int registerModule(const char *module, const char *version,
-                   const char *location);
+void fill_module_list_record(initHookState state);
+const char *get_lib_version(const char *libname);
+const char *get_lib_location(const char *libname);
+int is_module_loaded(const char *libname);
+int register_module(const char *module, const char *version,
+                    const char *location);
 
 #endif /*__MODULE_H__*/

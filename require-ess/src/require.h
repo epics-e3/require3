@@ -19,23 +19,23 @@ extern "C" {
 #define TEMPLATEDIR "db"
 #define LIBRELEASE "LibRelease"
 
-#define fileExists(filename) (fileSize(filename) >= 0)
-#define fileNotEmpty(filename) (fileSize(filename) > 0)
+#define FILE_EXISTS(filename) (file_size(filename) >= 0)
+#define FILE_NOT_EXISTS(filename) (file_size(filename) > 0)
 #define TRY_FILE(offs, ...)                                                    \
   (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) &&                  \
-   fileExists(filename))
+   FILE_EXISTS(filename))
 
 #define TRY_NONEMPTY_FILE(offs, ...)                                           \
   (snprintf(filename + offs, PATH_MAX - offs, __VA_ARGS__) &&                  \
-   fileNotEmpty(filename))
+   FILE_NOT_EXISTS(filename))
 
-off_t fileSize(const char *filename);
-int setupDbPath(const char *module, const char *dbdir);
+off_t file_size(const char *filename);
+int setup_db_path(const char *module, const char *dbdir);
 int load_module_dbd(char *filename, const char *module, int filesize);
 int require(const char *libname);
-int putenvprintf(const char *format, ...)
+int put_env_printf(const char *format, ...)
     __attribute__((__format__(__printf__, 1, 2)));
-void pathAdd(const char *varname, const char *dirname);
+void path_add(const char *varname, const char *dirname);
 
 #ifdef __cplusplus
 }

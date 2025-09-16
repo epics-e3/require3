@@ -27,14 +27,14 @@ __attribute__((visibility("default"), used)) char __module_lib_version[] =
     LIBVERSION;
 static int __module_library_init() {
   char filename[PATH_MAX] = {0};
-  const char *driverpath = NULL;
-  driverpath = getenv("REQUIRE_MODULE_PATH");
-  if (driverpath == NULL)
-    driverpath = ".";
+  const char *modules_path = NULL;
+  modules_path = getenv("REQUIRE_MODULE_PATH");
+  if (modules_path == NULL)
+    modules_path = ".";
 
-  snprintf(filename, PATH_MAX, "%s" MODULE_PATH, driverpath);
-  int dirlen = strnlen(filename, PATH_MAX);
-  load_module_dbd(filename, MODULE_NAME, dirlen);
+  snprintf(filename, PATH_MAX, "%s" MODULE_PATH, modules_path);
+  int directory_length = strnlen(filename, PATH_MAX);
+  load_module_dbd(filename, MODULE_NAME, directory_length);
   /* Registration is usually done by <module>_registerRecordDeviceDriver.cpp.
    * However this must be done before iocsh calls the
    * <module>_registerRecordDeviceDriver command. So this needs to be
@@ -44,11 +44,11 @@ static int __module_library_init() {
 
   /* load_module_dbd changes this string, we set it back by seting the end of
    * string. */
-  filename[dirlen] = '\0';
-  registerModule(MODULE_NAME, LIBVERSION, filename);
+  filename[directory_length] = '\0';
+  register_module(MODULE_NAME, LIBVERSION, filename);
 
-  if (!(TRY_FILE(dirlen, TEMPLATEDIR) &&
-        setupDbPath(MODULE_NAME, filename) == 0)) {
+  if (!(TRY_FILE(directory_length, TEMPLATEDIR) &&
+        setup_db_path(MODULE_NAME, filename) == 0)) {
     errlogPrintf("%s could not load templates", MODULE_NAME);
     return -1;
   }

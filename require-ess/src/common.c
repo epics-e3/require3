@@ -15,7 +15,7 @@
 
 #include "common.h"
 
-char *realpathSeparator(const char *location) {
+char *real_path_separator(const char *location) {
   size_t size = 0;
   char *buffer = realpath(location, NULL);
   if (!buffer) {
@@ -36,7 +36,7 @@ char *realpathSeparator(const char *location) {
   return buffer;
 }
 
-int putenvprintf(const char *format, ...) {
+int put_env_printf(const char *format, ...) {
   va_list ap;
   char *var = NULL;
   char *val = NULL;
@@ -46,21 +46,21 @@ int putenvprintf(const char *format, ...) {
     return -1;
   va_start(ap, format);
   if (vasprintf(&var, format, ap) < 0) {
-    errlogPrintf("require putenvprintf %s", strerror(errno));
+    errlogPrintf("require put_env_printf %s", strerror(errno));
     return errno;
   }
   va_end(ap);
 
-  debug("require: putenv(\"%s\")\n", var);
+  debug("require: put_env_printf(\"%s\")\n", var);
 
   val = strchr(var, '=');
   if (!val) {
-    fprintf(stderr, "putenvprintf: string contains no =: %s\n", var);
+    fprintf(stderr, "put_env_printf: string contains no =: %s\n", var);
     status = -1;
   } else {
     *val++ = 0;
     if (setenv(var, val, 1) != 0) {
-      errlogPrintf("require putenvprintf: setenv failed %s", strerror(errno));
+      errlogPrintf("require put_env_printf: setenv failed %s", strerror(errno));
       status = errno;
     }
   }
@@ -68,7 +68,7 @@ int putenvprintf(const char *format, ...) {
   return status;
 }
 
-void pathAdd(const char *varname, const char *dirname) {
+void path_add(const char *varname, const char *dirname) {
   char *old_path = NULL;
 
   if (!varname || !dirname) {
@@ -81,7 +81,7 @@ void pathAdd(const char *varname, const char *dirname) {
 
   old_path = getenv(varname);
   if (old_path == NULL) {
-    putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
+    put_env_printf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
   } else {
     size_t len = strnlen(dirname, PATH_MAX);
     char *p = NULL;
@@ -104,8 +104,8 @@ void pathAdd(const char *varname, const char *dirname) {
       p += len;
     }
     if (p == NULL)
-      putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s" OSI_PATH_LIST_SEPARATOR
-                   "%s",
-                   varname, dirname, old_path);
+      put_env_printf("%s=." OSI_PATH_LIST_SEPARATOR "%s" OSI_PATH_LIST_SEPARATOR
+                     "%s",
+                     varname, dirname, old_path);
   }
 }
