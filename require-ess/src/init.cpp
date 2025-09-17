@@ -39,8 +39,10 @@ static int __module_library_init() {
    * However this must be done before iocsh calls the
    * <module>_registerRecordDeviceDriver command. So this needs to be
    * called here. */
+#ifndef NO_REGISTRATION
   Registration();
   iocshCmd(REGISTER_RECORD);
+#endif
 
   /* load_module_dbd changes this string, we set it back by seting the end of
    * string. */

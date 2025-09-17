@@ -354,9 +354,10 @@ LIBRARY_OBJS = $(strip ${LIBOBJS} $(foreach l,${USR_LIBOBJS},$(addprefix ../,$(f
 MODULELIB = $(if ${LIBRARY_OBJS},${LIB_PREFIX}${PRJ}${SHRLIB_SUFFIX},)
 
 # Handle registry stuff automagically if we have a dbd file.
-# See ${REGISTRYFILE} rule below.
-LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})))
-
+# See ${REGISTRYFILE} rule below. If there is no dbd file to
+# be register add init.cpp object to initialize module within
+# require.
+LIBOBJS += $(if $(MODULEDBD), $(addsuffix $(OBJ),$(basename ${REGISTRYFILE})),init$(OBJ))
 
 LIBOBJS += $(addsuffix $(OBJ),$(notdir $(basename $(filter-out %.$(OBJ) %$(LIB_SUFFIX),$(sort ${SRCS})))))
 LIBOBJS += $(filter /%.$(OBJ) /%$(LIB_SUFFIX),${SRCS})
@@ -374,6 +375,7 @@ HDEPENDS_COMPFLAGS = -c
 MKMF = DO_NOT_USE_MKMF
 CPPFLAGS += -MD
 CPPFLAGS += -DMODULE_NAME='"${MODULE}"' -DLIBVERSION='"${LIBVERSION}"'
+CPPFLAGS += $(if ${MODULEDBD},,-DNO_REGISTRATION)
 CXXFLAGS += -I$(E3_REQUIRE_TOOLS)/
 -include *.d
 
@@ -498,6 +500,7 @@ vpath %.hpp $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(s
 vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
+vpath init.cpp $(E3_REQUIRE_TOOLS)
 
 PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${VERSIONFILE}
 MODULEINFOS:
