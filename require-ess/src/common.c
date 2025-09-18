@@ -72,10 +72,6 @@ void path_add(const char *varname, const char *dirname) {
   char *old_path = NULL;
 
   if (!varname || !dirname) {
-    errlogPrintf("usage: pathAdd \"ENVIRONMENT_VARIABLE\",\"directory\"\n");
-    errlogPrintf("       Adds or moves the directory to the front of the "
-                 "ENVIRONMENT_VARIABLE\n");
-    errlogPrintf("       but after a leading \".\".\n");
     return;
   }
 

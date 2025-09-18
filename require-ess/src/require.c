@@ -232,23 +232,11 @@ static const iocshFuncDef require_def = {
 
 static void require_func(const iocshArgBuf *args) { require(args[0].sval); }
 
-static const iocshFuncDef path_add_def = {
-    "pathAdd", 2,
-    (const iocshArg *[]){
-        &(iocshArg){"ENV_VARIABLE", iocshArgString},
-        &(iocshArg){"directory", iocshArgString},
-    }};
-
-static void path_add_func(const iocshArgBuf *args) {
-  path_add(args[0].sval, args[1].sval);
-}
-
 static void requireRegister(void) {
   static int first_time = 1;
   if (first_time) {
     first_time = 0;
     iocshRegister(&require_def, require_func);
-    iocshRegister(&path_add_def, path_add_func);
 
     set_require_env();
     initHookRegister(fill_module_list_record);
