@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
-* Remove `--realtime` option from `iocsh`
 * Add timestamp for `LoadedModules`
 * Deprecate `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`
 * Switch to using softIocPVX in lieu of softIocPVA (new PVA stack)
@@ -23,6 +22,19 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 
 * Exit `iocsh` if file to run does not exist
 * Add trigger mapping on `LoadedModules` to silence QSRV2 warning
+
+### Removed
+
+* Remove `--realtime` option from `iocsh`
+* Remove functions not used in production: `ld`, `libversionShow` and `pathAdd`.
+* License handling in driver.makefile. This should be provided by a package manager.
+* Remove version handling.
+
+### Other changes
+
+* Change module path.
+* Module libraries are installed on standard directory `/lib`.
+* Rework internal logic for loading modules. See commit 24d41905d46ed4395e0822f2467b54d89437890f.
 
 ## [5.1.1.post1]
 
