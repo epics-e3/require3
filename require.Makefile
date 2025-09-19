@@ -43,6 +43,9 @@ BINS += $(APPTOOLS)/iocsh_complete.bash
 SCRIPTS += $(APPTOOLS)/driver.makefile
 SCRIPTS += $(APPTOOLS)/iocsh_epics.supp
 
+# This file is used by submodules to handle library initialisation when they are loaded
+SCRIPTS += $(APPSRC)/init.cpp
+
 CONFIGS += configure/CONFIG_REQUIRE
 
 # We need to find the Linux link.h before the EPICS link.h

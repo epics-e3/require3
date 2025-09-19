@@ -497,7 +497,11 @@ vpath %.hpp $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(s
 vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
+# For modules that do not have their own dbd file, we need to locate init.cpp
+# from require
+ifneq (,$(strip $(E3_REQUIRE_TOOLS)))
 vpath init.cpp $(E3_REQUIRE_TOOLS)
+endif
 
 PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${VERSIONFILE}
 MODULEINFOS:
