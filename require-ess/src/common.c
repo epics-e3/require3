@@ -15,7 +15,7 @@
 
 #include "common.h"
 
-char *realpathSeparator(const char *location) {
+char *real_path_separator(const char *location) {
   size_t size = 0;
   char *buffer = realpath(location, NULL);
   if (!buffer) {
@@ -24,7 +24,6 @@ char *realpathSeparator(const char *location) {
     return NULL;
   }
   size = strnlen(buffer, PATH_MAX);
-  /* linux realpath removes trailing slash */
   if (buffer[size - 1] != OSI_PATH_SEPARATOR[0]) {
     char *tmp = realloc(buffer, size + sizeof(OSI_PATH_SEPARATOR));
     if (!tmp) {
@@ -37,7 +36,7 @@ char *realpathSeparator(const char *location) {
   return buffer;
 }
 
-int putenvprintf(const char *format, ...) {
+int put_env_printf(const char *format, ...) {
   va_list ap;
   char *var = NULL;
   char *val = NULL;
@@ -47,21 +46,21 @@ int putenvprintf(const char *format, ...) {
     return -1;
   va_start(ap, format);
   if (vasprintf(&var, format, ap) < 0) {
-    errlogPrintf("require putenvprintf %s", strerror(errno));
+    errlogPrintf("require put_env_printf %s", strerror(errno));
     return errno;
   }
   va_end(ap);
 
-  debug("require: putenv(\"%s\")\n", var);
+  debug("require: put_env_printf(\"%s\")\n", var);
 
   val = strchr(var, '=');
   if (!val) {
-    fprintf(stderr, "putenvprintf: string contains no =: %s\n", var);
+    fprintf(stderr, "put_env_printf: string contains no =: %s\n", var);
     status = -1;
   } else {
     *val++ = 0;
     if (setenv(var, val, 1) != 0) {
-      errlogPrintf("require putenvprintf: setenv failed %s", strerror(errno));
+      errlogPrintf("require put_env_printf: setenv failed %s", strerror(errno));
       status = errno;
     }
   }
@@ -69,30 +68,23 @@ int putenvprintf(const char *format, ...) {
   return status;
 }
 
-void pathAdd(const char *varname, const char *dirname) {
+void path_add(const char *varname, const char *dirname) {
   char *old_path = NULL;
 
   if (!varname || !dirname) {
-    errlogPrintf("usage: pathAdd \"ENVIRONMENT_VARIABLE\",\"directory\"\n");
-    errlogPrintf("       Adds or moves the directory to the front of the "
-                 "ENVIRONMENT_VARIABLE\n");
-    errlogPrintf("       but after a leading \".\".\n");
     return;
   }
 
-  /* add directory to front */
   old_path = getenv(varname);
   if (old_path == NULL) {
-    putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
+    put_env_printf("%s=." OSI_PATH_LIST_SEPARATOR "%s", varname, dirname);
   } else {
     size_t len = strnlen(dirname, PATH_MAX);
     char *p = NULL;
 
-    /* skip over "." at the beginning */
     if (old_path[0] == '.' && old_path[1] == OSI_PATH_LIST_SEPARATOR[0])
       old_path += 2;
 
-    /* If directory is already in path, move it to front */
     p = old_path;
     while ((p = strstr(p, dirname)) != NULL) {
       if ((p == old_path || *(p - 1) == OSI_PATH_LIST_SEPARATOR[0]) &&
@@ -107,9 +99,9 @@ void pathAdd(const char *varname, const char *dirname) {
       }
       p += len;
     }
-    if (p == NULL) /* add new directory to the front (after "." )*/
-      putenvprintf("%s=." OSI_PATH_LIST_SEPARATOR "%s" OSI_PATH_LIST_SEPARATOR
-                   "%s",
-                   varname, dirname, old_path);
+    if (p == NULL)
+      put_env_printf("%s=." OSI_PATH_LIST_SEPARATOR "%s" OSI_PATH_LIST_SEPARATOR
+                     "%s",
+                     varname, dirname, old_path);
   }
 }

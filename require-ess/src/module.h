@@ -1,5 +1,6 @@
 #ifndef __MODULE_H__
 #define __MODULE_H__
+#include <initHooks.h>
 
 struct module {
   struct module *next;
@@ -14,10 +15,11 @@ struct linkedList {
   unsigned int size;
 };
 
-const char *getLibVersion(struct linkedList *linkedlist, const char *libname);
-const char *getLibLocation(struct linkedList *linkedlist, const char *libname);
-int isModuleLoaded(struct linkedList *linkedlist, const char *libname);
-int registerModule(struct linkedList *linkedlist, const char *module,
-                   const char *version, const char *location);
+void fill_module_list_record(initHookState state);
+const char *get_lib_version(const char *libname);
+const char *get_lib_location(const char *libname);
+int is_module_loaded(const char *libname);
+int register_module(const char *module, const char *version,
+                    const char *location);
 
 #endif /*__MODULE_H__*/

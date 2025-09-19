@@ -8,7 +8,7 @@ extern int requireDebug;
   if (requireDebug)                                                            \
   printf(__VA_ARGS__)
 
-char *realpathSeparator(const char *location);
-int putenvprintf(const char *format, ...);
-void pathAdd(const char *varname, const char *dirname);
+char *real_path_separator(const char *location);
+int put_env_printf(const char *format, ...);
+void path_add(const char *varname, const char *dirname);
 #endif /*__COMMON_H_*/

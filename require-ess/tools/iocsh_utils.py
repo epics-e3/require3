@@ -54,10 +54,6 @@ class TemporaryStartupScript:
         self.add_command(
             f"dlload {str(Path(os.environ['EPICS_MODULES']) / 'lib' / f'librequire.{shared_lib_suffix}')}"
         )
-        self.add_command(
-            f"dbLoadDatabase {str(Path(os.environ['E3_REQUIRE_DBD']) / 'require.dbd')}"
-        )
-        self.add_command("require_registerRecordDeviceDriver")
 
     @property
     def name(self) -> str:
