@@ -225,10 +225,10 @@ static int require_priv(const char *module) {
 }
 
 static const iocshFuncDef require_def = {
-    "require", 1,
-    (const iocshArg *[]){
-        &(iocshArg){"module", iocshArgString},
-    }};
+    "require", 1, (const iocshArg *[]){&(iocshArg){"module", iocshArgString}},
+    "Usage: require <module>\n"
+    "Load the specified module and register it.\n"
+    "Must be used before iocInit.\n"};
 
 static void require_func(const iocshArgBuf *args) { require(args[0].sval); }
 
