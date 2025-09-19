@@ -613,7 +613,7 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 # Registration().
 ${REGISTRYFILE}: ${MODULEDBD}
 	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
-	sed -i'.bak' '$$d' $@
+	sed -i'.bak' -E '/^.*= Registration\(\)\;$$/d' $@
 	echo "#include <init.cpp>" >> $@
 
 # Create dependency file for recursive requires.
