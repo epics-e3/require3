@@ -41,7 +41,7 @@ int requireDebug;
 #endif
 
 #define PREFIX "lib"
-#ifdef _MACH__
+#ifdef __MACH__
 #define EXT ".dylib"
 #else
 #define EXT ".so"
