@@ -96,8 +96,6 @@ MKDIR = mkdir -p -m 775
 
 # Some generated file names:
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
-DEPFILE = ${PRJ}.dep
-VERSIONFILE = ${PRJ}_version
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -339,7 +337,6 @@ INSTALL_REV     = ${MODULE_LOCATION}
 INSTALL_BIN     = ${INSTALL_PREFIX}/bin
 INSTALL_LIB     = ${INSTALL_PREFIX}/lib
 INSTALL_INCLUDE = ${INSTALL_PREFIX}/include
-INSTALL_DEP     = ${INSTALL_REV}/dep
 INSTALL_DBD     = ${INSTALL_REV}/dbd
 INSTALL_DB      = ${INSTALL_REV}/db
 INSTALL_CONFIG  = ${INSTALL_REV}/cfg
@@ -433,9 +430,7 @@ debug::
 
 build: MODULEINFOS
 build: ${MODULEDBD}
-build: ${DEPFILE}
 build: db_internal
-build: ${VERSIONFILE}
 
 db_internal:
 
@@ -503,7 +498,7 @@ ifneq (,$(strip $(E3_REQUIRE_TOOLS)))
 vpath init.cpp $(E3_REQUIRE_TOOLS)
 endif
 
-PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${VERSIONFILE}
+PRODUCTS = ${MODULELIB} ${MODULEDBD}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
 	@echo ${PRODUCTS} > PRODUCTS
@@ -516,8 +511,6 @@ ${MODULEDBD}: ${DBDFILES}
 
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
-INSTALL_DEPS = ${DEPFILE:%=${INSTALL_DEP}/%}
-INSTALL_VERSION = ${VERSIONFILE:%=${INSTALL_DEP}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
 # append project names
 INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
@@ -535,7 +528,6 @@ debug::
 	@echo "MODULELIB = $(MODULELIB)"
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
 	@echo "INSTALL_LIBS = $(INSTALL_LIBS)"
-	@echo "INSTALL_DEPS = $(INSTALL_DEPS)"
 	@echo "INSTALL_DBD = $(INSTALL_DBD)"
 	@echo "INSTALL_DBDS = $(INSTALL_DBDS)"
 	@echo "INSTALL_INCLUDE = $(INSTALL_INCLUDE)"
@@ -563,7 +555,7 @@ endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} \
-            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_VERSION}
+            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS}
 
 install: ${INSTALLS}
 
@@ -574,13 +566,6 @@ ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
 	$(INSTALL) -d -m$(SHRLIB_PERMISSIONS) $< $(@D)
-${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
-	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
-
-${INSTALL_VERSION}: $(notdir ${INSTALL_VERSION})
-	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
 
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
@@ -616,21 +601,6 @@ ${REGISTRYFILE}: ${MODULEDBD}
 	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
 	sed -i'.bak' -E '/^.*= Registration\(\)\;$$/d' $@
 	echo "#include <init.cpp>" >> $@
-
-# Create dependency file for recursive requires.
-.PHONY: ${DEPFILE} ${VERSIONFILE}
-${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
-	@echo "Collecting dependencies"
-	$(RM) $@.tmp
-	@echo "# Generated file. Do not edit." > $@
-# Check dependencies on other module headers.
-	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u > $@.tmp
-# Manully added dependencies: ${REQ}
-	@$(foreach m,${REQ},echo "$m $($m_VERSION)" >> $@.tmp;)
-	cat $@.tmp | sort -u >> $@
-
-${VERSIONFILE}: ${USERMAKEFILE}
-	@echo "$(LIBVERSION)" > $@
 
 endif # In O.* directory
 endif # T_A defined
