@@ -218,7 +218,7 @@ static int require_priv(const char *module) {
   dlsym_error = dlerror();
   if (dlsym_error != NULL || symbol_address == NULL) {
     dlclose(lib_handle);
-    errlogPrintf(PREFIX "%s" EXT " is not an EPICS module.", module);
+    errlogPrintf(PREFIX "%s" EXT " is not an EPICS module.\n", module);
     return -1;
   }
   return 0;

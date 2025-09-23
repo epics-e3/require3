@@ -78,7 +78,7 @@ static void afterInitFunc(const iocshArgBuf *args) {
   struct cmditem *item = newItem(cmd);
 
   if (!item)
-    errlogPrintf("afterInit: error adding command %s; %s", cmd,
+    errlogPrintf("afterInit: error adding command %s; %s\n", cmd,
                  strerror(errno));
 }
 

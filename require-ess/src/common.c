@@ -20,7 +20,7 @@ char *real_path_separator(const char *location) {
   char *buffer = realpath(location, NULL);
   if (!buffer) {
     debug("require: realpath(%s) failed\n", location);
-    errlogPrintf("require: %s", strerror(errno));
+    errlogPrintf("require: %s\n", strerror(errno));
     return NULL;
   }
   size = strnlen(buffer, PATH_MAX);
@@ -46,7 +46,7 @@ int put_env_printf(const char *format, ...) {
     return -1;
   va_start(ap, format);
   if (vasprintf(&var, format, ap) < 0) {
-    errlogPrintf("require put_env_printf %s", strerror(errno));
+    errlogPrintf("require put_env_printf %s\n", strerror(errno));
     return errno;
   }
   va_end(ap);
@@ -60,7 +60,8 @@ int put_env_printf(const char *format, ...) {
   } else {
     *val++ = 0;
     if (setenv(var, val, 1) != 0) {
-      errlogPrintf("require put_env_printf: setenv failed %s", strerror(errno));
+      errlogPrintf("require put_env_printf: setenv failed %s\n",
+                   strerror(errno));
       status = errno;
     }
   }
