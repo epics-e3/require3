@@ -588,7 +588,7 @@ ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
-	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_CONFIGS}: $(notdir ${INSTALL_CONFIGS})
 	@echo "Installing configuration files $^ to $(@D)"
