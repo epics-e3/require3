@@ -323,14 +323,6 @@ COMMON_DIR = ../O.${EPICSVERSION}_Common
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
 
-
-$(foreach m, $(wildcard ${EPICS_MODULES}/*/*),$(eval $(patsubst $(EPICS_MODULES)/%/,%,$(dir $m))_VERSION := $(notdir $m)))
-
-define ADD_INCLUDES_TEMPLATE
-INSTALL_INCLUDES += $$(patsubst %,-I${2}/${1}/%/include,$${${1}_VERSION})
-endef
-$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES_LOCATION}/*))) ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(EPICS_MODULES_LOCATION))))
-
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
@@ -384,10 +376,10 @@ USR_DBDFLAGS += $(DBDEXPANDPATH)
 SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out /%,$(dir ${SRCS:%=../%} ${HDRS:%=../%}))), $d $(addprefix $d/, os/${OS_CLASS} $(POSIX_$(POSIX)) os/default))))
 
 MODULE_CONFIGS = ${CFGS:%=../%}
-MODULE_CONFIGS += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/CONFIG*))
+MODULE_CONFIGS += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/cfg/CONFIG*))
 
 MODULE_RULES = ${CFGS:%=../%}
-MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
+MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/cfg/RULES*))
 
 
 # We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
