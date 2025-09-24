@@ -95,9 +95,6 @@ int setup_db_path(const char *module, const char *db_directory) {
 
   put_env_printf("%s_DB=%s", module, absolute_path);
   put_env_printf("TEMPLATES=%s", absolute_path);
-  if (is_module_loaded("stream")) {
-    path_add("STREAM_PROTOCOL_PATH", absolute_path);
-  }
   path_add("EPICS_DB_INCLUDE_PATH", absolute_path);
   free(absolute_path);
   return 0;
