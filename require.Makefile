@@ -51,6 +51,4 @@ CONFIGS += configure/CONFIG_REQUIRE
 # We need to find the Linux link.h before the EPICS link.h
 USR_INCLUDES_Linux=-idirafter $(EPICS_BASE)/include
 
-USR_CFLAGS += -std=gnu99
-
 TEMPLATES += $(APPDB)/moduleversion.template
