@@ -54,6 +54,12 @@ MAKEHOME:=$(dir $(lastword ${MAKEFILE_LIST}))
 # Get the name of the Makefile that included this file.
 USERMAKEFILE:=$(lastword $(filter-out $(lastword ${MAKEFILE_LIST}), ${MAKEFILE_LIST}))
 
+REQUIRE_CONFIG=$(firstword $(wildcard $(CURDIR)/configure/CONFIG_REQUIRE \
+                 ${E3_REQUIRE_LOCATION}/cfg/CONFIG_REQUIRE))
+include ${REQUIRE_CONFIG}
+export INSTALL_PREFIX
+export EPICS_MODULES_LOCATION
+
 # These are the targets that we will pass through to the next stages of require's
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
@@ -72,18 +78,11 @@ EPICSVERSION:=$(EPICS_BASE_VERSION)
 BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
-# $PREFIX can be used to refer to dependencies installed by conda
-# (like -I$(PREFIX)/include/libxml2)
-# Set PREFIX to
-# - PREFIX if set (when using conda-build)
-# - CONDA_PREFIX otherwise (when compiling locally in a conda env)
-PREFIX := $(or $(PREFIX),$(CONDA_PREFIX))
-
 MODULE=
 PROJECT=
 PRJ := $(strip $(or ${MODULE},${PROJECT}))
 
-MODULE_LOCATION = $(PREFIX)/epics-modules/$(PRJ)
+MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
 # Override config here:
 -include ${MAKEHOME}/config
@@ -97,8 +96,6 @@ MKDIR = mkdir -p -m 775
 
 # Some generated file names:
 REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
-DEPFILE = ${PRJ}.dep
-VERSIONFILE = ${PRJ}_version
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -112,8 +109,6 @@ ENV=
 # Default target is "build" for all versions.
 # Don't install anything (different from default EPICS make rules).
 default: build
-
-prebuild:
 
 clean:
 	$(RMDIR) O.*
@@ -328,21 +323,12 @@ COMMON_DIR = ../O.${EPICSVERSION}_Common
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
 
-
-$(foreach m, $(wildcard ${EPICS_MODULES}/*/*),$(eval $(patsubst $(EPICS_MODULES)/%/,%,$(dir $m))_VERSION := $(notdir $m)))
-
-define ADD_INCLUDES_TEMPLATE
-INSTALL_INCLUDES += $$(patsubst %,-I${2}/${1}/%/include,$${${1}_VERSION})
-endef
-$(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${PREFIX}/epics/*))) ,$(eval $(call ADD_INCLUDES_TEMPLATE,$m,$(PREFIX)/epics)))
-
 BASERULES=${EPICS_BASE}/configure/RULES
 
 INSTALL_REV     = ${MODULE_LOCATION}
-INSTALL_BIN     = ${PREFIX}/bin
-INSTALL_LIB     = ${PREFIX}/lib
-INSTALL_INCLUDE = ${PREFIX}/include
-INSTALL_DEP     = ${INSTALL_REV}
+INSTALL_BIN     = ${INSTALL_PREFIX}/bin
+INSTALL_LIB     = ${INSTALL_PREFIX}/lib
+INSTALL_INCLUDE = ${INSTALL_PREFIX}/include
 INSTALL_DBD     = ${INSTALL_REV}/dbd
 INSTALL_DB      = ${INSTALL_REV}/db
 INSTALL_CONFIG  = ${INSTALL_REV}/cfg
@@ -390,10 +376,10 @@ USR_DBDFLAGS += $(DBDEXPANDPATH)
 SRC_INCLUDES = $(addprefix -I, $(wildcard $(foreach d,$(call uniq, $(filter-out /%,$(dir ${SRCS:%=../%} ${HDRS:%=../%}))), $d $(addprefix $d/, os/${OS_CLASS} $(POSIX_$(POSIX)) os/default))))
 
 MODULE_CONFIGS = ${CFGS:%=../%}
-MODULE_CONFIGS += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/CONFIG*))
+MODULE_CONFIGS += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/cfg/CONFIG*))
 
 MODULE_RULES = ${CFGS:%=../%}
-MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/$($(m)_VERSION)/cfg/RULES*))
+MODULE_RULES += $(foreach m,$(filter-out $(PRJ),$(notdir $(wildcard ${EPICS_MODULES}/*))),$(wildcard ${EPICS_MODULES}/$m/cfg/RULES*))
 
 
 # We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
@@ -436,9 +422,7 @@ debug::
 
 build: MODULEINFOS
 build: ${MODULEDBD}
-build: ${DEPFILE}
 build: db_internal
-build: ${VERSIONFILE}
 
 db_internal:
 
@@ -500,9 +484,13 @@ vpath %.hpp $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(s
 vpath %.hh $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 vpath %.hxx $(addprefix ../,$(sort $(dir $(filter-out /%,${HDRS}) ${SRCS}))) $(sort $(dir $(filter /%,${HDRS})))
 
+# For modules that do not have their own dbd file, we need to locate init.cpp
+# from require
+ifneq (,$(strip $(E3_REQUIRE_TOOLS)))
 vpath init.cpp $(E3_REQUIRE_TOOLS)
+endif
 
-PRODUCTS = ${MODULELIB} ${MODULEDBD} ${DEPFILE} ${VERSIONFILE}
+PRODUCTS = ${MODULELIB} ${MODULEDBD}
 MODULEINFOS:
 	@echo ${PRJ} > MODULENAME
 	@echo ${PRODUCTS} > PRODUCTS
@@ -515,8 +503,6 @@ ${MODULEDBD}: ${DBDFILES}
 
 # Install everything.
 INSTALL_LIBS = ${MODULELIB:%=${INSTALL_LIB}/%}
-INSTALL_DEPS = ${DEPFILE:%=${INSTALL_DEP}/%}
-INSTALL_VERSION = ${VERSIONFILE:%=${INSTALL_DEP}/%}
 INSTALL_DBDS = ${MODULEDBD:%=${INSTALL_DBD}/%}
 # append project names
 INSTALL_DBDS += $(addprefix $(INSTALL_DBD)/,$(notdir ${DBDINSTALLS}))
@@ -534,7 +520,6 @@ debug::
 	@echo "MODULELIB = $(MODULELIB)"
 	@echo "INSTALL_LIB = $(INSTALL_LIB)"
 	@echo "INSTALL_LIBS = $(INSTALL_LIBS)"
-	@echo "INSTALL_DEPS = $(INSTALL_DEPS)"
 	@echo "INSTALL_DBD = $(INSTALL_DBD)"
 	@echo "INSTALL_DBDS = $(INSTALL_DBDS)"
 	@echo "INSTALL_INCLUDE = $(INSTALL_INCLUDE)"
@@ -562,7 +547,7 @@ endef
 $(foreach d,$(HDR_SUBDIRS),$(eval $(call install_subdirs,$d)))
 
 INSTALLS += ${INSTALL_CONFIGS} ${INSTALL_SCRS} ${INSTALL_HDRS} ${INSTALL_DBDS} ${INSTALL_DBS} \
-            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS} ${INSTALL_DEPS} ${INSTALL_VERSION}
+            ${INSTALL_LIBS} ${INSTALL_VLIBS} ${INSTALL_BINS}
 
 install: ${INSTALLS}
 
@@ -573,13 +558,6 @@ ${INSTALL_DBDS}: $(notdir ${INSTALL_DBDS})
 ${INSTALL_LIBS}: $(notdir ${INSTALL_LIBS})
 	@echo "Installing module library $@"
 	$(INSTALL) -d -m$(SHRLIB_PERMISSIONS) $< $(@D)
-${INSTALL_DEPS}: $(notdir ${INSTALL_DEPS})
-	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
-
-${INSTALL_VERSION}: $(notdir ${INSTALL_VERSION})
-	@echo "Installing module dependency file $@"
-	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $< $(@D)
 
 ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 	@echo "Installing module template files $^ to $(@D)"
@@ -587,7 +565,7 @@ ${INSTALL_DBS}: $(notdir ${INSTALL_DBS})
 
 ${INSTALL_SCRS}: $(notdir ${SCR})
 	@echo "Installing scripts $^ to $(@D)"
-	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
+	$(INSTALL) -d -m$(INSTALL_PERMISSIONS) $^ $(@D)
 
 ${INSTALL_CONFIGS}: $(notdir ${INSTALL_CONFIGS})
 	@echo "Installing configuration files $^ to $(@D)"
@@ -615,21 +593,6 @@ ${REGISTRYFILE}: ${MODULEDBD}
 	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
 	sed -i'.bak' -E '/^.*= Registration\(\)\;$$/d' $@
 	echo "#include <init.cpp>" >> $@
-
-# Create dependency file for recursive requires.
-.PHONY: ${DEPFILE} ${VERSIONFILE}
-${DEPFILE}: ${LIBOBJS} $(USERMAKEFILE)
-	@echo "Collecting dependencies"
-	$(RM) $@.tmp
-	@echo "# Generated file. Do not edit." > $@
-# Check dependencies on other module headers.
-	cat *.d 2>/dev/null | sed 's/ /\n/g' | sed -n 's%$(EPICS_MODULES)/*\([^/]*\)/\([0-9]*\.[0-9]*\.[0-9]*\)/.*%\1 \2%p;s%$(EPICS_MODULES)/*\([^/]*\)/\([^/]*\)/.*%\1 \2%p'| grep -v "include" | sort -u > $@.tmp
-# Manully added dependencies: ${REQ}
-	@$(foreach m,${REQ},echo "$m $($m_VERSION)" >> $@.tmp;)
-	cat $@.tmp | sort -u >> $@
-
-${VERSIONFILE}: ${USERMAKEFILE}
-	@echo "$(LIBVERSION)" > $@
 
 endif # In O.* directory
 endif # T_A defined

@@ -1,0 +1,8 @@
+# Location to install bins, headers, and libs
+INSTALL_PREFIX?=/usr/local
+
+# Location to install EPICS modules built with require
+EPICS_MODULES_LOCATION=$(INSTALL_PREFIX)/epics-modules
+
+-include $(TOP)/../CONFIG_REQUIRE.local
+-include $(TOP)/configure/CONFIG_REQUIRE.local

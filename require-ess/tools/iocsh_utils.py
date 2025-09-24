@@ -52,7 +52,7 @@ class TemporaryStartupScript:
 
         # load require
         self.add_command(
-            f"dlload {str(Path(os.environ['EPICS_MODULES']) / 'lib' / f'librequire.{shared_lib_suffix}')}"
+            f"dlload {str(Path(os.environ['E3_REQUIRE_LIB']) / f'librequire.{shared_lib_suffix}')}"
         )
 
     @property

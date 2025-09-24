@@ -51,7 +51,7 @@ static int __module_library_init() {
 
   if (!(TRY_FILE(directory_length, TEMPLATEDIR) &&
         setup_db_path(MODULE_NAME, filename) == 0)) {
-    errlogPrintf("%s could not load templates", MODULE_NAME);
+    errlogPrintf("No template path found for %s. Skipping.\n", MODULE_NAME);
     return -1;
   }
   return 0;
