@@ -1,12 +1,12 @@
 # CHANGELOG
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### New Features
+### Added
 
 * Add timestamp for `LoadedModules`
 * Deprecate `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`
@@ -18,7 +18,7 @@ $ iocsh --debugger lldb --debugger-args "args for lldb" st.cmd
 $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 ```
 
-### Bugfixes
+### Fixed
 
 * Exit `iocsh` if file to run does not exist
 * Add trigger mapping on `LoadedModules` to silence QSRV2 warning
@@ -30,7 +30,7 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 * License handling in driver.makefile. This should be provided by a package manager.
 * Remove version handling.
 
-### Other changes
+### Changed
 
 * Change module path.
 * Module libraries are installed on standard directory `/lib`.
@@ -38,17 +38,17 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 
 ## [5.1.1.post2]
 
-### New Features
+### Added
 
 * Add support for darwin-x86
 
 ## [5.1.1.post1]
 
-### Bugfixes
+### Fixed
 
 * Add `MODULE_CONFIG` variable to include module-specific config file
 
-### Other changes
+### Changed
 
 * Remove dbd rules for GPIB code
 * Remove dbd rules for sequencer
@@ -62,7 +62,7 @@ the NFS repository that are not here: 3.4.0, 3.4.1, 4.0.0, 5.0.0 and 5.1.0. Some
 was done to synchronize both repositories for this release. The following
 entries are a compilation of the entries from all of this versions.
 
-### Bugfixes
+### Fixed
 
 * Fix memory leaks on IOC exit
 * Fix dirty terminal after IOC exit for some distributions
@@ -125,7 +125,7 @@ entries are a compilation of the entries from all of this versions.
 * Build numbers are now prefixed with a `+`.
 
 
-### Other changes
+### Changed
 
 * Rewrite `iocsh` converting it from being a shell script to a python (3.6) script
   * Remove support for file extensions: `.so`, `.dbd`, `.db`, `.substitutions`, `.template`, `.iocsh`
@@ -179,7 +179,7 @@ setting for a number of separate reasons to handle dependencies properly. Note t
 
 A second major change (mostly via bugfixes) is that the local install command, `make cellinstall` which installs the module in a local directory now works properly, which allows developers and integrators to simply mount the NFS E3 build and work with that instead of needing to install E3 locally.
 
-### New Features
+### Added
 * Removed all EPICS 3.\* and VxWorks code, as these are not to be supported at ESS.
 * Consistent with the philosophy of not requiring module version pinning, if one specifies a dependent
   module with e.g. `REQUIRED += asyn` then the latest version of asyn will be used. No version need
@@ -197,7 +197,7 @@ A second major change (mostly via bugfixes) is that the local install command, `
 * Added a `prebuild` target that runs before build so module developers can run specific code before the build process.
 * A module developer can now install dbd files separate from the module dbd file by using `DBD_INSTALLS += file.dbd`.
 
-### Bugfixes
+### Fixed
 * Ensures that lowercase module names are enforced consistently
 * Vendor libraries are only installed at install time, not at build time
 * Vendor libraries are uninstalled when `make uninstall` is run
@@ -219,13 +219,13 @@ reverts back to a similar version to require 3.1.2. One major difference is that
 form `require module` instead of `require module,version` as was the case in 3.1.2. An IOC developer can
 of course pin a specific module version. If they do not, then the highest numeric version will be chosen.
 
-### New Features
+### Added
 * Added -dg, -dv options to run gdb and valgrind using `iocsh.bash`
 * If `IOCNAME` is defined, then it is used in the PV names set by require instead of `REQMOD:$(hostname)-$(pid)`.
 * Reverted changes from conda require to return to NFS
 * Moved tools files from e3-require to require submodule
 
-### Bugfixes
+### Fixed
 * Fixed issue where a second user running `iocsh.bash` on a machine would be unable to create the temporary
   startup script
 
