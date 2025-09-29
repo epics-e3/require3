@@ -177,10 +177,10 @@ setting for a number of separate reasons to handle dependencies properly. Note t
 * `require module,x.x.x` - loads the specific numeric version of a module, with the highest build number
 * `require module,x.x.x-x` - loads a specific build number of the specified version of a module
 
-A second major change (mostly via bugfixes) is that the local install command, `make cellinstall` which installs the module in a local directory now works properly, which allows developers and integrators to simply mount the NFS E3 build and work with that instead of needing to install E3 locally.
+### Removed
+* Removed all EPICS 3.\* and VxWorks code, as these are not to be supported at ESS.
 
 ### Added
-* Removed all EPICS 3.\* and VxWorks code, as these are not to be supported at ESS.
 * Consistent with the philosophy of not requiring module version pinning, if one specifies a dependent
   module with e.g. `REQUIRED += asyn` then the latest version of asyn will be used. No version need
   to be specified.
@@ -192,8 +192,6 @@ A second major change (mostly via bugfixes) is that the local install command, `
   specified at startup
 * Added the ability to install header files while preserving directory structure instead of flattening
   all header files into a single module/version/includes directory.
-* Using `EPICS_MODULE_TAG` to detect if we are using the local source code vs. git submodule. Note that
-  the old -loc is still supported, but will be deprecated in a future release.
 * Added a `prebuild` target that runs before build so module developers can run specific code before the build process.
 * A module developer can now install dbd files separate from the module dbd file by using `DBD_INSTALLS += file.dbd`.
 
@@ -201,14 +199,8 @@ A second major change (mostly via bugfixes) is that the local install command, `
 * Ensures that lowercase module names are enforced consistently
 * Vendor libraries are only installed at install time, not at build time
 * Vendor libraries are uninstalled when `make uninstall` is run
-* `make debug` can now be run before running `make build`
-* Patches that involve renaming files can be used
-* When using the "cellinstall" mode to install modules for local testing, sudo has been removed.
-* When using "cellinstall", sequencer is loaded correctly
-* When using "cellinstall", module include files are located correctly
 * `iocsh.bash` now supports multiple directories being specified with the -l (local) flag as a source of loading modules
 * Fixed an error where mounting the NFS E3 in a location other than `/epics` would result in failed builds
-* Assorted minor typos in scripts
 * Re-added functionality to have `iocsh.bash` automagically source `setE3Env.bash`.
 
 ## [3.2.0]
