@@ -110,6 +110,8 @@ ENV=
 # Don't install anything (different from default EPICS make rules).
 default: build
 
+all: install
+
 clean:
 	$(RMDIR) O.*
 
@@ -118,6 +120,19 @@ O.%:
 
 uninstall:
 	$(RMDIR) ${MODULE_LOCATION}
+
+help:
+	$(info --------------------------------------- )
+	$(info Available targets)
+	$(info --------------------------------------- )
+	$(info all             Build and install current module)
+	$(info install         Install module to $(EPICS_MODULES))
+	$(info uninstall       Uninstall the current module)
+	$(info build           Build current module)
+	$(info debug           Displays information about the build process)
+	$(info clean           Deletes temporary build files)
+	$(info help            Show this help message)
+	$(info --------------------------------------- )
 
 IGNOREFILES = .gitignore
 %: ${IGNOREFILES}
