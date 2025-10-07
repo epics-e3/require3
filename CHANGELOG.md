@@ -9,14 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 * Add timestamp for `LoadedModules`
-* Deprecate `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`
-* Switch to using softIocPVX in lieu of softIocPVA (new PVA stack)
-* Support to use lldb for debugging. Note that this changes how debugging works:
-```sh
-$ iocsh --debugger gdb --debugger-args "args for gdb" st.cmd
-$ iocsh --debugger lldb --debugger-args "args for lldb" st.cmd
-$ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
-```
+* Add support for lldb as debugger.
+* Add `--debugger` and `--debugger-args` arguments for `iocsh`.
+* Add `--iocname` argument for `iocsh`.
+* Add `all` and `help` targets to `driver.makefile`.
 
 ### Fixed
 
@@ -29,12 +25,30 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 * Remove functions not used in production: `ld`, `libversionShow` and `pathAdd`.
 * License handling in driver.makefile. This should be provided by a package manager.
 * Remove version handling.
+* Remove `--gdb` from `iocsh`.
+* Remove support for `poky-i7` architecture.
+* Remove support for debug architecture.
+* Remove support for `REQUIRED` variable.
+* Remove dep file.
+* Remove `STEAM_PROTO_PATH` variable.
+* Remove `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`.
 
 ### Changed
 
-* Change module path.
+* Switch to using softIocPVX in lieu of softIocPVA (new PVA stack)
+* Modules files are now installed based on `EPICS_MODULE_PATH`.
 * Module libraries are installed on standard directory `/lib`.
 * Rework internal logic for loading modules. See commit 24d41905d46ed4395e0822f2467b54d89437890f.
+* Change how debugging arguments work:
+```sh
+$ iocsh --debugger gdb --debugger-args "args for gdb" st.cmd
+$ iocsh --debugger lldb --debugger-args "args for lldb" st.cmd
+$ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
+```
+* Dependencies should be linked using `USR_LIBS`, for example:
+```
+USR_LIBS += asyn calc
+```
 
 ## [5.1.1.post2]
 
