@@ -90,7 +90,6 @@ entries are a compilation of the entries from all of this versions.
 * Removed references to `INSTBASE`
 * Fixed issue where `make debug` would recompile a module.
 * Fixed issue where `make install` would fail if you had not run `make build` first.
-* Removed all references to `sudo`. If `sudo` needs to be used, it should be done manually.
 * Fixed issue with module name checking which caused modules to fail to build on certain linux distributions
 * Exact module version is fetched correctly at build-time to ensure that new releases do not affect upstream dependencies
 * Issue involving priority between some test versions fixed
@@ -110,18 +109,13 @@ entries are a compilation of the entries from all of this versions.
   afterInit 'foo bar baz'
   ```
 * Add NTTable PV for module and version information as `LoadedModules`
-* Check inconsistent versions between dependencies at build time. If an inconsistency is found the build will fail.
 * Block module loading after iocInit has been invoked.
 * Arguments have been added to `iocsh.bash` to enable user to pass any debugger options to GDB and Valgrind.
 * Autocompletion for `iocsh.bash` has been added
 * Removed `iocsh_gdb.bash` and `iocsh_nice.bash`, both of whose functionality can be called via `iocsh.bash -dg` and `iocsh.bash -n`, respectively.
 * Require will automatically build `.template` and `.substitutions` files into the common build directory instead of into the source Db path
 * Added consistency check between e3 environment variables and path to `iocsh.bash`. `iocsh.bash` will abort if these are not consistent.
-* Add e3 version information to the shell prompt
 * Add option to allow override of automatic addition of `iocInit` to generated startup script
-* Added back `promptE3Env.bash`, which runs `setE3Env.bash` and then sets the bash prompt.
-* Added descriptions for more targets when running `make help`
-* Added a new test target for individual modules, available as `make test`
 * Build numbers are now prefixed with a `+`.
 
 
@@ -150,22 +144,13 @@ entries are a compilation of the entries from all of this versions.
   not by require.
 * The loop over `EPICSVERSION` in `driver.makefile` has been removed; various other cleanup has been performed.
 * Improved output during IOC startup
-* Remove Win32 and CYGWIN32 support
 * Rename `runScript` to `afterInit`
 * Updated PV-names to be ESS compliant, and remove VERSIONS PV
 * Added revision number parsing for test versions
-* Joined together the variables `REQUIRE_CONFIG` and `E3_REQUIRE_CONFIG`
-* Removed legacy file `DECOUPLE_FLAGS`
 * Rename `iocsh.bash` to `iocsh`
 * Removed `<module>_TEMPLATES` in favour of `<module>_DB`
-* Removed unnecessary code from `make init`.
 * Removed usage of `env.sh` - now there is a check only for seeing if the environment variable `$IOCNAME` is set
-* Rearrange usage to match order of options in code
 * Add information about realtime option to usage
-* Removed references to EPICS Base v3
-* Removed `require` as a submodule and merged it into `e3-require`.
-* Add `CONFIG_SHELL` to define standard shell (*bash*) used by *Make*
-* Removed `plotdep` target.
 
 ## [3.3.0]
 3.3.0 is a relatively major release with many bugfixes and a number of features added based on consultation
