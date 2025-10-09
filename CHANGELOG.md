@@ -83,26 +83,21 @@ entries are a compilation of the entries from all of this versions.
 * Resolve `E3_CMD_TOP` when a startup script is being run with `iocsh` (previously expanded to just `.`)
 * Fix truncated errorlog messages
 * Fixed an issue where .template and .substitutions files with the same name would build incorrectly
-* Removed a number of memory leaks found by valgrind
 * Fixed memory leak in `afterInit`
 * Fixed issue where updated dependencies of substitution files did not retrigger a .db expansion.
 * db expansion happens at build time, not at install time.
 * `iocsh.bash --help` (and variants) no longer loads tries to load `env.sh`.
 * `make build` will fail if any of the target architectures fail, not just the last one.
-* Removed duplicated entries from generated `.dep` files
 * Fixed issue where `.hpp` files were not installed correctly with `KEEP_HEADER_SUBDIRS`
-* Missing `REQUIRED` dependencies now cause the build to fail instead of providing a warning
 * Fixed issue where consecutive builds might not track updated dependencies
 * Fixed an issue related to buffering of data being written to a shared filesystem which produced garbled `.dep` files
 * Fixed an issue where `iocshRegisterCommon()` was called when registering functions for modules as they are loaded. This had
   the effect of overwriting any functions that have the same name as a common one with their original one (e.g. `dbLoadTemplate`
   from `require`)
-* Removed `loadIocsh` function, which was just a cover for `runScript`.
-* Removed references to `INSTBASE`
 * Fixed issue where `make debug` would recompile a module.
 * Fixed issue where `make install` would fail if you had not run `make build` first.
 
-### New features
+### Added
 
 * Allow for module-specific build rules (see: sequencer) to be installed and used
   within e3
@@ -116,21 +111,15 @@ entries are a compilation of the entries from all of this versions.
   afterInit 'foo bar baz'
   ```
 * Add NTTable PV for module and version information as `LoadedModules`
-* Block module loading after iocInit has been invoked.
 * Arguments have been added to `iocsh.bash` to enable user to pass any debugger options to GDB and Valgrind.
 * Autocompletion for `iocsh.bash` has been added
-* Removed `iocsh_gdb.bash` and `iocsh_nice.bash`, both of whose functionality can be called via `iocsh.bash -dg` and `iocsh.bash -n`, respectively.
 * Require will automatically build `.template` and `.substitutions` files into the common build directory instead of into the source Db path
 * Add option to allow override of automatic addition of `iocInit` to generated startup script
 
-
 ### Changed
 
+* Block module loading after iocInit has been invoked.
 * Rewrite `iocsh` converting it from being a shell script to a python (3.6) script
-  * Remove support for file extensions: `.so`, `.dbd`, `.db`, `.substitutions`, `.template`, `.iocsh`
-  * Remove support for `nice`
-  * Remove support for sequencer programs
-  * Remove optional argument passing to `gdb`
   * Change the IOC shell to use both stdout and stderr (previously only stdout)
   * Change default prompt
   * Change fallback IOC-name (used when `IOCNAME` is not set)
@@ -139,19 +128,33 @@ entries are a compilation of the entries from all of this versions.
     * Make running IOC as realtime or with debuggers mutually exclusive
     * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
 * Replaced `tclx` script to expand .dbd files with a python script
-* Removed ability to pass `args` to require (which have not been used within e3)
-* Removed `require module,ifexists` option
 * Fix memory issues on the internal linked list
-* Remove `ARCH_FILTER` support; from now on, only `EXCLUDE_ARCHS` is used.
-* Remove `IOCNAME:exit` PV. Stop loading `softIocExit.db` and now it's require that exposes the `BaseVersion` PV.
 * The loop over `EPICSVERSION` in `driver.makefile` has been removed; various other cleanup has been performed.
 * Improved output during IOC startup
 * Rename `runScript` to `afterInit`
 * Updated PV-names to be ESS compliant, and remove VERSIONS PV
 * Rename `iocsh.bash` to `iocsh`
-* Removed `<module>_TEMPLATES` in favour of `<module>_DB`
-* Removed usage of `env.sh` - now there is a check only for seeing if the environment variable `$IOCNAME` is set
 * Add information about realtime option to usage
+* Missing `REQUIRED` dependencies now cause the build to fail instead of providing a warning
+
+### Removed
+
+* Remove a number of memory leaks found by valgrind
+* Remove duplicated entries from generated `.dep` files
+* Remove `loadIocsh` function, which was just a cover for `runScript`.
+* Remove references to `INSTBASE`
+* Remove from `iocsh`
+  * Remove support for file extensions: `.so`, `.dbd`, `.db`, `.substitutions`, `.template`, `.iocsh`
+  * Remove support for `nice`
+  * Remove support for sequencer programs
+  * Remove optional argument passing to `gdb`
+* Remove ability to pass `args` to require (which have not been used within e3)
+* Remove `require module,ifexists` option
+* Remove `ARCH_FILTER` support; from now on, only `EXCLUDE_ARCHS` is used.
+* Remove `IOCNAME:exit` PV. Stop loading `softIocExit.db` and now it's require that exposes the `BaseVersion` PV.
+* Remove `<module>_TEMPLATES` in favour of `<module>_DB`
+* Remove usage of `env.sh` - now there is a check only for seeing if the environment variable `$IOCNAME` is set
+* Removed `iocsh_gdb.bash` and `iocsh_nice.bash`, both of whose functionality can be called via `iocsh.bash -dg` and `iocsh.bash -n`, respectively.
 
 ## [3.3.0]
 
