@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Exit `iocsh` if file to run does not exist
 * Add trigger mapping on `LoadedModules` to silence QSRV2 warning
+* Error messages when module fail to load.
 
 ### Removed
 
@@ -49,6 +50,7 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 ```
 USR_LIBS += asyn calc
 ```
+* Overall improve debug messages
 
 ## [5.1.1.post2]
 
