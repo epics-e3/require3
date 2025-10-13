@@ -1,3 +1,12 @@
+record(stringin,"$(REQUIRE_IOC):RequireVersion")
+{
+    field(DESC, "Require version")
+    field(DTYP, "getenv")
+    field(INP,  "@require_VERSION")
+    field(PINI, "YES")
+    field(DISP, "1")
+}
+
 record(waveform, "$(REQUIRE_IOC):Modules")
 {
     field(DESC, "Names of loaded modules")

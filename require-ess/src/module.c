@@ -172,6 +172,18 @@ int register_module(const char *moduleName, const char *version,
   strcpy(module->path, abslute_path ? abslute_path : "");
   free(abslute_path);
 
+  put_env_printf("MODULE=%s", module->name);
+  put_env_printf("%s_VERSION=%s", module->name, module->version);
+  if (location) {
+    put_env_printf("%s_DIR=%s", module->name, module->path);
+    path_add("SCRIPT_PATH", module->path);
+  }
+
+  /* Does not add require on the "modules list" */
+  if (strcmp(moduleName, "require") == 0) {
+    return 0;
+  }
+
   if (linked_list.size == 0) {
     linked_list.head = module;
   } else {
@@ -180,14 +192,6 @@ int register_module(const char *moduleName, const char *version,
   linked_list.tail = module;
   linked_list.size++;
 
-  put_env_printf("MODULE=%s", module->name);
-  put_env_printf("%s_VERSION=%s", module->name, module->version);
-  if (location) {
-    put_env_printf("%s_DIR=%s", module->name, module->path);
-    path_add("SCRIPT_PATH", module->path);
-  }
-
-  /* create a record with the version string */
   require_custom_path = getenv("require_DIR");
   if (require_custom_path == NULL)
     return 0;
