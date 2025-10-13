@@ -5,14 +5,12 @@
 # Read this documentation and the inline comments carefully before
 # changing anything in this file.
 #
-# Usage: Create a Makefile containig the line:
-#        include /ioc/tool/driver.makefile
+# Usage: Create a Makefile containing the line:
+#        include $(E3_REQUIRE_TOOLS)/driver.makefile
 #        Optionally add variable definitions below that line.
 #
-# This makefile automatically finds the source file (unless overwritten with
-# the SOURCES variable in your Makefile) and generates a module consisting
-# of a library and .dbd file for each EPICS version and each target architecture.
-# Therefore, it calls itself recursively.
+# This makefile generates a module consisting of a library and .dbd file for each
+# target architecture. Therefore, it calls itself recursively.
 #
 # - First run: (see comment ## RUN 1)
 #   Find the sources etc.
@@ -27,13 +25,12 @@
 # - Third run: (see comment ## RUN 3)
 #   Compile everything.
 #
-# Module names are derived from the directory name (unless overwritten
-# with the MODULE variable in your Makefile).
+# Module names are derived from either MODULE or PROJECT variables.
 # LIBVERSION is set to "dev" if not overwritten.
-# The library is installed to ${EPICS_MODULES}/${MODULE}/${LIBVERSION}/lib/${T_A}/.
-# A module can be loaded with  require "<module>" [,"<version>"] [,"<variable>=<substitution>, ..."]
+# The library is installed to ${INSTALL_PREFIX}/lib/.
+# A module can be loaded with  require "<module>"
 #
-# User variables (add them to your Makefile, none is required):
+# User variables (add them to your Makefile, none are required):
 # MODULE
 #    Name of the built module.
 #    If not defined, it is derived from the directory name.
@@ -66,8 +63,7 @@ export EPICS_MODULES_LOCATION
 # a single pass.
 RECURSE_TARGETS = install build
 
-##---## In conda, We only use one version of EPICS base when compiling modules.
-##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
+# EPICS_BASE and EPICS_BASE_HOST_BIN must be set in the environment
 MSI = ${EPICS_BASE_HOST_BIN}/msi
 CONFIG=${EPICS_BASE}/configure
 
