@@ -286,6 +286,14 @@ ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
 VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
+# SRCS are already exported from round one
+SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
+USR_LIBOBJS += ${LIBOBJS} $(foreach x,${VAR_EXTENSIONS},${LIBOBJS_$x})
+export USR_LIBOBJS
+
+BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
+export BINS
+
 ifeq ($(filter ${OS_CLASS},${OS_CLASS_LIST}),)
 
 install% build%: build
@@ -308,13 +316,6 @@ $(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
 endif
-
-SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
-USR_LIBOBJS += ${LIBOBJS} $(foreach x,${VAR_EXTENSIONS},${LIBOBJS_$x})
-export USR_LIBOBJS
-
-BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
-export BINS
 
 export USR_DBFLAGS
 export TMPS
