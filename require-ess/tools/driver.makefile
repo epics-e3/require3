@@ -242,6 +242,12 @@ BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),\
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
 
+EXPAND_TMPS = ${TMPS}
+export EXPAND_TMPS
+
+EXPAND_SUBS = ${SUBS}
+export EXPAND_SUBS
+
 $(RECURSE_TARGETS)::
 	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
 
@@ -317,9 +323,8 @@ $(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
 
 endif
 
+# This needs to be here so we don't double it up
 export USR_DBFLAGS
-export TMPS
-export SUBS
 
 else # in O.*
 where_am_I:=$(abspath $(CURDIR)/..)/
@@ -471,8 +476,8 @@ $(COMMON_DIR)/$(notdir $(basename $2).db): $(if $(filter /%,$2),$2,../$2)
 	$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$<
 endef
 
-$(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
-$(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
+$(foreach file,$(EXPAND_TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
+$(foreach file,$(EXPAND_SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
