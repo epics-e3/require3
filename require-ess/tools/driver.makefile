@@ -286,8 +286,6 @@ ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
 VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
-REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
-export REQ
 ifeq ($(filter ${OS_CLASS},${OS_CLASS_LIST}),)
 
 install% build%: build
@@ -422,7 +420,6 @@ debug::
 	@echo "SOURCES = ${SOURCES}"
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}"
 	@echo "SRCS = ${SRCS}"
-	@echo "REQ = ${REQ}"
 	@echo "CFGS = ${CFGS}"
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
