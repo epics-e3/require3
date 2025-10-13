@@ -64,7 +64,7 @@ export EPICS_MODULES_LOCATION
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
 # a single pass.
-RECURSE_TARGETS = install build debug
+RECURSE_TARGETS = install build
 
 ##---## In conda, We only use one version of EPICS base when compiling modules.
 ##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
@@ -248,10 +248,7 @@ export EXPAND_TMPS
 EXPAND_SUBS = ${SUBS}
 export EXPAND_SUBS
 
-$(RECURSE_TARGETS)::
-	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
-
-build:: $(COMMON_DIR)
+build: $(COMMON_DIR)
 
 debug::
 	@echo "===================== Pass 1 ====================="
@@ -276,7 +273,9 @@ $(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
 # which is defined _after_ driver.makefile.
-$(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+$(foreach target,$(RECURSE_TARGETS),$(eval $(target): $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+
+debug:: $$(foreach arch,$${BUILD_ARCHS},debug-$${arch})))
 
 else # T_A
 
@@ -318,7 +317,7 @@ install build:
 
 else
 
-$(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
+$(RECURSE_TARGETS): O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
 endif
