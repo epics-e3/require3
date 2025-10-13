@@ -76,7 +76,7 @@ OS_CLASS_LIST = $(BUILDCLASSES)
 
 MODULE=
 PROJECT=
-PRJ := $(strip $(or ${MODULE},${PROJECT}))
+PRJ := $(or $(strip $(firstword ${MODULE} ${PROJECT})),$(error MODULE/PROJECT not defined))
 
 MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
