@@ -40,15 +40,6 @@ record(stringin, "$(REQUIRE_IOC):$(MODULE)Version")
     field(DISP, "1")
 }
 
-record(stringin,"$(REQUIRE_IOC):BaseVersion")
-{
-    field(DESC, "EPICS Base version")
-    field(DTYP, "getenv")
-    field(INP,  "@EPICS_VERSION_FULL")
-    field(PINI, "YES")
-    field(DISP, "1")
-}
-
 # This record contains labels for the created NTTable, named $(REQUIRE_IOC):LoadedModules.
 record(aai, "$(REQUIRE_IOC):Labels")
 {
