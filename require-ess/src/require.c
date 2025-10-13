@@ -87,11 +87,11 @@ int setup_db_path(const char *module, const char *db_directory) {
   char *absolute_path = real_path_separator(
       db_directory); /* so we can change directory later safely */
   if (absolute_path == NULL) {
-    debug("require: cannot resolve %s\n", db_directory);
+    debug("cannot resolve %s\n", db_directory);
     return -1;
   }
 
-  debug("require: found template directory %s\n", absolute_path);
+  debug("found template directory %s\n", absolute_path);
 
   put_env_printf("%s_DB=%s", module, absolute_path);
   put_env_printf("TEMPLATES=%s", absolute_path);
@@ -143,39 +143,39 @@ int require(const char *module) {
 off_t file_size(const char *filename) {
   struct stat filestat = {0};
   if (stat(filename, &filestat) != 0) {
-    debug("require: %s does not exist\n", filename);
+    debug("%s does not exist\n", filename);
     return -1;
   }
   switch (filestat.st_mode & S_IFMT) {
   case S_IFREG:
-    debug("require: file %s exists, size %lld bytes\n", filename,
+    debug("file %s exists, size %lld bytes\n", filename,
           (unsigned long long)filestat.st_size);
     return filestat.st_size;
   case S_IFDIR:
-    debug("require: directory %s exists\n", filename);
+    debug("directory %s exists\n", filename);
     return 0;
 #ifdef S_IFBLK
   case S_IFBLK:
-    debug("require: %s is a block device\n", filename);
+    debug("%s is a block device\n", filename);
     return -1;
 #endif
 #ifdef S_IFCHR
   case S_IFCHR:
-    debug("require: %s is a character device\n", filename);
+    debug("%s is a character device\n", filename);
     return -1;
 #endif
 #ifdef S_IFIFO
   case S_IFIFO:
-    debug("require: %s is a FIFO/pipe\n", filename);
+    debug("%s is a FIFO/pipe\n", filename);
     return -1;
 #endif
 #ifdef S_IFSOCK
   case S_IFSOCK:
-    debug("require: %s is a socket\n", filename);
+    debug("%s is a socket\n", filename);
     return -1;
 #endif
   default:
-    debug("require: %s is an unknown type of special file\n", filename);
+    debug("%s is an unknown type of special file\n", filename);
     return -1;
   }
 }
@@ -203,8 +203,8 @@ static int require_priv(const char *module) {
   void *symbol_address = NULL;
   char *dlsym_error = NULL;
 
-  debug("require: module=\"%s\"\n", module);
-  debug("require: Load the library if file exists\n");
+  debug("module=\"%s\"\n", module);
+  debug("Load the library if file exists\n");
   snprintf(lib, PATH_MAX, PREFIX "%s" EXT, module);
   lib_handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
   if (lib_handle == NULL) {

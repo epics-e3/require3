@@ -4,9 +4,9 @@
 
 extern int requireDebug;
 
-#define debug(...)                                                             \
+#define debug(fmt, ...)                                                        \
   if (requireDebug)                                                            \
-  printf(__VA_ARGS__)
+  printf("%s:%d " fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
 char *real_path_separator(const char *location);
 int put_env_printf(const char *format, ...);

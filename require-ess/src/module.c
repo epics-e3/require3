@@ -78,27 +78,26 @@ void fill_module_list_record(initHookState state) {
       (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
 
   for (m = linked_list.head, i = 0; m != NULL; m = m->next, i++) {
-    debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
-          MAX_STRING_SIZE - 1, m->name);
+    debug("%s[%d] = \"%.*s\"\n", modules.precord->name, i, MAX_STRING_SIZE - 1,
+          m->name);
     sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
             MAX_STRING_SIZE - 1, m->name);
-    debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
-          MAX_STRING_SIZE - 1, m->version);
+    debug("%s[%d] = \"%.*s\"\n", versions.precord->name, i, MAX_STRING_SIZE - 1,
+          m->version);
     sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
             MAX_STRING_SIZE - 1, m->version);
-    debug("require: %s+=\"%s %s\"\n", modver.precord->name, m->name,
-          m->version);
+    debug("%s+=\"%s %s\"\n", modver.precord->name, m->name, m->version);
     c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
   }
 
   if (dbPut(&modules, DBF_STRING, bufferModules, linked_list.size) != 0) {
-    errlogPrintf("require: Error to put Modules\n");
+    errlogPrintf("Error to put Modules\n");
   }
   if (dbPut(&versions, DBF_STRING, bufferVersions, linked_list.size) != 0) {
-    errlogPrintf("require: Error to put Versions\n");
+    errlogPrintf("Error to put Versions\n");
   }
   if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
-    errlogPrintf("require: Error to put ModuleVersions\n");
+    errlogPrintf("Error to put ModuleVersions\n");
   }
 
   free(bufferModules);
@@ -146,7 +145,7 @@ int register_module(const char *moduleName, const char *version,
   if (interruptAccept)
     return 0;
 
-  debug("require: registerModule(%s,%s,%s)\n", moduleName, version, location);
+  debug("registerModule(%s,%s,%s)\n", moduleName, version, location);
 
   if (!moduleName)
     return -1;
@@ -250,6 +249,6 @@ free_name:
 free_module:
   free(module);
 out_of_memory:
-  errlogPrintf("require: out of memory\n");
+  errlogPrintf("out of memory\n");
   return -1;
 }
