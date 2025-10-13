@@ -471,8 +471,8 @@ db_internal: $(COMMON_DIR)/$(notdir $(basename $2).db)
 # Note that this rule overrides the one from RULES.Db from EPICS_BASE
 $(COMMON_DIR)/$(notdir $(basename $2).db): $(if $(filter /%,$2),$2,../$2)
 	@printf "Inflating database ... %44s >>> %40s \n" "$$<" "$$@"
-	$(MSI) -D $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$< > $(COMMON_DIR)/$$(notdir $$(basename $2).db).d
-	$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$<
+	$(MSI) -D $$(USR_DBFLAGS) -o $$@ $1 $$< > $$@.d
+	$(MSI)    $$(USR_DBFLAGS) -o $$@ $1 $$<
 endef
 
 $(foreach file,$(EXPAND_TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
