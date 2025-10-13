@@ -20,8 +20,6 @@
 
 #define MAX_MODULE_SIZE 256
 
-unsigned long int bufferSize = 0;
-
 struct linkedList linked_list = {0};
 
 static int get_record_handle(const char *namepart, short type, DBADDR *paddr) {
@@ -199,19 +197,13 @@ int register_module(const char *moduleName, const char *version,
                require_custom_path) < 0)
     return 0;
   /*
-   * Require DB has the following three PVs:
-   * - $(REQUIRE_IOC):$(MODULE)Version
+   * Require DB has the following two PVs:
    * - $(REQUIRE_IOC):Versions
    * - $(REQUIRE_IOC):Modules
-   * We reserved 30 chars for :$(MODULE)Version, so MODULE has the maximum 24
-   * chars. And we've reserved for 30 chars for $(REQUIRE_IOC). So, the whole PV
-   * and record name in moduleversion.template has 59 + 1.
+   * We've reserved for 30 chars for $(REQUIRE_IOC).
    */
-  if (asprintf(&template_arguments,
-               "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
-               "MODULE_COUNT=%u",
-               getenv("REQUIRE_IOC"), module->name, module->version,
-               linked_list.size) < 0) {
+  if (asprintf(&template_arguments, "REQUIRE_IOC=%.30s,MODULE_COUNT=%u",
+               getenv("REQUIRE_IOC"), linked_list.size) < 0) {
     errlogPrintf("Error asprintf failed\n");
     return 0;
   }

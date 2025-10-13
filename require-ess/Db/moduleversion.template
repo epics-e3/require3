@@ -23,14 +23,6 @@ record (waveform, "$(REQUIRE_IOC):Versions")
     })
 }
 
-record(stringin, "$(REQUIRE_IOC):$(MODULE)Version")
-{
-    field(DESC, "Module $(MODULE) version")
-    field(VAL,  "$(VERSION)")
-    field(PINI, "YES")
-    field(DISP, "1")
-}
-
 # This record contains labels for the created NTTable, named $(REQUIRE_IOC):LoadedModules.
 record(aai, "$(REQUIRE_IOC):Labels")
 {
