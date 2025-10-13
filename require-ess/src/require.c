@@ -135,7 +135,7 @@ int require(const char *module) {
   if (interruptAccept)
     return status;
 
-  errlogPrintf("Aborting startup script\n");
+  errlogPrintf("Fail to load modules.\nAborting startup script.\n");
   epicsExit(1);
   return status;
 }
@@ -208,7 +208,10 @@ static int require_priv(const char *module) {
   snprintf(lib, PATH_MAX, PREFIX "%s" EXT, module);
   lib_handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
   if (lib_handle == NULL) {
-    debug("require: Module not found\n");
+    errlogPrintf("Error loading module: %s\n", module);
+    dlsym_error = dlerror();
+    if (dlsym_error != NULL)
+      errlogPrintf("%s\n", dlsym_error);
     return -1;
   }
   symbol_address = dlsym(lib_handle, E3_SYMBOL);
@@ -216,6 +219,8 @@ static int require_priv(const char *module) {
   if (dlsym_error != NULL || symbol_address == NULL) {
     dlclose(lib_handle);
     errlogPrintf(PREFIX "%s" EXT " is not an EPICS module.\n", module);
+    if (dlsym_error != NULL)
+      errlogPrintf("%s\n", dlsym_error);
     return -1;
   }
   return 0;
