@@ -56,21 +56,17 @@ void fill_module_list_record(initHookState state) {
   if (state != initHookAfterFinishDevSup)
     return;
 
-  struct dbAddr modules = {0}, versions = {0}, modver = {0};
-  char *bufferModules, *bufferVersions, *bufferModver;
+  struct dbAddr modules = {0}, versions = {0};
+  char *bufferModules, *bufferVersions;
   struct module *m = NULL;
   int i = 0;
-  int c = 0;
 
   get_record_handle(":Modules", DBF_STRING, &modules);
   get_record_handle(":Versions", DBF_STRING, &versions);
-  get_record_handle(":ModuleVersions", DBF_CHAR, &modver);
 
   bufferModules =
       (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
   bufferVersions =
-      (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
-  bufferModver =
       (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
 
   for (m = linked_list.head, i = 0; m != NULL; m = m->next, i++) {
@@ -82,8 +78,6 @@ void fill_module_list_record(initHookState state) {
           m->version);
     sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
             MAX_STRING_SIZE - 1, m->version);
-    debug("%s+=\"%s %s\"\n", modver.precord->name, m->name, m->version);
-    c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
   }
 
   if (dbPut(&modules, DBF_STRING, bufferModules, linked_list.size) != 0) {
@@ -92,13 +86,9 @@ void fill_module_list_record(initHookState state) {
   if (dbPut(&versions, DBF_STRING, bufferVersions, linked_list.size) != 0) {
     errlogPrintf("Error to put Versions.\n");
   }
-  if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
-    errlogPrintf("Error to put ModuleVersions.\n");
-  }
 
   free(bufferModules);
   free(bufferVersions);
-  free(bufferModver);
 }
 
 const char *get_lib_version(const char *libname) {
@@ -184,12 +174,6 @@ int register_module(const char *moduleName, const char *version,
   strcpy(module->path, abslute_path ? abslute_path : "");
   free(abslute_path);
 
-  /* This bufferSize is used to calculate the ModuleVersions buffer size.  It
-   * will be updated every time we call dbLoadRecords at the end of this
-   * function.  The size here will be calculated based on the string that is
-   * being written in fillModuleListRecord.  So the magic number here is related
-   * to that string format.*/
-  bufferSize += nameSize + versionSize + 2;
   if (linked_list.size == 0) {
     linked_list.head = module;
   } else {
@@ -215,9 +199,8 @@ int register_module(const char *moduleName, const char *version,
                require_custom_path) < 0)
     return 0;
   /*
-   * Require DB has the following four PVs:
+   * Require DB has the following three PVs:
    * - $(REQUIRE_IOC):$(MODULE)Version
-   * - $(REQUIRE_IOC):ModuleVersions
    * - $(REQUIRE_IOC):Versions
    * - $(REQUIRE_IOC):Modules
    * We reserved 30 chars for :$(MODULE)Version, so MODULE has the maximum 24
@@ -226,10 +209,10 @@ int register_module(const char *moduleName, const char *version,
    */
   if (asprintf(&template_arguments,
                "REQUIRE_IOC=%.30s, MODULE=%.24s, VERSION=%.39s, "
-               "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
+               "MODULE_COUNT=%u",
                getenv("REQUIRE_IOC"), module->name, module->version,
-               linked_list.size, bufferSize) < 0) {
-    errlogPrintf("Error asprintf failed.\n");
+               linked_list.size) < 0) {
+    errlogPrintf("Error asprintf failed\n");
     return 0;
   }
   printf("Loading module info records for %s.\n", module->name);
