@@ -32,21 +32,17 @@ static int get_record_handle(const char *namepart, short type, DBADDR *paddr) {
           getenv("REQUIRE_IOC"), namepart);
 
   if (dbNameToAddr(record_name, paddr) != 0) {
-    errlogPrintf("require:get_record_handle : record %s not found\n",
-                 record_name);
+    errlogPrintf("Record %s not found.\n", record_name);
     return -1;
   }
   if (paddr->field_type != type) {
-    errlogPrintf("require:get_record_handle : record %s has wrong type %s "
-                 "instead of %s\n",
-                 record_name, pamapdbfType[paddr->field_type].strvalue,
+    errlogPrintf("Record %s has wrong type %s instead of %s.\n", record_name,
+                 pamapdbfType[paddr->field_type].strvalue,
                  pamapdbfType[type].strvalue);
     return -1;
   }
   if (paddr->pfield == NULL) {
-    errlogPrintf(
-        "require:get_record_handle : record %s has not yet allocated memory\n",
-        record_name);
+    errlogPrintf("Record %s has not yet allocated memory.\n", record_name);
     return -1;
   }
 
@@ -78,27 +74,26 @@ void fill_module_list_record(initHookState state) {
       (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
 
   for (m = linked_list.head, i = 0; m != NULL; m = m->next, i++) {
-    debug("require: %s[%d] = \"%.*s\"\n", modules.precord->name, i,
-          MAX_STRING_SIZE - 1, m->name);
+    debug("%s[%d] = \"%.*s\"\n", modules.precord->name, i, MAX_STRING_SIZE - 1,
+          m->name);
     sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
             MAX_STRING_SIZE - 1, m->name);
-    debug("require: %s[%d] = \"%.*s\"\n", versions.precord->name, i,
-          MAX_STRING_SIZE - 1, m->version);
+    debug("%s[%d] = \"%.*s\"\n", versions.precord->name, i, MAX_STRING_SIZE - 1,
+          m->version);
     sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
             MAX_STRING_SIZE - 1, m->version);
-    debug("require: %s+=\"%s %s\"\n", modver.precord->name, m->name,
-          m->version);
+    debug("%s+=\"%s %s\"\n", modver.precord->name, m->name, m->version);
     c += sprintf((char *)(bufferModver) + c, "%s %s\n", m->name, m->version);
   }
 
   if (dbPut(&modules, DBF_STRING, bufferModules, linked_list.size) != 0) {
-    errlogPrintf("require: Error to put Modules\n");
+    errlogPrintf("Error to put Modules.\n");
   }
   if (dbPut(&versions, DBF_STRING, bufferVersions, linked_list.size) != 0) {
-    errlogPrintf("require: Error to put Versions\n");
+    errlogPrintf("Error to put Versions.\n");
   }
   if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
-    errlogPrintf("require: Error to put ModuleVersions\n");
+    errlogPrintf("Error to put ModuleVersions.\n");
   }
 
   free(bufferModules);
@@ -146,7 +141,7 @@ int register_module(const char *moduleName, const char *version,
   if (interruptAccept)
     return 0;
 
-  debug("require: registerModule(%s,%s,%s)\n", moduleName, version, location);
+  debug("registerModule(%s,%s,%s)\n", moduleName, version, location);
 
   if (!moduleName)
     return -1;
@@ -234,10 +229,10 @@ int register_module(const char *moduleName, const char *version,
                "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
                getenv("REQUIRE_IOC"), module->name, module->version,
                linked_list.size, bufferSize) < 0) {
-    errlogPrintf("Error asprintf failed\n");
+    errlogPrintf("Error asprintf failed.\n");
     return 0;
   }
-  printf("Loading module info records for %s\n", module->name);
+  printf("Loading module info records for %s.\n", module->name);
   dbLoadRecords(require_absolute_path, template_arguments);
   free(template_arguments);
   free(require_absolute_path);
@@ -250,6 +245,6 @@ free_name:
 free_module:
   free(module);
 out_of_memory:
-  errlogPrintf("require: out of memory\n");
+  errlogPrintf("Out of memory.\n");
   return -1;
 }
