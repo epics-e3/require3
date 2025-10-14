@@ -19,7 +19,7 @@ char *real_path_separator(const char *location) {
   size_t size = 0;
   char *buffer = realpath(location, NULL);
   if (!buffer) {
-    debug("realpath(%s) failed\n", location);
+    debug("realpath(%s) failed.\n", location);
     errlogPrintf("%s\n", strerror(errno));
     return NULL;
   }
@@ -51,7 +51,7 @@ int put_env_printf(const char *format, ...) {
   }
   va_end(ap);
 
-  debug("put_env_printf(\"%s\")\n", var);
+  debug("put_env_printf(\"%s\").\n", var);
 
   val = strchr(var, '=');
   if (!val) {
@@ -95,7 +95,7 @@ void path_add(const char *varname, const char *dirname) {
         memmove(old_path + len + 1, old_path, p - old_path - 1);
         strcpy(old_path, dirname);
         old_path[len] = OSI_PATH_LIST_SEPARATOR[0];
-        debug("modified %s=%s\n", varname, old_path);
+        debug("modified %s=%s.\n", varname, old_path);
         break;
       }
       p += len;

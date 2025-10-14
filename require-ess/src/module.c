@@ -91,13 +91,13 @@ void fill_module_list_record(initHookState state) {
   }
 
   if (dbPut(&modules, DBF_STRING, bufferModules, linked_list.size) != 0) {
-    errlogPrintf("Error to put Modules\n");
+    errlogPrintf("Error to put Modules.\n");
   }
   if (dbPut(&versions, DBF_STRING, bufferVersions, linked_list.size) != 0) {
-    errlogPrintf("Error to put Versions\n");
+    errlogPrintf("Error to put Versions.\n");
   }
   if (dbPut(&modver, DBF_CHAR, bufferModver, strlen(bufferModver)) != 0) {
-    errlogPrintf("Error to put ModuleVersions\n");
+    errlogPrintf("Error to put ModuleVersions.\n");
   }
 
   free(bufferModules);
@@ -233,10 +233,10 @@ int register_module(const char *moduleName, const char *version,
                "MODULE_COUNT=%u, BUFFER_SIZE=%lu",
                getenv("REQUIRE_IOC"), module->name, module->version,
                linked_list.size, bufferSize) < 0) {
-    errlogPrintf("Error asprintf failed\n");
+    errlogPrintf("Error asprintf failed.\n");
     return 0;
   }
-  printf("Loading module info records for %s\n", module->name);
+  printf("Loading module info records for %s.\n", module->name);
   dbLoadRecords(require_absolute_path, template_arguments);
   free(template_arguments);
   free(require_absolute_path);
@@ -249,6 +249,6 @@ free_name:
 free_module:
   free(module);
 out_of_memory:
-  errlogPrintf("out of memory\n");
+  errlogPrintf("Out of memory.\n");
   return -1;
 }
