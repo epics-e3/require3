@@ -32,21 +32,17 @@ static int get_record_handle(const char *namepart, short type, DBADDR *paddr) {
           getenv("REQUIRE_IOC"), namepart);
 
   if (dbNameToAddr(record_name, paddr) != 0) {
-    errlogPrintf("require:get_record_handle : record %s not found\n",
-                 record_name);
+    errlogPrintf("Record %s not found.\n", record_name);
     return -1;
   }
   if (paddr->field_type != type) {
-    errlogPrintf("require:get_record_handle : record %s has wrong type %s "
-                 "instead of %s\n",
-                 record_name, pamapdbfType[paddr->field_type].strvalue,
+    errlogPrintf("Record %s has wrong type %s instead of %s.\n", record_name,
+                 pamapdbfType[paddr->field_type].strvalue,
                  pamapdbfType[type].strvalue);
     return -1;
   }
   if (paddr->pfield == NULL) {
-    errlogPrintf(
-        "require:get_record_handle : record %s has not yet allocated memory\n",
-        record_name);
+    errlogPrintf("Record %s has not yet allocated memory.\n", record_name);
     return -1;
   }
 
