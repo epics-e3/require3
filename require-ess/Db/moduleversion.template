@@ -1,6 +1,6 @@
 record(stringin,"$(REQUIRE_IOC):RequireVersion")
 {
-    field(DESC, "Require version")
+    field(DESC, "Version of the require EPICS module")
     field(DTYP, "getenv")
     field(INP,  "@require_VERSION")
     field(PINI, "YES")
