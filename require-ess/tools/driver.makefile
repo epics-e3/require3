@@ -25,7 +25,7 @@
 # - Third run: (see comment ## RUN 3)
 #   Compile everything.
 #
-# Module names are derived from either MODULE or PROJECT variables.
+# Module names are derived from either MODULE variable.
 # LIBVERSION is set to "dev" if not overwritten.
 # The library is installed to ${INSTALL_PREFIX}/lib/.
 # A module can be loaded with  require "<module>"
@@ -75,8 +75,7 @@ BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
 MODULE=
-PROJECT=
-PRJ := $(or $(strip $(firstword ${MODULE} ${PROJECT})),$(error MODULE/PROJECT not defined))
+PRJ := $(or $(strip ${MODULE}),$(error MODULE not defined))
 
 MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
@@ -374,7 +373,7 @@ HDEPENDS_METHOD = COMP
 HDEPENDS_COMPFLAGS = -c
 MKMF = DO_NOT_USE_MKMF
 CPPFLAGS += -MD
-CPPFLAGS += -DMODULE_NAME='"${MODULE}"' -DLIBVERSION='"${LIBVERSION}"'
+CPPFLAGS += -DMODULE_NAME='"${PRJ}"' -DLIBVERSION='"${LIBVERSION}"'
 CPPFLAGS += $(if ${MODULEDBD},,-DNO_REGISTRATION)
 CXXFLAGS += -I$(E3_REQUIRE_TOOLS)/
 -include *.d
