@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Remove dep file.
 * Remove `STEAM_PROTO_PATH` variable.
 * Remove `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`.
+* Remove `ModuleVersions` PV.
+* Remove `BaseVersion` PV; the EPICS base version is now provided by the `iocStats` module.
+* Remove individual loaded module version PVs.
 
 ### Changed
 
