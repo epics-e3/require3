@@ -5,14 +5,12 @@
 # Read this documentation and the inline comments carefully before
 # changing anything in this file.
 #
-# Usage: Create a Makefile containig the line:
-#        include /ioc/tool/driver.makefile
+# Usage: Create a Makefile containing the line:
+#        include $(E3_REQUIRE_TOOLS)/driver.makefile
 #        Optionally add variable definitions below that line.
 #
-# This makefile automatically finds the source file (unless overwritten with
-# the SOURCES variable in your Makefile) and generates a module consisting
-# of a library and .dbd file for each EPICS version and each target architecture.
-# Therefore, it calls itself recursively.
+# This makefile generates a module consisting of a library and .dbd file for each
+# target architecture. Therefore, it calls itself recursively.
 #
 # - First run: (see comment ## RUN 1)
 #   Find the sources etc.
@@ -27,13 +25,12 @@
 # - Third run: (see comment ## RUN 3)
 #   Compile everything.
 #
-# Module names are derived from the directory name (unless overwritten
-# with the MODULE variable in your Makefile).
+# Module names are derived from either MODULE variable.
 # LIBVERSION is set to "dev" if not overwritten.
-# The library is installed to ${EPICS_MODULES}/${MODULE}/${LIBVERSION}/lib/${T_A}/.
-# A module can be loaded with  require "<module>" [,"<version>"] [,"<variable>=<substitution>, ..."]
+# The library is installed to ${INSTALL_PREFIX}/lib/.
+# A module can be loaded with  require "<module>"
 #
-# User variables (add them to your Makefile, none is required):
+# User variables (add them to your Makefile, none are required):
 # MODULE
 #    Name of the built module.
 #    If not defined, it is derived from the directory name.
@@ -64,10 +61,9 @@ export EPICS_MODULES_LOCATION
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
 # a single pass.
-RECURSE_TARGETS = install build debug
+RECURSE_TARGETS = install build
 
-##---## In conda, We only use one version of EPICS base when compiling modules.
-##---## EPICS_BASE / EPICS_BASE_VERSION / EPICS_MODULES are set as environment variables by conda
+# EPICS_BASE and EPICS_BASE_HOST_BIN must be set in the environment
 MSI = ${EPICS_BASE_HOST_BIN}/msi
 CONFIG=${EPICS_BASE}/configure
 
@@ -79,8 +75,7 @@ BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
 MODULE=
-PROJECT=
-PRJ := $(strip $(or ${MODULE},${PROJECT}))
+PRJ := $(or $(strip ${MODULE}),$(error MODULE not defined))
 
 MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
@@ -242,10 +237,13 @@ BUILD_ARCHS = $(filter-out $(addprefix %,${EXCLUDE_ARCHS}),\
 SRCS_Linux = ${SOURCES_Linux}
 export SRCS_Linux
 
-$(RECURSE_TARGETS)::
-	@echo "MAKING EPICS VERSION ${EPICSVERSION}"
+EXPAND_TMPS = ${TMPS}
+export EXPAND_TMPS
 
-build:: $(COMMON_DIR)
+EXPAND_SUBS = ${SUBS}
+export EXPAND_SUBS
+
+build: $(COMMON_DIR)
 
 debug::
 	@echo "===================== Pass 1 ====================="
@@ -270,7 +268,9 @@ $(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
 # which is defined _after_ driver.makefile.
-$(foreach target,$(RECURSE_TARGETS),$(eval $(target):: $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+$(foreach target,$(RECURSE_TARGETS),$(eval $(target): $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+
+debug:: $$(foreach arch,$${BUILD_ARCHS},debug-$${arch})))
 
 else # T_A
 
@@ -286,8 +286,14 @@ ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
 VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
 export VAR_EXTENSIONS
 
-REQ = ${REQUIRED} $(foreach x, ${VAR_EXTENSIONS}, ${REQUIRED_$x})
-export REQ
+# SRCS are already exported from round one
+SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
+USR_LIBOBJS += ${LIBOBJS} $(foreach x,${VAR_EXTENSIONS},${LIBOBJS_$x})
+export USR_LIBOBJS
+
+BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
+export BINS
+
 ifeq ($(filter ${OS_CLASS},${OS_CLASS_LIST}),)
 
 install% build%: build
@@ -306,21 +312,13 @@ install build:
 
 else
 
-$(RECURSE_TARGETS):: O.${EPICSVERSION}_${T_A}
+$(RECURSE_TARGETS): O.${EPICSVERSION}_${T_A}
 	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
 
 endif
 
-SRCS += $(foreach x, ${VAR_EXTENSIONS}, ${SOURCES_$x})
-USR_LIBOBJS += ${LIBOBJS} $(foreach x,${VAR_EXTENSIONS},${LIBOBJS_$x})
-export USR_LIBOBJS
-
-BINS += $(foreach x, ${VAR_EXTENSIONS}, ${BINS_$x})
-export BINS
-
+# This needs to be here so we don't double it up
 export USR_DBFLAGS
-export TMPS
-export SUBS
 
 else # in O.*
 where_am_I:=$(abspath $(CURDIR)/..)/
@@ -375,7 +373,7 @@ HDEPENDS_METHOD = COMP
 HDEPENDS_COMPFLAGS = -c
 MKMF = DO_NOT_USE_MKMF
 CPPFLAGS += -MD
-CPPFLAGS += -DMODULE_NAME='"${MODULE}"' -DLIBVERSION='"${LIBVERSION}"'
+CPPFLAGS += -DMODULE_NAME='"${PRJ}"' -DLIBVERSION='"${LIBVERSION}"'
 CPPFLAGS += $(if ${MODULEDBD},,-DNO_REGISTRATION)
 CXXFLAGS += -I$(E3_REQUIRE_TOOLS)/
 -include *.d
@@ -422,7 +420,6 @@ debug::
 	@echo "SOURCES = ${SOURCES}"
 	@echo "SOURCES_${OS_CLASS} = ${SOURCES_${OS_CLASS}}"
 	@echo "SRCS = ${SRCS}"
-	@echo "REQ = ${REQ}"
 	@echo "CFGS = ${CFGS}"
 	@echo "LIBOBJS = ${LIBOBJS}"
 	@echo "DBDS = ${DBDS}"
@@ -469,12 +466,12 @@ db_internal: $(COMMON_DIR)/$(notdir $(basename $2).db)
 # Note that this rule overrides the one from RULES.Db from EPICS_BASE
 $(COMMON_DIR)/$(notdir $(basename $2).db): $(if $(filter /%,$2),$2,../$2)
 	@printf "Inflating database ... %44s >>> %40s \n" "$$<" "$$@"
-	$(MSI) -D $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$< > $(COMMON_DIR)/$$(notdir $$(basename $2).db).d
-	$(MSI)    $$(USR_DBFLAGS) -o $(COMMON_DIR)/$$(notdir $$(basename $2).db) $1 $$<
+	$(MSI) -D $$(USR_DBFLAGS) -o $$@ $1 $$< > $$@.d
+	$(MSI)    $$(USR_DBFLAGS) -o $$@ $1 $$<
 endef
 
-$(foreach file,$(TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
-$(foreach file,$(SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
+$(foreach file,$(EXPAND_TMPS),$(eval $(call SUBS_EXPAND,,$(file))))
+$(foreach file,$(EXPAND_SUBS),$(eval $(call SUBS_EXPAND,-S,$(file))))
 
 # Fix incompatible release rules.
 RELEASE_DBDFLAGS = -I ${EPICS_BASE}/dbd
