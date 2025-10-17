@@ -180,17 +180,15 @@ int register_module(const char *moduleName, const char *version,
   }
 
   /* Does not add require on the "modules list" */
-  if (strcmp(moduleName, "require") == 0) {
-    return 0;
+  if (strcmp(moduleName, "require") != 0) {
+    if (linked_list.size == 0) {
+      linked_list.head = module;
+    } else {
+      linked_list.tail->next = module;
+    }
+    linked_list.tail = module;
+    linked_list.size++;
   }
-
-  if (linked_list.size == 0) {
-    linked_list.head = module;
-  } else {
-    linked_list.tail->next = module;
-  }
-  linked_list.tail = module;
-  linked_list.size++;
 
   require_custom_path = getenv("require_DIR");
   if (require_custom_path == NULL)
