@@ -54,6 +54,7 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 USR_LIBS += asyn calc
 ```
 * Overall improve debug messages
+* Rename the `requireVersion` PV to `RequireVersion`. The version of the `require` module is no longer included in loadedModules
 
 ## [5.1.1.post2]
 
