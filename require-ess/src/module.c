@@ -19,6 +19,10 @@
 #include "module.h"
 
 #define MAX_MODULE_SIZE 256
+#define RUNTIME_COMPONENTS 2
+
+static const ComponentInfo runtimeComponents[] = {
+    {"epics-base", "EPICS_VERSION_FULL"}, {"pvxs", "PVXS_VERSION"}};
 
 struct linkedList linked_list = {0};
 
@@ -59,8 +63,8 @@ void fill_module_list_record(initHookState state) {
   struct module *m = NULL;
   int i = 0;
 
-  get_record_handle(":Modules", DBF_STRING, &modules);
-  get_record_handle(":Versions", DBF_STRING, &versions);
+  get_record_handle(":#Modules", DBF_STRING, &modules);
+  get_record_handle(":#Versions", DBF_STRING, &versions);
 
   bufferModules =
       (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
@@ -86,6 +90,48 @@ void fill_module_list_record(initHookState state) {
   }
 
   free(bufferModules);
+  free(bufferVersions);
+}
+
+void fill_runtime_components_list_record(initHookState state) {
+  /* We can fill the records only after they have been initialized, at
+   * initHookAfterFinishDevSup.
+   */
+  if (state != initHookAfterFinishDevSup)
+    return;
+
+  struct dbAddr components = {0}, versions = {0};
+  char *bufferComponents, *bufferVersions;
+
+  get_record_handle(":#Components", DBF_STRING, &components);
+  get_record_handle(":#ComponentsVersions", DBF_STRING, &versions);
+
+  bufferComponents =
+      (char *)calloc(MAX_STRING_SIZE * RUNTIME_COMPONENTS, sizeof(char));
+  bufferVersions =
+      (char *)calloc(MAX_STRING_SIZE * RUNTIME_COMPONENTS, sizeof(char));
+
+  for (int i = 0; i < RUNTIME_COMPONENTS; i++) {
+    debug("%s[%d] = \"%.*s\"\n", components.precord->name, i,
+          MAX_STRING_SIZE - 1, runtimeComponents[i].component);
+    sprintf((char *)(bufferComponents) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, runtimeComponents[i].component);
+    const char *ver = getenv(runtimeComponents[i].env_var);
+    debug("%s[%d] = \"%.*s\"\n", versions.precord->name, i, MAX_STRING_SIZE - 1,
+          ver ? ver : "Unknown");
+    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
+            MAX_STRING_SIZE - 1, ver ? ver : "Unknown");
+  }
+
+  if (dbPut(&components, DBF_STRING, bufferComponents, RUNTIME_COMPONENTS) !=
+      0) {
+    errlogPrintf("Error to put Components.\n");
+  }
+  if (dbPut(&versions, DBF_STRING, bufferVersions, RUNTIME_COMPONENTS) != 0) {
+    errlogPrintf("Error to put Versions.\n");
+  }
+
+  free(bufferComponents);
   free(bufferVersions);
 }
 

@@ -60,12 +60,17 @@ int requireDebug;
 
 const char os_class[] = OS_CLASS;
 char epics_release[80];
+char pvxs_version[80];
 char *target_arch;
 
 void set_require_env() {
   char *epics_version_major = getenv("EPICS_VERSION_MAJOR");
   char *epics_version_middle = getenv("EPICS_VERSION_MIDDLE");
   char *epics_version_minor = getenv("EPICS_VERSION_MINOR");
+
+  char *pvxs_version_major = getenv("PVXS_MAJOR_VERSION");
+  char *pvxs_version_minor = getenv("PVXS_MINOR_VERSION");
+  char *pvxs_version_maintenance = getenv("PVXS_MAINTENANCE_VERSION");
 
   sprintf(epics_release, "%s.%s.%s", epics_version_major, epics_version_middle,
           epics_version_minor);
@@ -75,6 +80,10 @@ void set_require_env() {
   put_env_printf("EPICS_HOST_ARCH=%s", target_arch);
   put_env_printf("EPICS_RELEASE=%s", epics_release);
   put_env_printf("OS_CLASS=%s", os_class);
+
+  sprintf(pvxs_version, "%s.%s.%s", pvxs_version_major, pvxs_version_minor,
+          pvxs_version_maintenance);
+  put_env_printf("PVXS_VERSION=%s", pvxs_version);
 }
 
 /* Set up db search path environment variables
@@ -242,6 +251,7 @@ static void requireRegister(void) {
 
     set_require_env();
     initHookRegister(fill_module_list_record);
+    initHookRegister(fill_runtime_components_list_record);
   }
 }
 

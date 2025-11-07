@@ -8,6 +8,10 @@ struct module {
   char *version;
   char *path;
 };
+typedef struct {
+  const char *component;
+  const char *env_var;
+} ComponentInfo;
 
 struct linkedList {
   struct module *head;
@@ -16,6 +20,7 @@ struct linkedList {
 };
 
 void fill_module_list_record(initHookState state);
+void fill_runtime_components_list_record(initHookState state);
 const char *get_lib_version(const char *libname);
 const char *get_lib_location(const char *libname);
 int is_module_loaded(const char *libname);
