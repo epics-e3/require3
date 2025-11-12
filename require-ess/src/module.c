@@ -247,8 +247,8 @@ int register_module(const char *moduleName, const char *version,
     return 0;
   /*
    * Require DB has the following two PVs:
-   * - $(REQUIRE_IOC):Versions
-   * - $(REQUIRE_IOC):Modules
+   * - $(REQUIRE_IOC):#Versions
+   * - $(REQUIRE_IOC):#Modules
    * We've reserved for 30 chars for $(REQUIRE_IOC).
    */
   if (asprintf(&template_arguments, "REQUIRE_IOC=%.30s,MODULE_COUNT=%u",
