@@ -1,4 +1,4 @@
-record(stringin,"$(REQUIRE_IOC):RequireVersion")
+record(stringin,"$(REQUIRE_IOC):Require-Version")
 {
     field(DESC, "Version of the require EPICS module")
     field(DTYP, "getenv")
@@ -59,7 +59,7 @@ record(waveform, "$(REQUIRE_IOC):#Components")
     field(DISP, "1")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):Runtime-Components":{"value.MODS":{+type:"plain", +trigger:"*",+channel:"VAL"}}
+        "$(REQUIRE_IOC):Require-RtComponents":{"value.MODS":{+type:"plain", +trigger:"*",+channel:"VAL"}}
     })
 }
 
@@ -71,7 +71,7 @@ record (waveform, "$(REQUIRE_IOC):#ComponentsVersions")
     field(PINI, "YES")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):Runtime-Components":{"value.VERS":{+type:"plain",+channel:"VAL"}}
+        "$(REQUIRE_IOC):Require-RtComponents":{"value.VERS":{+type:"plain",+channel:"VAL"}}
     })
 }
 
@@ -86,7 +86,7 @@ record(aai, "$(REQUIRE_IOC):#ComponentsLabels")
     field(DISP, "1")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):Runtime-Components":{
+        "$(REQUIRE_IOC):Require-RtComponents":{
             +id:"epics:nt/NTTable:1.0",
             "labels":{+type:"plain", +channel:"VAL"}
         }
