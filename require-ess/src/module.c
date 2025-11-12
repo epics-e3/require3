@@ -21,6 +21,10 @@
 #define MAX_MODULE_SIZE 256
 #define RUNTIME_COMPONENTS 2
 
+/* Function pointer type */
+typedef const char *(*name_getter_t)(int index);
+typedef const char *(*version_getter_t)(int index);
+
 static const ComponentInfo runtimeComponents[] = {
     {"epics-base", "EPICS_VERSION_FULL"}, {"pvxs", "PVXS_VERSION"}};
 
@@ -51,88 +55,85 @@ static int get_record_handle(const char *namepart, short type, DBADDR *paddr) {
   return 0;
 }
 
-void fill_module_list_record(initHookState state) {
-  /* We can fill the records only after they have been initialized, at
-   * initHookAfterFinishDevSup.
-   */
-  if (state != initHookAfterFinishDevSup)
-    return;
+static void fill_record_list(const char *pv_name, const char *pv_version,
+                             name_getter_t get_name,
+                             version_getter_t get_version, int count) {
 
   struct dbAddr modules = {0}, versions = {0};
   char *bufferModules, *bufferVersions;
-  struct module *m = NULL;
-  int i = 0;
 
-  get_record_handle(":#Modules", DBF_STRING, &modules);
-  get_record_handle(":#Versions", DBF_STRING, &versions);
+  get_record_handle(pv_name, DBF_STRING, &modules);
+  get_record_handle(pv_version, DBF_STRING, &versions);
 
-  bufferModules =
-      (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
-  bufferVersions =
-      (char *)calloc(MAX_STRING_SIZE * linked_list.size, sizeof(char));
+  bufferModules = (char *)calloc(MAX_STRING_SIZE * count, sizeof(char));
+  bufferVersions = (char *)calloc(MAX_STRING_SIZE * count, sizeof(char));
 
-  for (m = linked_list.head, i = 0; m != NULL; m = m->next, i++) {
+  for (int i = 0; i < count; i++) {
+    const char *name = get_name(i);
+    const char *version = get_version(i);
+
     debug("%s[%d] = \"%.*s\"\n", modules.precord->name, i, MAX_STRING_SIZE - 1,
-          m->name);
-    sprintf((char *)(bufferModules) + i * MAX_STRING_SIZE, "%.*s",
-            MAX_STRING_SIZE - 1, m->name);
+          name);
+    sprintf(bufferModules + i * MAX_STRING_SIZE, "%.*s", MAX_STRING_SIZE - 1,
+            name);
+
     debug("%s[%d] = \"%.*s\"\n", versions.precord->name, i, MAX_STRING_SIZE - 1,
-          m->version);
-    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
-            MAX_STRING_SIZE - 1, m->version);
+          version);
+    sprintf(bufferVersions + i * MAX_STRING_SIZE, "%.*s", MAX_STRING_SIZE - 1,
+            version);
   }
 
-  if (dbPut(&modules, DBF_STRING, bufferModules, linked_list.size) != 0) {
-    errlogPrintf("Error to put Modules.\n");
-  }
-  if (dbPut(&versions, DBF_STRING, bufferVersions, linked_list.size) != 0) {
-    errlogPrintf("Error to put Versions.\n");
-  }
+  if (dbPut(&modules, DBF_STRING, bufferModules, count) != 0)
+    errlogPrintf("Error to put %s.\n", modules.precord->name);
+  if (dbPut(&versions, DBF_STRING, bufferVersions, count) != 0)
+    errlogPrintf("Error to put %s.\n", versions.precord->name);
 
   free(bufferModules);
   free(bufferVersions);
 }
 
-void fill_runtime_components_list_record(initHookState state) {
-  /* We can fill the records only after they have been initialized, at
-   * initHookAfterFinishDevSup.
-   */
+static const char *get_module_name(int index) {
+  struct module *m = NULL;
+  int i;
+
+  for (m = linked_list.head, i = 0; m != NULL && i < index; m = m->next, i++)
+    ;
+
+  return (m && m->name) ? m->name : NULL;
+}
+
+static const char *get_module_version(int index) {
+  struct module *m = NULL;
+  int i;
+  for (m = linked_list.head, i = 0; m != NULL && i < index; m = m->next, i++)
+    ;
+
+  return (m && m->version) ? m->version : NULL;
+}
+
+static const char *get_runtime_name(int index) {
+  return runtimeComponents[index].component;
+}
+
+static const char *get_runtime_version(int index) {
+  const char *ver = getenv(runtimeComponents[index].env_var);
+  return ver ? ver : NULL;
+}
+
+void fill_module_list_record(initHookState state) {
   if (state != initHookAfterFinishDevSup)
     return;
 
-  struct dbAddr components = {0}, versions = {0};
-  char *bufferComponents, *bufferVersions;
+  fill_record_list(":#Modules", ":#Versions", get_module_name,
+                   get_module_version, linked_list.size);
+}
 
-  get_record_handle(":#Components", DBF_STRING, &components);
-  get_record_handle(":#ComponentsVersions", DBF_STRING, &versions);
+void fill_runtime_components_list_record(initHookState state) {
+  if (state != initHookAfterFinishDevSup)
+    return;
 
-  bufferComponents =
-      (char *)calloc(MAX_STRING_SIZE * RUNTIME_COMPONENTS, sizeof(char));
-  bufferVersions =
-      (char *)calloc(MAX_STRING_SIZE * RUNTIME_COMPONENTS, sizeof(char));
-
-  for (int i = 0; i < RUNTIME_COMPONENTS; i++) {
-    debug("%s[%d] = \"%.*s\"\n", components.precord->name, i,
-          MAX_STRING_SIZE - 1, runtimeComponents[i].component);
-    sprintf((char *)(bufferComponents) + i * MAX_STRING_SIZE, "%.*s",
-            MAX_STRING_SIZE - 1, runtimeComponents[i].component);
-    const char *ver = getenv(runtimeComponents[i].env_var);
-    debug("%s[%d] = \"%.*s\"\n", versions.precord->name, i, MAX_STRING_SIZE - 1,
-          ver ? ver : "Unknown");
-    sprintf((char *)(bufferVersions) + i * MAX_STRING_SIZE, "%.*s",
-            MAX_STRING_SIZE - 1, ver ? ver : "Unknown");
-  }
-
-  if (dbPut(&components, DBF_STRING, bufferComponents, RUNTIME_COMPONENTS) !=
-      0) {
-    errlogPrintf("Error to put Components.\n");
-  }
-  if (dbPut(&versions, DBF_STRING, bufferVersions, RUNTIME_COMPONENTS) != 0) {
-    errlogPrintf("Error to put Versions.\n");
-  }
-
-  free(bufferComponents);
-  free(bufferVersions);
+  fill_record_list(":#Components", ":#ComponentsVersions", get_runtime_name,
+                   get_runtime_version, RUNTIME_COMPONENTS);
 }
 
 const char *get_lib_version(const char *libname) {
