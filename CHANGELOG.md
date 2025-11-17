@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add `--debugger` and `--debugger-args` arguments for `iocsh`.
 * Add `--iocname` argument for `iocsh`.
 * Add `all` and `help` targets to `driver.makefile`.
-* Add `Require-RtComponents` group PV to store the EPICS base and PVXS versions. 
+* Add `Require-RtComponents` group PV to store the EPICS base and PVXS versions.
 
 ### Fixed
 
@@ -54,7 +54,7 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 USR_LIBS += asyn calc
 ```
 * Overall improve debug messages
-* Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `loadedModules`.
+* Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `LoadedModules`.
 * Rename the `LoadedModules` group PV to `Require-LoadedModules`.
 * Move `Labels`, `Modules` and `Versions` to internal.
 
