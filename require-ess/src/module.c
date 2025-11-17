@@ -245,12 +245,7 @@ int register_module(const char *moduleName, const char *version,
                "moduleversion.template",
                require_custom_path) < 0)
     return 0;
-  /*
-   * Require DB has the following two PVs:
-   * - $(REQUIRE_IOC):#Versions
-   * - $(REQUIRE_IOC):#Modules
-   * We've reserved for 30 chars for $(REQUIRE_IOC).
-   */
+
   if (asprintf(&template_arguments, "REQUIRE_IOC=%.30s,MODULE_COUNT=%u",
                getenv("REQUIRE_IOC"), linked_list.size) < 0) {
     errlogPrintf("Error asprintf failed\n");
