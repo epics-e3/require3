@@ -8,11 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-* Add timestamp for `LoadedModules`
 * Add support for lldb as debugger.
 * Add `--debugger` and `--debugger-args` arguments for `iocsh`.
 * Add `--iocname` argument for `iocsh`.
 * Add `all` and `help` targets to `driver.makefile`.
+* Add `Require-RtComponents` group PV to store the EPICS base and PVXS versions.
 
 ### Fixed
 
@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Remove dep file.
 * Remove `STEAM_PROTO_PATH` variable.
 * Remove `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`.
+* Remove `ModuleVersions` PV.
+* Remove `BaseVersion` PV; the EPICS base version is now provided by the `Require-RtComponents` group PV.
+* Remove individual loaded module version PVs.
 
 ### Changed
 
@@ -51,6 +54,9 @@ $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
 USR_LIBS += asyn calc
 ```
 * Overall improve debug messages
+* Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `LoadedModules`.
+* Rename the `LoadedModules` group PV to `Require-LoadedModules`.
+* Move `Labels`, `Modules` and `Versions` to internal.
 
 ## [5.1.1.post2]
 

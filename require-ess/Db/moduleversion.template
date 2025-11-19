@@ -1,4 +1,13 @@
-record(waveform, "$(REQUIRE_IOC):Modules")
+record(stringin,"$(REQUIRE_IOC):Require-Version")
+{
+    field(DESC, "Version of the require EPICS module")
+    field(DTYP, "getenv")
+    field(INP,  "@require_VERSION")
+    field(PINI, "YES")
+    field(DISP, "1")
+}
+
+record(waveform, "$(REQUIRE_IOC):#Modules")
 {
     field(DESC, "Names of loaded modules")
     field(FTVL, "STRING")
@@ -7,11 +16,11 @@ record(waveform, "$(REQUIRE_IOC):Modules")
     field(DISP, "1")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):LoadedModules":{"value.MODS":{+trigger:"*",+channel:"VAL"}}
+        "$(REQUIRE_IOC):Require-LoadedModules":{"value.MODS":{+type:"plain", +trigger:"*",+channel:"VAL"}}
     })
 }
 
-record (waveform, "$(REQUIRE_IOC):Versions")
+record (waveform, "$(REQUIRE_IOC):#Versions")
 {
     field (DESC, "Versions of loaded modules")
     field (FTVL, "STRING")
@@ -19,40 +28,14 @@ record (waveform, "$(REQUIRE_IOC):Versions")
     field (PINI, "YES")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):LoadedModules":{"value.VERS":{+type:"plain",+channel:"VAL"}}
+        "$(REQUIRE_IOC):Require-LoadedModules":{"value.VERS":{+type:"plain",+channel:"VAL"}}
     })
 }
 
-record(waveform, "$(REQUIRE_IOC):ModuleVersions")
-{
-    field(DESC, "Name and version of the loaded modules")
-    field(FTVL, "CHAR")
-    field(NELM, "$(BUFFER_SIZE)")
-    field(PINI, "YES")
-    field(DISP, "1")
-}
-
-record(stringin, "$(REQUIRE_IOC):$(MODULE)Version")
-{
-    field(DESC, "Module $(MODULE) version")
-    field(VAL,  "$(VERSION)")
-    field(PINI, "YES")
-    field(DISP, "1")
-}
-
-record(stringin,"$(REQUIRE_IOC):BaseVersion")
-{
-    field(DESC, "EPICS Base version")
-    field(DTYP, "getenv")
-    field(INP,  "@EPICS_VERSION_FULL")
-    field(PINI, "YES")
-    field(DISP, "1")
-}
-
 # This record contains labels for the created NTTable, named $(REQUIRE_IOC):LoadedModules.
-record(aai, "$(REQUIRE_IOC):Labels")
+record(aai, "$(REQUIRE_IOC):#ModuleLabels")
 {
-    field(DESC, "Labels for the NTTable")
+    field(DESC, "Labels for the loaded modules NTTable")
     field(FTVL, "STRING")
     field(NELM, "2")
     field(INP,  {const:["Module", "Version"]})
@@ -60,7 +43,50 @@ record(aai, "$(REQUIRE_IOC):Labels")
     field(DISP, "1")
 
     info(Q:group, {
-        "$(REQUIRE_IOC):LoadedModules":{
+        "$(REQUIRE_IOC):Require-LoadedModules":{
+            +id:"epics:nt/NTTable:1.0",
+            "labels":{+type:"plain", +channel:"VAL"}
+        }
+    })
+}
+
+record(waveform, "$(REQUIRE_IOC):#Components")
+{
+    field(DESC, "Names of runtime components")
+    field(FTVL, "STRING")
+    field(NELM, "2")
+    field(PINI, "YES")
+    field(DISP, "1")
+
+    info(Q:group, {
+        "$(REQUIRE_IOC):Require-RtComponents":{"value.MODS":{+type:"plain", +trigger:"*",+channel:"VAL"}}
+    })
+}
+
+record (waveform, "$(REQUIRE_IOC):#ComponentsVersions")
+{
+    field(DESC, "Versions of runtime components")
+    field(FTVL, "STRING")
+    field(NELM, "2")
+    field(PINI, "YES")
+
+    info(Q:group, {
+        "$(REQUIRE_IOC):Require-RtComponents":{"value.VERS":{+type:"plain",+channel:"VAL"}}
+    })
+}
+
+# This record contains labels for the created NTTable, named $(REQUIRE_IOC):Runtime-Components
+record(aai, "$(REQUIRE_IOC):#ComponentsLabels")
+{
+    field(DESC, "Labels for runtime components NTTable")
+    field(FTVL, "STRING")
+    field(NELM, "2")
+    field(INP,  {const:["Component", "Version"]})
+    field(PINI, "YES")
+    field(DISP, "1")
+
+    info(Q:group, {
+        "$(REQUIRE_IOC):Require-RtComponents":{
             +id:"epics:nt/NTTable:1.0",
             "labels":{+type:"plain", +channel:"VAL"}
         }
