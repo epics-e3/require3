@@ -75,7 +75,11 @@ BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
 
 MODULE=
-PRJ := $(or $(strip ${MODULE}),$(error MODULE not defined))
+ifeq ($(filter-out clean help debug,$(or $(MAKECMDGOALS),default)),)
+  PRJ := $(strip ${MODULE})
+else
+  PRJ := $(or $(strip ${MODULE}),$(error MODULE not defined))
+endif
 
 MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
