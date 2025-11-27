@@ -124,7 +124,7 @@ void fill_module_list_record(initHookState state) {
   if (state != initHookAfterFinishDevSup)
     return;
 
-  fill_record_list(":#Modules", ":#Versions", get_module_name,
+  fill_record_list(":#Modules", ":#ModulesVersions", get_module_name,
                    get_module_version, linked_list.size);
 }
 
