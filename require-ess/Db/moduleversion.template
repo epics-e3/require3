@@ -20,7 +20,7 @@ record(waveform, "$(REQUIRE_IOC):#Modules")
     })
 }
 
-record (waveform, "$(REQUIRE_IOC):#Versions")
+record (waveform, "$(REQUIRE_IOC):#ModulesVersions")
 {
     field (DESC, "Versions of loaded modules")
     field (FTVL, "STRING")
@@ -33,7 +33,7 @@ record (waveform, "$(REQUIRE_IOC):#Versions")
 }
 
 # This record contains labels for the created NTTable, named $(REQUIRE_IOC):LoadedModules.
-record(aai, "$(REQUIRE_IOC):#ModuleLabels")
+record(aai, "$(REQUIRE_IOC):#ModulesLabels")
 {
     field(DESC, "Labels for the loaded modules NTTable")
     field(FTVL, "STRING")
