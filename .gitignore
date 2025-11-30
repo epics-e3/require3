@@ -19,6 +19,7 @@ dbd/
 db/
 lib/
 cfg/
+share/
 include/
 *.local
 .gitlab-ci-local

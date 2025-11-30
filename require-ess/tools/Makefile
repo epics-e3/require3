@@ -4,10 +4,10 @@ include $(TOP)/configure/CONFIG
 
 SCRIPTS += iocsh
 SCRIPTS += iocsh_complete.bash
-SCRIPTS += iocsh_epics.supp
 SCRIPTS += iocsh_utils.py
-SCRIPTS += driver.makefile
 
+SCRS += iocsh_epics.supp
+SCRS += driver.makefile
 
 include $(TOP)/configure/RULES
 #----------------------------------------

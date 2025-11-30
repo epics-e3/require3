@@ -16,6 +16,8 @@ DBD += afterInit.dbd
 
 INC += require.h
 
+SCRS += init.cpp
+
 USR_INCLUDES_Linux += -idirafter $(EPICS_BASE)/include
 USR_CFLAGS += -std=gnu99
 USR_CFLAGS += -DT_A='"$(T_A)"'
