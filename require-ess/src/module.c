@@ -247,7 +247,7 @@ int register_module(const char *moduleName, const char *version,
     return 0;
   if (asprintf(&require_absolute_path,
                "%s" OSI_PATH_SEPARATOR "db" OSI_PATH_SEPARATOR
-               "moduleversion.template",
+               "moduleversion.db",
                require_custom_path) < 0)
     return 0;
 
