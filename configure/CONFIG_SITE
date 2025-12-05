@@ -38,6 +38,9 @@ CHECK_RELEASE = YES
 FILE_TYPE += SCRS
 INSTALL_SCRS = $(INSTALL_LOCATION)/share
 
+WITH_AFTERINIT=YES
+
+
 # These allow developers to override the CONFIG_SITE variable
 # settings without having to modify the configure/CONFIG_SITE
 # file itself.

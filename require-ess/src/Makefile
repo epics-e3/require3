@@ -10,12 +10,15 @@ require_SRCS += require_registerRecordDeviceDriver.cpp
 require_registerRecordDeviceDriver_CPPFLAGS += -DLIBVERSION='"$(REQUIRE_VERSION)"' -DMODULE_NAME='"require"'
 
 require_SRCS += require.c
-require_SRCS += afterInit.c
 require_SRCS += common.c
 require_SRCS += module.c
 
 require_DBD += require_.dbd
-require_DBD += afterInit.dbd
+
+ifeq ($(strip $(WITH_AFTERINIT)),YES)
+  require_SRCS += afterInit.c
+  require_DBD += afterInit.dbd
+endif
 
 DBD += require.dbd
 
