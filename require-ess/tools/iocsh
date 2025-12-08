@@ -90,8 +90,7 @@ def iocsh(
 
 def generate_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="IOC shell for e3",
-        description="ESS EPICS environment (e3) wrapper for softIocPVA",
+        description="ESS EPICS environment (e3) IOC entry",
     )
 
     # How this is set up has a funny but sort of good side-effect:
