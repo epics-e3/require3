@@ -101,6 +101,8 @@ HEADERS=
 BASH_ENV=
 ENV=
 
+.PHONY: default all clean uninstall help
+
 # Default target is "build" for all versions.
 # Don't install anything (different from default EPICS make rules).
 default: build
