@@ -119,17 +119,17 @@ uninstall:
 	$(RMDIR) ${MODULE_LOCATION}
 
 help:
-	$(info --------------------------------------- )
-	$(info Available targets)
-	$(info --------------------------------------- )
-	$(info all             Build and install current module)
-	$(info install         Install module to $(EPICS_MODULES))
-	$(info uninstall       Uninstall the current module)
-	$(info build           Build current module)
-	$(info debug           Displays information about the build process)
-	$(info clean           Deletes temporary build files)
-	$(info help            Show this help message)
-	$(info --------------------------------------- )
+	@echo ---------------------------------------
+	@echo Available targets
+	@echo ---------------------------------------
+	@echo all             Build and install current module
+	@echo install         Install module to $(EPICS_MODULES)
+	@echo uninstall       Uninstall the current module
+	@echo build           Build current module
+	@echo debug           Displays information about the build process
+	@echo clean           Deletes temporary build files
+	@echo help            Show this help message
+	@echo ---------------------------------------
 
 IGNOREFILES = .gitignore
 %: ${IGNOREFILES}
