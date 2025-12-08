@@ -1,6 +1,5 @@
 """Utilities for iocsh."""
 
-import atexit
 import os
 import logging
 import socket
@@ -14,7 +13,6 @@ DEFAULT_ERRLOG_BUFFER_SIZE = 2048
 SUPP_FILE = Path(__file__).resolve().parent / "iocsh_epics.supp"
 
 
-@atexit.register
 def graceful_shutdown() -> None:
     print("\nExiting e3 IOC shell")
     os.system("/bin/bash -c '[[ -t 1 ]] && stty sane'")

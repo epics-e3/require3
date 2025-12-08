@@ -9,11 +9,13 @@ import subprocess
 import sys
 import re
 from typing import List
+import atexit
 
 from iocsh_utils import verify_environment_and_return_require_version
 from iocsh_utils import TemporaryStartupScript
 from iocsh_utils import generate_banner
 from iocsh_utils import fetch_debugger_args
+from iocsh_utils import graceful_shutdown
 
 
 def iocsh(
@@ -27,6 +29,7 @@ def iocsh(
     debugger_args: str,
     debug: bool,
 ):
+    atexit.register(graceful_shutdown)
     with TemporaryStartupScript(iocname) as tmp_startup_script:
         require_version = verify_environment_and_return_require_version()
         pvxs_dir = Path(os.environ["PVXS"])
