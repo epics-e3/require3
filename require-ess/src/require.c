@@ -1,6 +1,3 @@
-/* Copyright (C) 2020 Dirk Zimoch */
-/* Copyright (C) 2020-2022 European Spallation Source, ERIC */
-
 #include "require.h"
 
 #include <ctype.h>

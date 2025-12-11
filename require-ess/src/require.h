@@ -1,6 +1,3 @@
-/* Copyright (C) 2020 Dirk Zimoch */
-/* Copyright (C) 2020-2023 European Spallation Source, ERIC */
-
 #pragma once
 
 #include <stddef.h>
