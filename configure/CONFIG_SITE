@@ -40,6 +40,8 @@ INSTALL_SCRS = $(INSTALL_LOCATION)/share
 
 WITH_AFTERINIT=YES
 
+# Define this if you want to specify a version instead of one based on the git tag
+#REQUIRE_VERSION=
 
 # These allow developers to override the CONFIG_SITE variable
 # settings without having to modify the configure/CONFIG_SITE

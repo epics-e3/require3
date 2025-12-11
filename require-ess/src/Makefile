@@ -2,7 +2,9 @@
 TOP = ../..
 include $(TOP)/configure/CONFIG
 
-REQUIRE_VERSION=$(shell git describe --tags)
+ifeq ($(strip $(REQUIRE_VERSION)),)
+  REQUIRE_VERSION=$(shell git describe --tags)
+endif
 
 LOADABLE_LIBRARY = require
 
