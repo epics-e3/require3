@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Copyright European Spallation Source ERIC
+ */
+
 extern "C" {
 #include <errlog.h>
 #include <iocsh.h>

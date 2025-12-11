@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Based on original work by Dirk Zimoch, Paul Scherrer Institute
+ * Modified by European Spallation Source ERIC
+ */
+
 #pragma once
 
 #include <stddef.h>

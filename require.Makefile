@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Copyright European Spallation Source ERIC
+#
+
 where_am_I := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 include $(where_am_I)/require-ess/tools/driver.makefile
 
