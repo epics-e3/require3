@@ -1,4 +1,8 @@
 #! /usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Copyright European Spallation Source ERIC
+#
 """Entry point for the IOC shell."""
 
 import argparse

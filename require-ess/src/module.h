@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Copyright European Spallation Source ERIC
+ */
+
 #ifndef __MODULE_H__
 #define __MODULE_H__
 #include <initHooks.h>

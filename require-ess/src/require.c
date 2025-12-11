@@ -1,5 +1,8 @@
-/* Copyright (C) 2020 Dirk Zimoch */
-/* Copyright (C) 2020-2022 European Spallation Source, ERIC */
+// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Based on original work by Dirk Zimoch, Paul Scherrer Institute
+ * Modified by European Spallation Source ERIC
+ */
 
 #include "require.h"
 

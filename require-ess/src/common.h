@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Copyright European Spallation Source ERIC
+ */
+
 #ifndef __COMMON_H__
 #define __COMMON_H__
 #include <stdio.h>
