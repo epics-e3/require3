@@ -57,6 +57,8 @@ USR_LIBS += asyn calc
 * Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `LoadedModules`.
 * Rename the `LoadedModules` group PV to `Require-LoadedModules`.
 * Move `Labels`, `Modules` and `Versions` to internal.
+* Updated the require build to use 100% EPICS base build rules instead of driver.makefile
+  (which is now only for modules that are built with require)
 
 ## [5.1.1.post2]
 
