@@ -21,7 +21,11 @@ extern "C" {
 #error LIBVERSION is undefined
 #endif
 
-#define REGISTER_RECORD MODULE_NAME "_registerRecordDeviceDriver"
+#ifndef MODULE_SYMBOL_NAME
+#error MODULE_SYMBOL_NAME is undefined
+#endif
+
+#define REGISTER_RECORD MODULE_SYMBOL_NAME "_registerRecordDeviceDriver"
 #define MODULE_PATH OSI_PATH_SEPARATOR MODULE_NAME OSI_PATH_SEPARATOR
 
 /* This function will automatically run after module is loaded

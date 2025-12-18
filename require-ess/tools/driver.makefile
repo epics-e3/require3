@@ -99,7 +99,8 @@ CP = cp
 MKDIR = mkdir -p -m 775
 
 # Some generated file names:
-REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
++PRJ_SYMBOL := $(subst -,_,$(PRJ))
++REGISTRYFILE = ${PRJ_SYMBOL}_registerRecordDeviceDriver.cpp
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -384,7 +385,7 @@ HDEPENDS_METHOD = COMP
 HDEPENDS_COMPFLAGS = -c
 MKMF = DO_NOT_USE_MKMF
 CPPFLAGS += -MD
-CPPFLAGS += -DMODULE_NAME='"${PRJ}"' -DLIBVERSION='"${LIBVERSION}"'
+CPPFLAGS += -DMODULE_SYMBOL_NAME='"${PRJ_SYMBOL}"' -DMODULE_NAME='"${PRJ}"' -DLIBVERSION='"${LIBVERSION}"'
 CPPFLAGS += $(if ${MODULEDBD},,-DNO_REGISTRATION)
 CXXFLAGS += -I$(E3_REQUIRE_TOOLS)/
 -include *.d
