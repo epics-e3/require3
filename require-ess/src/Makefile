@@ -9,7 +9,7 @@ endif
 LOADABLE_LIBRARY = require
 
 require_SRCS += require_registerRecordDeviceDriver.cpp
-require_registerRecordDeviceDriver_CPPFLAGS += -DLIBVERSION='"$(REQUIRE_VERSION)"' -DMODULE_NAME='"require"'
+require_registerRecordDeviceDriver_CPPFLAGS += -DLIBVERSION='"$(REQUIRE_VERSION)"' -DMODULE_NAME='"require"' -DMODULE_SYMBOL_NAME='"require"'
 
 require_SRCS += require.c
 require_SRCS += common.c
