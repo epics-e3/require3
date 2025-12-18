@@ -88,6 +88,8 @@ endif
 
 MODULE_LOCATION = $(EPICS_MODULES_LOCATION)/$(PRJ)
 
+PRJ_SYMBOL := $(subst -,_,$(PRJ))
+
 # Override config here:
 -include ${MAKEHOME}/config
 
@@ -99,8 +101,7 @@ CP = cp
 MKDIR = mkdir -p -m 775
 
 # Some generated file names:
-+PRJ_SYMBOL := $(subst -,_,$(PRJ))
-+REGISTRYFILE = ${PRJ_SYMBOL}_registerRecordDeviceDriver.cpp
+REGISTRYFILE = ${PRJ}_registerRecordDeviceDriver.cpp
 
 # Clear potential environment variables.
 TEMPLATES=
@@ -614,7 +615,7 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 # __module_library_init() is initializes the library and calls
 # Registration().
 ${REGISTRYFILE}: ${MODULEDBD}
-	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< $(basename $@) | grep -v 'iocshRegisterCommon();' > $@
+	$(PERL) $(EPICS_BASE_HOST_BIN)/registerRecordDeviceDriver.pl $< ${PRJ_SYMBOL}_registerRecordDeviceDriver | grep -v 'iocshRegisterCommon();' > $@
 	sed -i'.bak' -E '/^.*= Registration\(\)\;$$/d' $@
 	echo "#include <init.cpp>" >> $@
 
