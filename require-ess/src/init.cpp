@@ -50,6 +50,11 @@ static int __module_library_init() {
    * called here. */
 #ifndef NO_REGISTRATION
   Registration();
+  if (strcmp(MODULE_SYMBOL_NAME, MODULE_NAME) != 0) {
+    errlogPrintf("Module name '%s' contains '-', using C symbol "
+                 "'%s_registerRecordDeviceDriver'\n",
+                 MODULE_NAME, MODULE_SYMBOL_NAME);
+  }
   iocshCmd(REGISTER_RECORD);
 #endif
 
