@@ -45,7 +45,7 @@ class TemporaryStartupScript:
         # The message size maximum must be slightly smaller than the buffer size
         # (to account for the null terminator)
         self.add_command(
-            f"errlogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE-1}"
+            f"errlogInit2 {DEFAULT_ERRLOG_BUFFER_SIZE} {DEFAULT_ERRLOG_BUFFER_SIZE - 1}"
         )
 
         if platform.startswith("linux"):
