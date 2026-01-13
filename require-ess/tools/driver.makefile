@@ -66,7 +66,7 @@ export EPICS_MODULES_LOCATION
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
 # a single pass.
-RECURSE_TARGETS = install build
+RECURSE_TARGETS = install build uninstall
 
 # EPICS_BASE and EPICS_BASE_HOST_BIN must be set in the environment
 MSI = ${EPICS_BASE_HOST_BIN}/msi
@@ -95,6 +95,7 @@ PRJ_SYMBOL := $(subst -,_,$(PRJ))
 
 # Some shell commands:
 RMDIR = rm -rf
+RM_EMPTY_DIR = rmdir --ignore-fail-on-non-empty -p
 LN = ln -s
 RM = rm -f
 CP = cp
@@ -125,9 +126,6 @@ clean:
 
 O.%:
 	+$(MKDIR) $@
-
-uninstall:
-	$(RMDIR) ${MODULE_LOCATION}
 
 help:
 	@echo ---------------------------------------
@@ -458,8 +456,8 @@ COMMON_INC = ${RECORDS:%=${COMMON_DIR}/%.h}
 INSTALL_LOADABLE_SHRLIBS=
 
 # We ony want to include ${BASERULES} from EPICS base if we are /not/ in debug
-# mode. Including this causes all of the source files to be compiled!
-ifeq (,$(findstring debug,${MAKECMDGOALS}))
+# mode or uninstalling. Including this causes all of the source files to be compiled!
+ifeq (,$(filter debug uninstall,${MAKECMDGOALS}))
   include ${BASERULES}
   ifneq ($(strip $(MODULE_RULES)),)
     include $(MODULE_RULES)
@@ -600,6 +598,12 @@ ${INSTALL_BINS}: $(addprefix ../,$(filter-out /%,${BINS})) $(filter /%,${BINS})
 	@echo "Installing binaries $^ to $(@D)"
 	$(INSTALL) -d -m$(BIN_PERMISSIONS) $^ $(@D)
 
+INSTALL_DIRS = $(dir $(INSTALLS))
+
+uninstall:
+	@echo "Uninstalling module $(PRJ)"
+	$(RM) $(INSTALLS)
+	$(RM_EMPTY_DIR) $(INSTALL_DIRS)
 
 # Create GPIB code from *.gt file.
 %.c %.dbd %.list: %.gt
