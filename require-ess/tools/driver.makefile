@@ -66,7 +66,7 @@ export EPICS_MODULES_LOCATION
 # recursive build process. For each of these targets we will perform all three
 # of the build runs listed above; for others (e.g. `make clean`) we only perform
 # a single pass.
-RECURSE_TARGETS = install build uninstall
+RECURSE_TARGETS = install build uninstall debug
 
 # EPICS_BASE and EPICS_BASE_HOST_BIN must be set in the environment
 MSI = ${EPICS_BASE_HOST_BIN}/msi
@@ -279,9 +279,9 @@ $(foreach target,$(RECURSE_TARGETS),$(eval $(call target_rule,$(target))))
 
 # This has to be after .SECONDEXPANSION since BUILD_ARCHS will be modified based on EXCLUDE_ARCHS
 # which is defined _after_ driver.makefile.
-$(foreach target,$(RECURSE_TARGETS),$(eval $(target): $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
+$(foreach target,$(filter-out debug,$(RECURSE_TARGETS)),$(eval $(target): $$$$(foreach arch,$$$${BUILD_ARCHS},$(target)-$$$${arch})))
 
-debug:: $$(foreach arch,$${BUILD_ARCHS},debug-$${arch})))
+debug:: $$(foreach arch,$${BUILD_ARCHS},debug-$${arch})
 
 else # T_A
 
