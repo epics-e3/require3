@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [6.0.0]
 
 ### Added
 
@@ -198,7 +198,9 @@ entries are a compilation of the entries from all of this versions.
   startup script
 
 
-[Unreleased]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1...master
+[6.0.0]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1.post2...6.0.0
+[5.1.1.post2]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1.post1...5.1.1.post2
+[5.1.1.post1]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1...5.1.1.post1
 [5.1.1]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/3.3.0...5.1.1
 [3.3.0]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/3.2.0...3.3.0
 [3.2.0]: https://gitlab.esss.lu.se/e3/e3-require/-/tree/3.2.0
