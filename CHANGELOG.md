@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [6.0.0]
 
 ### Added
 
@@ -16,16 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-* Exit `iocsh` if file to run does not exist
-* Add trigger mapping on `LoadedModules` to silence QSRV2 warning
-* Error messages when module fail to load.
+* Exit `iocsh` if file to run does not exist.
+* Add trigger mapping on `LoadedModules` to silence QSRV2 warning.
+* Improve error messages when modules fail to load.
 
 ### Removed
 
-* Remove `--realtime` option from `iocsh`
+* Remove `--realtime` option from `iocsh`.
 * Remove functions not used in production: `ld`, `libversionShow` and `pathAdd`.
-* License handling in driver.makefile. This should be provided by a package manager.
-* Remove version handling.
+* Remove license handling in driver.makefile. This should be provided by a package manager.
+* Remove multi-version handling. This should be provided by a package manager.
 * Remove `--gdb` from `iocsh`.
 * Remove support for `poky-i7` architecture.
 * Remove support for debug architecture.
@@ -39,26 +39,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Switch to using softIocPVX in lieu of softIocPVA (new PVA stack)
-* Modules files are now installed based on `EPICS_MODULE_PATH`.
-* Module libraries are installed on standard directory `/lib`.
+* Switch to using softIocPVX in lieu of softIocPVA (new PVA stack).
+* Module files are now installed based on `EPICS_MODULE_PATH`.
+* Module libraries are installed in standard directory `/lib`.
 * Rework internal logic for loading modules. See commit 24d41905d46ed4395e0822f2467b54d89437890f.
 * Change how debugging arguments work:
-```sh
-$ iocsh --debugger gdb --debugger-args "args for gdb" st.cmd
-$ iocsh --debugger lldb --debugger-args "args for lldb" st.cmd
-$ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
-```
+  ```sh
+  $ iocsh --debugger gdb --debugger-args "args for gdb" st.cmd
+  $ iocsh --debugger lldb --debugger-args "args for lldb" st.cmd
+  $ iocsh --debugger valgrind --debugger-args "args for valgrind" st.cmd
+  ```
 * Dependencies should be linked using `USR_LIBS`, for example:
-```
-USR_LIBS += asyn calc
-```
-* Overall improve debug messages
+  ```
+  USR_LIBS += asyn calc
+  ```
+* Improve debug messages.
 * Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `LoadedModules`.
 * Rename the `LoadedModules` group PV to `Require-LoadedModules`.
 * Move `Labels`, `Modules` and `Versions` to internal.
-* Updated the require build to use 100% EPICS base build rules instead of driver.makefile
-  (which is now only for modules that are built with require)
+* Updated require's own build to use 100% EPICS base build rules instead of `driver.makefile`
+  (which is now only for modules that are built with require).
 
 ## [5.1.1.post2]
 
@@ -198,7 +198,9 @@ entries are a compilation of the entries from all of this versions.
   startup script
 
 
-[Unreleased]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1...master
+[6.0.0]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1.post2...6.0.0
+[5.1.1.post2]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1.post1...5.1.1.post2
+[5.1.1.post1]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/5.1.1...5.1.1.post1
 [5.1.1]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/3.3.0...5.1.1
 [3.3.0]: https://gitlab.esss.lu.se/e3/e3-require/-/compare/3.2.0...3.3.0
 [3.2.0]: https://gitlab.esss.lu.se/e3/e3-require/-/tree/3.2.0
