@@ -56,9 +56,9 @@ shfmt:
 gcc_default:
   extends: .build
   variables:
-    BASE: "7.0"
+    BASE: "R7.0.9"
     MODULES: "pvxs"
-    PVXS: "1.4.0"
+    PVXS: "1.5.0"
     PVXS_REPOOWNER: epics-base
     VV: "1"
 
@@ -66,8 +66,8 @@ clang_default:
   extends: .build
   variables:
     CMP: "clang"
-    BASE: "7.0"
+    BASE: "R7.0.9"
     MODULES: "pvxs"
-    PVXS: "1.4.0"
+    PVXS: "1.5.0"
     PVXS_REPOOWNER: epics-base
     VV: "1"
