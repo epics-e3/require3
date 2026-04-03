@@ -14,29 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add `all` and `help` targets to `driver.makefile`.
 * Add `Require-RtComponents` group PV to store the EPICS base and PVXS versions.
 
-### Fixed
-
-* Exit `iocsh` if file to run does not exist.
-* Add trigger mapping on `LoadedModules` to silence QSRV2 warning.
-* Improve error messages when modules fail to load.
-
-### Removed
-
-* Remove `--realtime` option from `iocsh`.
-* Remove functions not used in production: `ld`, `libversionShow` and `pathAdd`.
-* Remove license handling in driver.makefile. This should be provided by a package manager.
-* Remove multi-version handling. This should be provided by a package manager.
-* Remove `--gdb` from `iocsh`.
-* Remove support for `poky-i7` architecture.
-* Remove support for debug architecture.
-* Remove support for `REQUIRED` variable.
-* Remove dep file.
-* Remove `STREAM_PROTO_PATH` variable.
-* Remove `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`.
-* Remove `ModuleVersions` PV.
-* Remove `BaseVersion` PV; the EPICS base version is now provided by the `Require-RtComponents` group PV.
-* Remove individual loaded module version PVs.
-
 ### Changed
 
 * Switch to using softIocPVX in lieu of softIocPVA (new PVA stack).
@@ -66,6 +43,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   { "value" }
   ```
 
+### Removed
+
+* Remove `--realtime` option from `iocsh`.
+* Remove functions not used in production: `ld`, `libversionShow` and `pathAdd`.
+* Remove license handling in driver.makefile. This should be provided by a package manager.
+* Remove multi-version handling. This should be provided by a package manager.
+* Remove `--gdb` from `iocsh`.
+* Remove support for `poky-i7` architecture.
+* Remove support for debug architecture.
+* Remove support for `REQUIRED` variable.
+* Remove dep file.
+* Remove `STREAM_PROTO_PATH` variable.
+* Remove `IOCNAME` environment variable in favour of `--iocname` argument for `iocsh`.
+* Remove `ModuleVersions` PV.
+* Remove `BaseVersion` PV; the EPICS base version is now provided by the `Require-RtComponents` group PV.
+* Remove individual loaded module version PVs.
+
+### Fixed
+
+* Exit `iocsh` if file to run does not exist.
+* Add trigger mapping on `LoadedModules` to silence QSRV2 warning.
+* Improve error messages when modules fail to load.
+
 ## [5.1.1.post2]
 
 ### Added
@@ -91,27 +91,6 @@ repository that was latter ported to this one. Five versions were released from
 the NFS repository that are not here: 3.4.0, 3.4.1, 4.0.0, 5.0.0 and 5.1.0. Some work
 was done to synchronize both repositories for this release. The following
 entries are a compilation of the entries from all of this versions.
-
-### Fixed
-
-* Fix memory leaks on IOC exit
-* Fix dirty terminal after IOC exit for some distributions
-* Resolve `E3_CMD_TOP` when a startup script is being run with `iocsh` (previously expanded to just `.`)
-* Fix truncated errorlog messages
-* Fixed an issue where .template and .substitutions files with the same name would build incorrectly
-* Fixed memory leak in `afterInit`
-* Fixed issue where updated dependencies of substitution files did not retrigger a .db expansion.
-* db expansion happens at build time, not at install time.
-* `iocsh.bash --help` (and variants) no longer loads tries to load `env.sh`.
-* `make build` will fail if any of the target architectures fail, not just the last one.
-* Fixed issue where `.hpp` files were not installed correctly with `KEEP_HEADER_SUBDIRS`
-* Fixed issue where consecutive builds might not track updated dependencies
-* Fixed an issue related to buffering of data being written to a shared filesystem which produced garbled `.dep` files
-* Fixed an issue where `iocshRegisterCommon()` was called when registering functions for modules as they are loaded. This had
-  the effect of overwriting any functions that have the same name as a common one with their original one (e.g. `dbLoadTemplate`
-  from `require`)
-* Fixed issue where `make debug` would recompile a module.
-* Fixed issue where `make install` would fail if you had not run `make build` first.
 
 ### Added
 
@@ -172,12 +151,31 @@ entries are a compilation of the entries from all of this versions.
 * Remove usage of `env.sh` - now there is a check only for seeing if the environment variable `$IOCNAME` is set
 * Removed `iocsh_gdb.bash` and `iocsh_nice.bash`, both of whose functionality can be called via `iocsh.bash -dg` and `iocsh.bash -n`, respectively.
 
+### Fixed
+
+* Fix memory leaks on IOC exit
+* Fix dirty terminal after IOC exit for some distributions
+* Resolve `E3_CMD_TOP` when a startup script is being run with `iocsh` (previously expanded to just `.`)
+* Fix truncated errorlog messages
+* Fixed an issue where .template and .substitutions files with the same name would build incorrectly
+* Fixed memory leak in `afterInit`
+* Fixed issue where updated dependencies of substitution files did not retrigger a .db expansion.
+* db expansion happens at build time, not at install time.
+* `iocsh.bash --help` (and variants) no longer loads tries to load `env.sh`.
+* `make build` will fail if any of the target architectures fail, not just the last one.
+* Fixed issue where `.hpp` files were not installed correctly with `KEEP_HEADER_SUBDIRS`
+* Fixed issue where consecutive builds might not track updated dependencies
+* Fixed an issue related to buffering of data being written to a shared filesystem which produced garbled `.dep` files
+* Fixed an issue where `iocshRegisterCommon()` was called when registering functions for modules as they are loaded. This had
+  the effect of overwriting any functions that have the same name as a common one with their original one (e.g. `dbLoadTemplate`
+  from `require`)
+* Fixed issue where `make debug` would recompile a module.
+* Fixed issue where `make install` would fail if you had not run `make build` first.
+
 ## [3.3.0]
 
-### Removed
-* Removed all EPICS 3.\* and VxWorks code, as these are not to be supported at ESS.
-
 ### Added
+
 * Consistent with the philosophy of not requiring module version pinning, if one specifies a dependent
   module with e.g. `REQUIRED += asyn` then the latest version of asyn will be used. No version need
   to be specified.
@@ -188,10 +186,15 @@ entries are a compilation of the entries from all of this versions.
 * A module developer can now install dbd files separate from the module dbd file by using `DBD_INSTALLS += file.dbd`.
 
 ### Fixed
+
 * Ensures that lowercase module names are enforced consistently
 * Vendor libraries are only installed at install time, not at build time
 * Vendor libraries are uninstalled when `make uninstall` is run
 * `iocsh.bash` now supports multiple directories being specified with the -l (local) flag as a source of loading modules
+
+### Removed
+
+* Removed all EPICS 3.\* and VxWorks code, as these are not to be supported at ESS.
 
 ## [3.2.0]
 
