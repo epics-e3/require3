@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   USR_LIBS += asyn calc
   ```
 * Improve debug messages.
+* Improve error messages when modules fail to load.
 * Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `LoadedModules`.
 * Rename the `LoadedModules` group PV to `Require-LoadedModules`.
 * Move `Labels`, `Modules` and `Versions` to internal.
@@ -64,7 +65,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Exit `iocsh` if file to run does not exist.
 * Add trigger mapping on `LoadedModules` to silence QSRV2 warning.
-* Improve error messages when modules fail to load.
 
 ## [5.1.1.post2]
 
@@ -78,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Add `MODULE_CONFIG` variable to include module-specific config file
 
-### Changed
+### Removed
 
 * Remove dbd rules for GPIB code
 * Remove dbd rules for sequencer
@@ -123,7 +123,6 @@ entries are a compilation of the entries from all of this versions.
     * Make running IOC as realtime or with debuggers mutually exclusive
     * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
 * Replaced `tclx` script to expand .dbd files with a python script
-* Fix memory issues on the internal linked list
 * The loop over `EPICSVERSION` in `driver.makefile` has been removed; various other cleanup has been performed.
 * Improved output during IOC startup
 * Rename `runScript` to `afterInit`
@@ -134,8 +133,6 @@ entries are a compilation of the entries from all of this versions.
 
 ### Removed
 
-* Remove a number of memory leaks found by valgrind
-* Remove duplicated entries from generated `.dep` files
 * Remove `loadIocsh` function, which was just a cover for `runScript`.
 * Remove references to `INSTBASE`
 * Remove from `iocsh`
@@ -171,6 +168,9 @@ entries are a compilation of the entries from all of this versions.
   from `require`)
 * Fixed issue where `make debug` would recompile a module.
 * Fixed issue where `make install` would fail if you had not run `make build` first.
+* Fix memory issues on the internal linked list
+* Fix a number of memory leaks found by valgrind
+* Fix duplicated entries in generated `.dep` files
 
 ## [3.3.0]
 
