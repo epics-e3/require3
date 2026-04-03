@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Switch to using softIocPVX in lieu of softIocPVA (new PVA stack).
 * Module files are now installed based on `EPICS_MODULE_PATH`.
 * Module libraries are installed in standard directory `/lib`.
-* Rework internal logic for loading modules. See commit 24d41905d46ed4395e0822f2467b54d89437890f.
+* Rework internal logic for loading modules (see [24d41905](https://gitlab.esss.lu.se/e3/e3-require/-/commit/24d41905d46ed4395e0822f2467b54d89437890f)).
 * Change how debugging arguments work:
   ```sh
   $ iocsh --debugger gdb --debugger-args "args for gdb" st.cmd
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Rename the `requireVersion` PV to `Require-Version`. The version of the `require` module is no longer included in `LoadedModules`.
 * Rename the `LoadedModules` group PV to `Require-LoadedModules`.
 * Move `Labels`, `Modules` and `Versions` to internal.
-* Updated require's own build to use 100% EPICS base build rules instead of `driver.makefile`
+* Update require's own build to use 100% EPICS base build rules instead of `driver.makefile`
   (which is now only for modules that are built with require).
 * Replace custom `dbLoadTemplate` with the one supplied by EPICS base.
   Note: double quotes (`"`) must now be used when specifying macros in substitutions files, e.g.:
@@ -94,8 +94,7 @@ entries are a compilation of the entries from all of this versions.
 
 ### Added
 
-* Allow for module-specific build rules (see: sequencer) to be installed and used
-  within e3
+* Allow for module-specific build rules (see: sequencer) to be installed and used within e3
 * Automatically install LICENSE files with modules
 * `afterInit` can now run commands of arbitrary length. Note: The syntax has changed from
   ```
@@ -122,11 +121,11 @@ entries are a compilation of the entries from all of this versions.
     * Shortened argument for printing version and exit changed from `-v` to `-V`
     * Make running IOC as realtime or with debuggers mutually exclusive
     * Change how arguments are passed to `gdb` and `valgrind` (see help: `--help`)
-* Replaced `tclx` script to expand .dbd files with a python script
+* Replace `tclx` script to expand .dbd files with a python script
 * The loop over `EPICSVERSION` in `driver.makefile` has been removed; various other cleanup has been performed.
-* Improved output during IOC startup
+* Improve output during IOC startup
 * Rename `runScript` to `afterInit`
-* Updated PV-names to be ESS compliant, and remove VERSIONS PV
+* Update PV-names to be ESS compliant, and remove VERSIONS PV
 * Rename `iocsh.bash` to `iocsh`
 * Add information about realtime option to usage
 * Missing `REQUIRED` dependencies now cause the build to fail instead of providing a warning
@@ -156,9 +155,9 @@ entries are a compilation of the entries from all of this versions.
 * Fix truncated errorlog messages
 * Fixed an issue where .template and .substitutions files with the same name would build incorrectly
 * Fixed memory leak in `afterInit`
-* Fixed issue where updated dependencies of substitution files did not retrigger a .db expansion.
-* db expansion happens at build time, not at install time.
-* `iocsh.bash --help` (and variants) no longer loads tries to load `env.sh`.
+* Fixed issue where updated dependencies of substitution files did not retrigger a `.db` expansion.
+  Note: `.db` expansion happens at build time, not at install time.
+* `iocsh.bash --help` (and variants) no longer tries to load `env.sh`.
 * `make build` will fail if any of the target architectures fail, not just the last one.
 * Fixed issue where `.hpp` files were not installed correctly with `KEEP_HEADER_SUBDIRS`
 * Fixed issue where consecutive builds might not track updated dependencies
@@ -199,7 +198,7 @@ entries are a compilation of the entries from all of this versions.
 ## [3.2.0]
 
 ### Added
-* Added -dg, -dv options to run gdb and valgrind using `iocsh.bash`
+* Added `-dg`, `-dv` options to run gdb and valgrind using `iocsh.bash`
 * If `IOCNAME` is defined, then it is used in the PV names set by require instead of `REQMOD:$(hostname)-$(pid)`.
 
 ### Fixed
