@@ -59,6 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Move `Labels`, `Modules` and `Versions` to internal.
 * Updated require's own build to use 100% EPICS base build rules instead of `driver.makefile`
   (which is now only for modules that are built with require).
+* Replace custom `dbLoadTemplate` with the one supplied by EPICS base.
+  Note: double quotes (`"`) must now be used when specifying macros in substitutions files, e.g.:
+  ```
+  pattern { MACRO }
+  { "value" }
+  ```
 
 ## [5.1.1.post2]
 
