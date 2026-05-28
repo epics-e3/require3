@@ -19,13 +19,13 @@
 #
 # - First run: (see comment ## RUN 1)
 #   Find the sources etc.
-#   Include EPICS configuration files for ${EPICSVERSION}, determined by ${EPICS_BASE}
+#   Include EPICS configuration files from ${EPICS_BASE}
 #   Iterate over all target architectures (${T_A}) defined.
 #
 # - Second run: (see comment ## RUN 2)
 #   Check which target architectures to build.
-#   Create O.${EPICSVERSION}_${T_A} subdirectories if necessary.
-#   Change to O.${EPICSVERSION}_${T_A} subdirectories.
+#   Create O.${T_A} subdirectories if necessary.
+#   Change to O.${T_A} subdirectories.
 #
 # - Third run: (see comment ## RUN 3)
 #   Compile everything.
@@ -74,7 +74,6 @@ CONFIG=${EPICS_BASE}/configure
 
 # Set LIBVERSION to dev if not set
 LIBVERSION := $(or $(LIBVERSION),dev)
-EPICSVERSION:=$(EPICS_BASE_VERSION)
 
 BUILDCLASSES = Linux Darwin
 OS_CLASS_LIST = $(BUILDCLASSES)
@@ -165,7 +164,7 @@ TOP:=${EPICS_BASE}
 EPICS_BASE:=${EB}
 
 ${CONFIG}/CONFIG:
-	$(error EPICS release ${EPICSVERSION} not installed on this host.)
+	$(error EPICS base (location: ${EPICS_BASE}) not installed on this host.)
 
 # Variables that need to override data from ${CONFIG}/CONFIG
 BASE_CPPFLAGS=
@@ -183,13 +182,13 @@ COMMANDLINE_LIBRARY =
 
 OBJ=.o
 
-COMMON_DIR = O.${EPICSVERSION}_Common
+COMMON_DIR = O.Common
 
 ifndef T_A
 
 where_am_I:=$(abspath $(CURDIR))/
 ## RUN 1
-# Target achitecture not yet defined, but EPICSVERSION is already known.
+# Target achitecture not yet defined, but EPICS base location is already known.
 # Still in source directory.
 
 # Look for sources etc., and select target architectures to build.
@@ -198,7 +197,7 @@ SRCS = ${SOURCES}
 export SRCS
 
 DBD_SRCS = $(if ${DBDS},$(filter-out -none-,${DBDS}),$(wildcard menu*.dbd *Record.dbd) $(strip $(filter-out %Include.dbd dbCommon.dbd %Record.dbd,$(wildcard *.dbd)) ${BPTS}))
-DBD_SRCS += ${DBDS_${EPICSVERSION}}
+DBD_SRCS += ${DBDS_${EPICS_BASE_VERSION}}
 export DBD_SRCS
 
 # Read dbd files from source files. Note that this assumes that any xxxRecord.(c|cpp|...) has
@@ -221,23 +220,23 @@ export DBDINSTALLS
 
 HDRS = ${HEADERS}
 HDRS += $(RECORDS:%=${COMMON_DIR}/%.h)
-HDRS += ${HEADERS_${EPICSVERSION}}
+HDRS += ${HEADERS_${EPICS_BASE_VERSION}}
 export HDRS
 
 HDR_SUBDIRS = $(KEEP_HEADER_SUBDIRS)
 export HDR_SUBDIRS
 
 TEMPLS = $(if ${TEMPLATES},$(filter-out -none-,${TEMPLATES}),$(wildcard *.template *.db *.subs))
-TEMPLS += ${TEMPLATES_${EPICSVERSION}}
+TEMPLS += ${TEMPLATES_${EPICS_BASE_VERSION}}
 TEMPLS += $(wildcard $(COMMON_DIR)/*.db)
 export TEMPLS
 
 CFGS = ${CONFIGS}
-CFGS += ${CONFIGS_${EPICSVERSION}}
+CFGS += ${CONFIGS_${EPICS_BASE_VERSION}}
 export CFGS
 
 SCR = $(if ${SCRIPTS},$(filter-out -none-,${SCRIPTS}),$(wildcard *.cmd *.iocsh))
-SCR += ${SCRIPTS_${EPICSVERSION}}
+SCR += ${SCRIPTS_${EPICS_BASE_VERSION}}
 export SCR
 
 # Filter architectures to build using EXCLUDE_ARCHS.
@@ -294,7 +293,7 @@ where_am_I:=$(abspath $(CURDIR))/
 
 # Add sources for specific epics types or architectures.
 ARCH_PARTS = ${T_A} $(subst -, ,${T_A}) ${OS_CLASS}
-VAR_EXTENSIONS = ${EPICSVERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICSVERSION}_%}
+VAR_EXTENSIONS = ${EPICS_BASE_VERSION} ${ARCH_PARTS} ${ARCH_PARTS:%=${EPICS_BASE_VERSION}_%}
 export VAR_EXTENSIONS
 
 # SRCS are already exported from round one
@@ -309,7 +308,7 @@ ifeq ($(filter ${OS_CLASS},${OS_CLASS_LIST}),)
 
 install% build%: build
 install build:
-	@echo Skipping ${T_A} because $(if ${OS_CLASS},OS_CLASS=\"${OS_CLASS}\" is not in BUILDCLASSES=\"${BUILDCLASSES}\",it is not available for R$(EPICSVERSION).)
+	@echo Skipping ${T_A} because $(if ${OS_CLASS},OS_CLASS=\"${OS_CLASS}\" is not in BUILDCLASSES=\"${BUILDCLASSES}\",it is not available for this version of EPICS base.)
 %:
 	@true
 
@@ -323,8 +322,8 @@ install build:
 
 else
 
-$(RECURSE_TARGETS): O.${EPICSVERSION}_${T_A}
-	@${MAKE} -C O.${EPICSVERSION}_${T_A} -f ../${USERMAKEFILE} $@
+$(RECURSE_TARGETS): O.${T_A}
+	@${MAKE} -C O.${T_A} -f ../${USERMAKEFILE} $@
 
 endif
 
@@ -342,7 +341,7 @@ EXTENDED_VARS=INCLUDES CFLAGS CXXFLAGS CPPFLAGS CODE_CXXFLAGS LDFLAGS
 $(foreach v,${EXTENDED_VARS},$(foreach x,${VAR_EXTENSIONS},$(eval $v+=$${$v_$x}) $(eval USR_$v+=$${USR_$v_$x})))
 CFLAGS += ${EXTRA_CFLAGS}
 
-COMMON_DIR = ../O.${EPICSVERSION}_Common
+COMMON_DIR = ../O.Common
 
 # Remove include directory for this module from search path.
 INSTALL_INCLUDES =
