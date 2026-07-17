@@ -180,6 +180,15 @@ SHRLIB_VERSION=
 # Avoid linking everything with libreadline.so
 COMMANDLINE_LIBRARY =
 
+# Darwin: base's LOADABLE_SHRLIB_LDFLAGS uses -bundle, producing MH_BUNDLE
+# files that the linker refuses to link against, so modules could not link
+# other modules via USR_LIBS. Build real dylibs instead; keep load-time
+# symbol resolution via dynamic_lookup.
+ifeq (${OS_CLASS},Darwin)
+LOADABLE_SHRLIB_LDFLAGS = -dynamiclib -undefined dynamic_lookup \
+    -install_name @rpath/$@
+endif
+
 OBJ=.o
 
 COMMON_DIR = O.Common

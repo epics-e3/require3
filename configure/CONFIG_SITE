@@ -49,6 +49,15 @@ WITH_AFTERINIT=YES
 -include $(TOP)/../CONFIG_SITE.local
 -include $(TOP)/configure/CONFIG_SITE.local
 
+# Darwin: base's LOADABLE_SHRLIB_LDFLAGS uses -bundle, producing MH_BUNDLE
+# files that the linker refuses to link against, so modules could not link
+# other modules via USR_LIBS. Build real dylibs instead; keep load-time
+# symbol resolution via dynamic_lookup.
+ifeq ($(OS_CLASS),Darwin)
+LOADABLE_SHRLIB_LDFLAGS = -dynamiclib -undefined dynamic_lookup \
+    -install_name @rpath/$@
+endif
+
 # MSVC - skip defining min()/max() macros and enable APIs
 USR_CPPFLAGS_WIN32 += -DNOMINMAX -D_WIN32_WINNT=_WIN32_WINNT_VISTA
 
