@@ -1,0 +1,44 @@
+name: Build and Test
+
+# Trigger on pushes and PRs to any branch
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  SETUP_PATH: .ci
+  BASE_RECURSIVE: NO
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    env:
+      CMP: ${{ matrix.cmp }}
+      BCFG: default
+      BASE: "7.0"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Job names also name artifacts, character limitations apply
+        include:
+          - name: Linux Base7.0
+            os: ubuntu-latest
+            cmp: gcc
+
+          - name: MacOS Base7.0
+            os: macos-latest
+            cmp: clang
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Prepare and compile EPICS dependencies
+      run: python .ci/cue.py prepare
+
+    - name: Build main module
+      run: python .ci/cue.py build
