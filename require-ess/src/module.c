@@ -232,7 +232,7 @@ int register_module(const char *moduleName, const char *version,
   }
 
   /* Does not add require on the "modules list" */
-  if (strcmp(moduleName, "require") != 0) {
+  if (strcmp(moduleName, "require3") != 0) {
     if (linked_list.size == 0) {
       linked_list.head = module;
     } else {
@@ -242,7 +242,7 @@ int register_module(const char *moduleName, const char *version,
     linked_list.size++;
   }
 
-  require_custom_path = getenv("require_DIR");
+  require_custom_path = getenv("require3_DIR");
   if (require_custom_path == NULL)
     return 0;
   if (asprintf(&require_absolute_path,
